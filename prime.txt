@@ -1,0 +1,47 @@
+!*********************************************
+!*              PRIME NUMBERS                *
+!* ----------------------------------------- *
+!* This small program tests if a given inte- *
+!* ger number is a prime number or not.      *
+!* ----------------------------------------- *
+!* Ref.: "Mathématiques par l'informatique   *
+!*        individuelle (1) par H. Lehning    *
+!*        et D. Jakubowicz, Masson, Paris,   *
+!*        1982".                             *
+!*                                           *
+!*              F90 version by J-P Moreau.   *
+!*                  (www.jpmoreau.fr)        *
+!*********************************************
+!See also program factors.f90
+PROGRAM Prime_numbers
+
+!Labels: 10,50,100,200
+IMPLICIT NONE
+REAL*8 d,eps,i,m,n
+
+  eps=1d-6
+  print *,''
+  write(*,10,advance='no'); read *, n
+  print *,''
+  !Test if multiple of 2
+  d=n-2*int(n/2)
+  if (dabs(d)<eps) goto 100
+  !Test if multiple of 3
+  d=n-3*int(n/3)
+  if (dabs(d)<eps) goto 100
+  !Test if multiple of 6i-1 and 6i+1 from i=6 to sqrt(N)+1
+  i=6; m=int(dsqrt(n))+1
+50 d=n-(i-1)*int(n/(i-1));
+    if (dabs(d)<eps) goto 100
+    d=n-(i+1)*int(n/(i+1));
+    if (dabs(d)<eps) goto 100
+    i=i+6
+  if (i<=m) goto 50
+  print *,' Prime number.'; goto 200
+100 print *,' Not a prime number.'
+200 print *,''
+stop
+10 format(' ? ')
+end
+
+! end of file prime.f90

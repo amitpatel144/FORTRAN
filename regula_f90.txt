@@ -1,0 +1,110 @@
+!************************************************************
+!*    Program to demonstrate the modified false position    *
+!*               method subroutine                          *
+!* -------------------------------------------------------- *
+!*     Reference: BASIC Scientific Subroutines, Vol. II     *
+!*  By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [BIBLI 01] *
+!*                                                          *
+!*                        F90 Version By J-P Moreau, Paris. *
+!*                               (www.jpmoreau.fr)          *
+!* -------------------------------------------------------- *
+!* SAMPLE RUN:                                              *
+!* (Example: Find a real root of (x+1)^5)                   *
+!*                                                          *
+!* Input the initial guesses (root must be between x0, x1): *
+!*                                                          *
+!*     X0 = -2                                              *
+!*     X1 = 2                                               *
+!*                                                          *
+!* Convergence factor: .0001                                *
+!*                                                          *
+!* Maximum number of iterations: 50                         *
+!*                                                          *
+!*                                                          *
+!* The calculated zero is X = -1.000803                     *
+!*                                                          *
+!* The associated Y value is Y = 0.000000                   *
+!*                                                          *
+!* The number of steps was: 47                              *
+!*                                                          *
+!************************************************************
+PROGRAM REGULA
+
+real*8  e,x,x0,x1,Y
+integer m, n
+
+  print *,' '
+  print *,'Input the initial guesses:'
+  print *,' '
+  write(*,"('    X0 = ')",advance='no')
+  read *, x0
+  write(*,"('    X1 = ')",advance='no')
+  read *, x1
+  write(*,"(/' Convergence factor: ')",advance='no')
+  read *, e
+  write(*,"(/' Maximum number of iterations: ')",advance='no')
+  read *, m
+
+  call False_position(m,n,e,x,x0,x1) !Call False position subroutine
+
+  write (*,50) x
+  write (*,60) Y(x)
+  write (*,70) n
+
+  stop
+50 format(//' The calculated zero is X = ',F9.6)
+60 format(//' The associated Y value is Y = ',F9.6)
+70 format(//' The number of steps was: ',i2//)
+
+end
+
+
+!*************************************************
+! Function subroutine                            
+real*8 Function Y(x)
+  real*8 x
+  Y = 1+5*x+10*x*x+10*x*x*x+5*x*x*x*x+x*x*x*x*x
+end
+!*************************************************
+
+
+!***********************************************
+!*     Modified false position subroutine      *
+!* ------------------------------------------- *
+!* This subroutine calculates the zeroes of a  *
+!* function Y(x) uses Hamming"s modification   *
+!* to speed convergence.                       *
+!* Two initial guess are required, x0 and x1,  *
+!* bracketting the root, and a convergence     *
+!* criterion, e. Also required is the maximum  *
+!* number of iterations, m. The root is retur- *
+!* ned in x, the actual number of iterations   *
+!* used in n.                                  *
+!***********************************************
+Subroutine False_position(m,n,e,x,x0,x1)
+  integer m, n
+  real*8 e,x,x0,x1,yy,y0,y1
+  n=0
+  ! Make x0<x1
+  if (x0<x1) goto 100
+  x=x0; x1=x
+  ! Get y0 and y1
+100 y0=Y(x0); y1=Y(x1)
+  ! Calculate a new estimate, x
+200 x=(x0*y1-x1*y0)/(y1-y0)
+  ! Test for convergence
+  n=n+1
+  if (n>=m) return
+  if (dabs(x1-x)<e) return
+  ! Get a new Y(x) value
+  yy=Y(x)
+  ! Apply Hamming"s modification
+  if (y1*yy.eq.0) return
+  if (y0*yy>0) goto 300
+  x1=x; y1=yy; y0=y0/2.d0
+300 x0=x; y0=yy; y1=y1/2.d0
+  goto 200
+end
+
+
+! End of file Regula.f90

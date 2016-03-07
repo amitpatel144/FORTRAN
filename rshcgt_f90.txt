@@ -1,0 +1,197 @@
+!**************************************************************
+!*   Solving a complex homogeneous linear system by Gauss     *
+!*   Method with full pivoting.                               *
+!* ---------------------------------------------------------- *
+!* SAMPLE RUN:                                                *
+!*                        | -1  i -i |                        *
+!* Solve AX = 0 with  A = | -i -1  1 |                        *
+!*                        |  i  1 -1 |                        *
+!*                                                            *
+!* Basic Family of system solutions:                          *            
+!*  Solution  1                                               *
+!*   X1 =  (0.0000000E+00,1.000000)                           *
+!*   X2 =  (1.000000,0.0000000E+00)                           *
+!*   X3 =  (0.0000000E+00,0.0000000E+00)                      *
+!*                                                            *
+!*  Solution  2                                               *
+!*   X1 =  (0.0000000E+00,-1.000000)                          *
+!*   X2 =  (0.0000000E+00,0.0000000E+00)                      *
+!*   X3 =  (1.000000,0.0000000E+00)                           *
+!*                                                            *
+!* ---------------------------------------------------------- *
+!* Ref.: "Algèbre, Algorithmes et programmes en Pascal        *
+!*        By Jean-Louis Jardrin, DUNOD Paris, 1988".          *
+!*                                                            *
+!*                        F90 Release By J-P Moreau, Paris.   *
+!*                               (www.jpmoreau.fr)            *
+!*************************************************************}
+Program TRSHCGT
+
+real, parameter :: NMAX = 20
+
+  integer i,l,N,M0,R0
+  real eps
+
+  Complex A(NMAX,NMAX), VX(NMAX,NMAX)
+
+  N = 3   ! size of complex matrix A
+
+  A(1,1) = CMPLX(-1.0, 0.0)
+  A(1,2) = CMPLX( 0.0, 1.0)
+  A(1,3) = CMPLX( 0.0,-1.0)
+
+  A(2,1) = CMPLX( 0.0,-1.0)
+  A(2,2) = CMPLX(-1.0, 0.0)
+  A(2,3) = CMPLX( 1.0, 0.0)
+
+  A(3,1) = CMPLX( 0.0, 1.0)
+  A(3,2) = CMPLX( 1.0, 0.0)
+  A(3,3) = CMPLX(-1.0, 0.0)
+
+  eps=1E-10
+
+  call RSHCGT(eps,N,A,R0,M0,VX)
+
+  print *,' '
+  if (R0==N) then
+    print *,' System solution:'
+    do i=1, N
+	  write(*,20)  I, VX(i,1)
+    end do
+  else
+    print *,' Basic Family of system solutions:'
+    do l=1, M0
+      write(*,10)  l
+      do i=1, N
+        write(*,20,advance='no')  i
+		write(*,*) VX(i,l)
+      end do
+    end do
+  end if
+  print *,' '       
+
+  stop
+
+10 format('  Solution ',I2)
+20 format('   X',I1,' = ')
+
+END
+
+  Subroutine Swap(Z1, Z2)
+  COMPLEX T,Z1,Z2
+  T=Z2; Z2=Z1; Z1=T
+  return
+  End 
+
+ !**********************************************************
+ !* Procedure RSHCGT solves the complex homogeneous linear *
+ !* system AX = 0 by Gauss method with full pivoting.      *
+ !* ------------------------------------------------------ *
+ !* INPUTS:                                                *
+ !*         eps:  required precision                       *
+ !*          N :  size of complex matrix A (NxN)           *
+ !* OUTPUTS:                                               *
+ !*          R0:  rank of A in output                      *
+ !*          M0:  dimension of system solutions space      *
+ !*               (if R0 <> N)                             *
+ !*          VX:  contains in output the M0 solution       *
+ !*               vectors (stored in columns 1..M0) when   *
+ !*               R0<>N, or the unique solution vector     *
+ !*               (stored in column 1) when R0=N.          * 
+ !**********************************************************   
+  Subroutine RSHCGT(eps, N, A, R0,M0, VX)
+  real, parameter :: NMAX = 20
+  Complex A(NMAX,NMAX), VX(NMAX,NMAX)
+  integer R0, M0
+  Complex C0,C1, P0,Q0,S, Z0,Z1
+  integer I0(NMAX)
+
+    Z0 = CMPLX(0.0,0.0)
+    Z1 = CMPLX(1.0,0.0)
+    do K=1, N
+	  I0(k)=K
+    end do
+    R0=0; K=1
+    do while (R0==0.and.k<=N)
+      P0=A(k,k); l0=k; k0=k
+      do i=k, N
+        do j=k, N
+          if (ABS(A(i,j)) > CABS(P0)) then
+            P0=A(i,j); l0=i; k0=j
+          end if
+        end do
+      end do
+      if (ABS(P0)<eps) then
+        R0=k-1
+        M0=N-R0
+      else
+        if (k==N) then
+          R0=N; M0=0
+        else
+          if (l0.ne.k) then
+            do j=k, N
+			  call Swap(A(k,j),A(l0,j))
+            end do
+          end if 
+          if (k0.ne.k) then
+            do i=1, N
+			  call Swap(A(i,k),A(i,k0))
+            end do
+          end if 
+          N0=I0(k); I0(k)=I0(k0); I0(k0)=N0
+        end if
+      end if 
+      do i=k+1, N
+		Q0 = A(i,k)/P0
+        do j=k+1, N
+          C0=A(i,j)
+		  C1 = Q0 * A(k,j)
+		  A(i,j) = C0 - C1
+        end do
+      end do
+      k=k+1
+    end do
+
+    if (R0==N) then
+      do i=1, N 
+	    VX(i,1) = Z0
+      end do
+    else
+      do l=1, M0
+        do i=N, R0+1, -1
+          if (i==R0+l) then 
+		    VX(i,l) = Z1
+          else 
+		    VX(i,l) = Z0
+          end if
+        end do
+        do i=R0, 1, -1
+          S=Z0
+          do j=i+1, N
+            C0=S
+			C1 = A(i,j) * VX(j,l)
+			S = C0 + C1
+          end do
+		  C0 = S/A(i,i)
+          VX(i,l) = -C0
+        end do
+      end do
+      do i=1, N-1
+        j=i+1
+        do while (j<=N)
+          if (I0(j)==i) then
+            do l=1, M0 
+			  call Swap(VX(j,l),VX(i,l))
+			end do   
+            I0(j) = I0(i); I0(i) = i
+            j=N+1
+          else
+            j=j+1
+          end if
+        end do
+      end do
+    end if
+    return
+  End  !RSHCGT                          
+
+! end of file rshcgt.f90

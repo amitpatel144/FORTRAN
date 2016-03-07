@@ -1,0 +1,72 @@
+!******************************************
+!* Searching subroutines in list of names *
+!* to be used by program Search.f90.      *
+!****************************************** 
+MODULE SearchSubs
+
+  CONTAINS
+
+  SUBROUTINE FindFirst(size,where)
+! Linear search of a list of names for first occurence
+! of target value.
+  USE Setup, ONLY : a, target
+  IMPLICIT NONE
+  INTEGER, INTENT(IN)  :: size
+  INTEGER, INTENT(OUT) :: where
+
+  where=1
+  DO WHILE (a(where) /= target.AND.where < size)
+    where=where+1
+  END DO
+  if (a(where) /= target) where=0	      
+
+  END SUBROUTINE FindFirst
+
+  SUBROUTINE FindAll(size,how_many)
+! Linear search of a list of names for all occurences
+! of target value.
+  USE Setup, ONLY : a, target
+  IMPLICIT NONE
+  INTEGER i
+  INTEGER, INTENT(IN)  :: size
+  INTEGER, INTENT(OUT) :: how_many
+
+  how_many=0
+  DO i=1, size
+    IF (a(i).EQ.target) THEN
+	  WRITE(*,10) target, i
+	  how_many=how_many+1
+    END IF
+  END DO
+
+10 format(' ',A20,'at position ',I2,'.') 
+
+  END SUBROUTINE FindAll
+
+  SUBROUTINE Binary(low,high,where)
+! Binary search of an ordered list for one occurence of
+! specified target value. Assumes low < high, i.e. there
+! is something in the list to look for.
+  USE Setup, ONLY : a, target
+  IMPLICIT NONE
+  INTEGER mid, lo, hi
+  INTEGER, INTENT(IN)  :: low, high
+  INTEGER, INTENT(OUT) :: where
+
+  lo=low; hi=high; where=0
+  DO WHILE (lo.LE.hi.AND.where.EQ.0)
+    mid=(lo+hi)/2
+	IF (a(mid).EQ.target) THEN
+	  where=mid
+    ELSE IF (a(mid).GT.target) THEN
+	  hi=mid-1
+    ELSE
+	  lo=mid+1
+    END IF
+  END DO
+
+  END SUBROUTINE Binary
+
+END MODULE SearchSubs
+
+!end of file searchsubs.f90

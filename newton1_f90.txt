@@ -1,0 +1,94 @@
+!*****************************************************
+!* Program to demonstrate Newton's method subroutine *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                F90 version by J-P Moreau, Paris.  *
+!*                       (www.jpmoreau.fr)           *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* ( Example: Find a real root of f(x)=(x+1)^5 )     *
+!*                                                   *
+!* Input the initial guesses:                        *
+!*                                                   *
+!*    X0 = -2                                        *
+!*                                                   *
+!* Convergence factor: 1e-6                          *
+!* Maximum number of iterations: 50                  *
+!*                                                   *
+!*                                                   *
+!* The calculated zero is X = -1.007042              *
+!*                                                   *
+!* The associated Y value is Y =  0.000000           *
+!*                                                   *
+!* The number of steps was: 50                       *
+!*                                                   *
+!*****************************************************
+PROGRAM Newton1
+
+real*8  e,x0,yy
+integer m,n
+
+  print *,' '
+  print *,'Input the initial guess:'
+  print *,' '
+  write(*,"('    X0 = ')",advance='no')
+  read *, x0
+  print *,' '
+  write(*,"(' Convergence factor: ')",advance='no')
+  read *, e
+  print *,' '
+  write(*,"(' Maximum number of iterations: ')",advance='no'); 
+  read *, m
+  print *,' '
+
+  call Newton(m,n,e,x0,yy)    ! Call Newton subroutine
+
+  write(*,50) x0
+  write(*,60) yy
+  write(*,70) n
+
+  stop
+50 format(//' The calculated zero is X = ',F9.6)
+60 format(//' The associated Y value is Y = ',F9.6)
+70 format(//' The number of steps was: ',i2//)
+
+end
+
+!******************************************************
+! Function subroutine                            
+real*8 Function Y(x, y1)
+  real*8 x,y1 
+  !derivative
+  y1 = 5+20*x+30*x*x+20*x*x*x+5*x*x*x*x
+  y = 1+5*x+10*x*x+10*x*x*x+5*x*x*x*x+x*x*x*x*x
+end
+!******************************************************
+
+!***********************************************
+!*         Newton"s method subroutine          *
+!* ------------------------------------------- *
+!* This routine calculates the zeros of a      *
+!* function Y(x) by Newton"s method.           *
+!* The routine requires an initial guess, x0,  *
+!* and a convergence factor, e. Also required  *
+!* is a limit on the number of iterations, m.  *
+!***********************************************
+Subroutine Newton(m,n,e,x0,yy)  
+  real*8 e,x0,yy,y1,Y
+  integer m,n
+  n=0
+  ! Get y and y1
+100 yy=Y(x0,y1)
+  ! Update estimate
+  x0=x0-(yy/y1)
+  n=n+1
+  if (n>=m) return
+  if (dabs(yy/y1)>e) goto 100
+  return
+end
+
+
+! End of file Newton1.f90

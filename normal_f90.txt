@@ -1,0 +1,75 @@
+!**********************************************************************
+!*         NORMAL AND INVERSE NORMAL PROBABILITY FUNCTIONS            *
+!* ------------------------------------------------------------------ *
+!* SAMPLE RUN:                                                        *
+!*                                                                    *
+!* Value of variable: 0.2                                             *
+!*                                                                    *
+!* Probability =  0.391042693975456                                   *
+!*                                                                    *
+!* Verify:                                                            *
+!*   X = 0.200000286102295                                            *
+!*                                                                    *
+!*                                F90 Version By J-P Moreau, Paris.   *
+!*                                       (www.jpmoreau.fr)            *
+!**********************************************************************
+Program Test_Normal_Law
+
+   real*8 P, X, Y, PHI, NORMAL
+   print *,' '
+   write(*,10,advance='no'); read *, X
+   P = PHI(X)
+   print *,' '
+   print *,' Probability = ', P
+   print *,' '
+   print *,' Verify:'
+   Y = NORMAL(P)
+   print *,'   X = ', Y
+   print *,' '
+   stop
+
+10 format('  Value of variable: ')
+
+END
+
+
+real*8 Function PHI (u)
+real*8 u, PI
+! Standard Normal Probability Function
+  PI = 4.d0*datan(1.d0)
+  PHI = (1.d0/dsqrt(2.d0 * PI))*dexp(-0.5d0*u*u)
+  return
+  end
+
+real*8 Function NORMAL (P)
+real*8 P, PHI
+! Inverse Standard Normal Function
+  real*8 chimax,chisqval,epsilon,minchisq,maxchisq
+  epsilon = 1.d-6
+  chimax = 1.d6
+  minchisq = 0.d0
+  maxchisq = chimax;
+  if (P <= 0.d0) then
+    NORMAL = maxchisq
+	return
+  else
+    if (P >= 1.0) then
+	  NORMAL = 0.d0
+	  return
+    end if
+  end if
+  chisqval = 0.5d0
+  do while (dabs(maxchisq - minchisq) > epsilon)
+    if (PHI(chisqval) < P) then
+      maxchisq = chisqval
+    else
+      minchisq = chisqval
+    end if
+    chisqval = (maxchisq + minchisq) * 0.5d0
+  end do
+  NORMAL = chisqval
+  return
+  end
+
+
+! end of file normal.f90

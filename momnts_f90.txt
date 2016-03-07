@@ -1,0 +1,114 @@
+!**********************************************************
+!* Calculate the mean and first third moments of a set of *
+!* data Y(i)                                              *
+!* ------------------------------------------------------ *
+!* Description:                                           *
+!*                                                        *
+!* Input data:                                            *
+!*		ndata:	Integer size of data set                  *
+!*		Y:	Real Vector of ndata ordinates                *
+!* Output data:                                           *
+!*		S1:	ndata-Mean of ndata values                    *
+!*              S2:	Sum (Y(i)-S1)**2 for i=1..ndata       *
+!*		S3:	Sum (Y(i)-S1)**3 for i=1..ndata               *
+!*		S4:	Sum (Y(i)-S1)**4 for i=1..ndata               *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*  Number of data: 5                                     *
+!*  1: 12                                                 *
+!*  2: 9                                                  *
+!*  3: 7                                                  *
+!*  4: 15                                                 *
+!*  5: 6                                                  *
+!*                                                        *
+!*  S1=   9.800000                                        *
+!*  S2=   54.80000                                        *
+!*  S3=   73.92002                                        *
+!*  S4=   1024.976                                        *
+!*                                                        *
+!*  Error code:       0                                   *
+!*                                                        *
+!* ------------------------------------------------------ *
+!* Ref.: "Journal of Applied Statistics (1972) vol.21,    *
+!*        page 226".                                      *
+!*                                                        *
+!*                      F90 Release By J-P Moreau, Paris. *
+!*                             (www.jpmoreau.fr)          *
+!********************************************************** 
+PROGRAM TMOMNTS
+
+  integer error,i,K,ndata
+  real, pointer ::  Y(:)
+  real  S1,S2,S3,S4
+  
+  print *,' '
+  write(*,10,advance='no'); read *, ndata
+  allocate(Y(1:ndata),stat=ialloc)
+  do i=1, ndata
+    write(*,20,advance='no') i
+	read *, Y(i)
+  end do
+
+  do i=1, ndata
+    call MOMNTS(Y(i),4,i-1,S1,S2,S3,S4,error)
+  end do
+
+  print *,' '
+  print *,' S1=', S1
+  print *,' S2=', S2
+  print *,' S3=', S3
+  print *,' S4=', S4
+  print *,' '
+  print *,' Error code:', error
+  print *,' '
+
+10 format('  Number of data: ')
+20 format(' ',i2,': ')
+
+END
+
+
+      SUBROUTINE MOMNTS(X, K, N, S1, S2, S3, S4, IFAULT)
+
+!        ALGORITHM AS 52  APPL. STATIST. (1972) VOL.21, P.226
+
+!        ADDS A NEW VALUE, X, WHEN CALCULATING A MEAN, AND SUMS
+!        OF POWERS OF DEVIATIONS. N IS THE CURRENT NUMBER OF
+!        OBSERVATIONS, AND MUST BE SET TO ZERO BEFORE FIRST ENTRY
+
+      REAL X, S1, S2, S3, S4, AN, AN1, DX, DX2, ZERO, ONE, TWO, &
+        THREE, FOUR, SIX
+      DATA ZERO, ONE, TWO, THREE, FOUR, SIX /0.0, 1.0, 2.0,   3.0,  4.0, 6.0/
+
+      IF (K .GT. 0 .AND. K .LT. 5 .AND. N .GE. 0) GOTO 10
+      IFAULT = 1
+      RETURN
+   10 IFAULT = 0
+      N = N + 1
+      IF (N .GT. 1) GOTO 20
+
+!        FIRST ENTRY, SO INITIALISE
+
+      S1 = X
+      S2 = ZERO
+      S3 = ZERO
+      S4 = ZERO
+      RETURN
+
+!        SUBSEQUENT ENTRY, SO UPDATE
+
+   20 AN = N
+      AN1 = AN - ONE
+      DX = (X - S1) / AN
+      DX2 = DX * DX
+      GOTO (60, 50, 40, 30), K
+   30 S4 = S4 - DX * (FOUR * S3 - DX * (SIX * S2 + AN1 *  &
+           (ONE + AN1 ** 3) * DX2))
+   40 S3 = S3 - DX * (THREE * S2 - AN * AN1 * (AN - TWO) * DX2)
+   50 S2 = S2 + AN * AN1 * DX2
+   60 S1 = S1 + DX
+      RETURN
+      END
+
+!end of file momnts.f90
+

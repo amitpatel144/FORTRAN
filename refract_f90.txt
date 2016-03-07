@@ -1,0 +1,64 @@
+!**************************************************************
+!*  Calculate angle of refraction for an incident ray using   *
+!*  Snell's Law                                               *
+!* ---------------------------------------------------------- *
+!* SAMPLE RUN:                                                *
+!*                                                            *
+!* Give indices for incident and refracting medium: 1.0 1.5   *
+!*                                                            *
+!* What is the angle of incidence? 30                         *
+!*                                                            *
+!* Refracted angle =   19.47122                               *
+!*                                                            *
+!* ---------------------------------------------------------- *
+!* Ref.: "Problem Solving with Fortran 90 By David R. Brooks, *
+!*        Springer-Verlag New York, 1997".                    * 
+!**************************************************************
+! Explanations:
+! ------------               \ i! 
+!                    incident \ !
+!                      beam    \!
+!                   ---------------------------
+!                               !*
+!                               ! *  refracted
+!                               !r *   beam
+!
+!
+!               Snell's Law:  n sin(i) = n sin(r)
+!                              i          r 
+!                           -1
+!               or   r = sin  [(n / n ) sin(i)]
+!                                i   r
+!
+Program Refract
+  Implicit None
+  Real ni, nr             !indices of refraction (dimensionless)
+  Real incident,refracted !angles from perpendicular (deg)
+  Real DegToRad           !required for trig functions
+
+  Real, parameter :: pi = 3.1415926537
+
+  DegToRad = pi/180.
+
+  print *,' '
+  write(*,10,advance='no'); read *, ni, nr
+
+  print *,' '
+  write(*,20,advance='no'); read *, incident
+
+! Convert refracted angle to degrees before displaying its value
+
+  refracted = ASIN(ni/nr*SIN(incident*DegToRad))
+
+  print *,' '
+  print *,'Refracted angle = ', refracted/DegToRad
+  print *,' '
+
+  stop
+
+10 format(' Give indices for incident and refracting medium: ')
+20 format(' What is the angle of incidence? ')
+
+End
+
+!end of file refract.f90

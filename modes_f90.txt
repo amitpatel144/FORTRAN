@@ -1,0 +1,388 @@
+!***********************************************************************************
+!* Frequencies and Modes of Mass-spring Systems without Damping By Transfer Method *
+!* ------------------------------------------------------------------------------- *
+!* EXPLANATION:                                                                    *
+!* Find resonance frequencies and modes of 2 d.o.f. system below:                  *
+!*                                                                                 *
+!*                          --> x1          --> x2                                 *
+!*              \|    k     ------    k     ------    k     |/                     *
+!*              \|--/\/\/\--| 3m |--/\/\/\--| m  |--/\/\/\--|/                     *
+!*              \|          -----           -----           |/                     *
+!*                          --> F1(t)       --> F2(t)                              *
+!*                                                                                 *
+!* composed of two masses, 3m and m, and three springs of stiffness k, with fixed- *
+!* fixed limit conditions (damping and friction here neglected).                   *
+!*                                                                                 *
+!* The differential system of mass motions, x1(t) and x2(t), is given by:          *
+!*                   3mx1" + 2kx1 - kx2 = F1(t)                                    *
+!*                    mx2" +2kx2  - kx1 = F2(t)                                    *
+!* where F1(t) anf F2(t) are respectively the forces acting on masses 3m and m.    *
+!*                                                                                 *
+!* Or with matrix notation:              M x" + K x = F(t)                         *
+!*                                                                                 *
+!*                      | 3m  0 |                           | 2k  -k |             *
+!* with mass matrix M = |       |  and stiffness matrix K = |        |             *
+!*                      | 0   m |                           | -k  2k |             *
+!*                                                                                 *
+!*                         | x1 |                      | F1(t) |                   *
+!* displacement vector X = |    |  force vector F(t) = |       |                   *
+!*                         | x2 |                      | F2(t) |                   *
+!*                                                                                 *
+!* For F1(t)=F2(t)=0 (free motion), the exact solution is:                         *
+!*                     f1 = 0.10693 sqrt(k/m) Hz                                   *
+!*                     f2 = 0.23686 sqrt(k/m) Hz                                   *
+!* with corresponding modal vectors:                                               *
+!*                | X1 |   |  1   |           | X1 |   |   1  |                    *
+!*         phi1 = |    | = |      |    phi2 = |    | = |      |                    *
+!*                | X2 |   |0.6457|           | X2 |   |-4.646|                    *
+!* ------------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                     *
+!*                                                                                 *
+!*  Frequencies and Modes of Mass-spring Systems                                   *
+!*  By Transfer Method.                                                            *
+!*                                                                                 *
+!*  Kind of elements                                                               *
+!*  ----------------                                                               *
+!*  C(I)=1: Spring                                                                 *
+!*  C(I)=2: Mass                                                                   *
+!*                                                                                 *
+!*  Number of Elements: 5                                                          *
+!*                                                                                 *
+!*  Kind of element 1 C(1) = 1                                                     *
+!*  Kind of element 2 C(2) = 2                                                     *
+!*  Kind of element 3 C(3) = 1                                                     *
+!*  Kind of element 4 C(4) = 2                                                     *
+!*  Kind of element 5 C(1) = 1                                                     *
+!*                                                                                 *
+!*  Fixed-Fixed System, code=1.                                                    *
+!*  Fixed-Free System,  code=2.                                                    *
+!*  Free-Fixed System,  code=3.                                                    *
+!*  Free-Free System,   code=4.                                                    *
+!*                                                                                 *
+!*  Code = 1                                                                       *
+!*                                                                                 *
+!*  Mass #1 = 3                                                                    *
+!*  Mass #2 = 1                                                                    *
+!*                                                                                 *
+!*  Spring #1 = 1                                                                  *
+!*  Spring #2 = 1                                                                  *
+!*  Spring #3 = 1                                                                  *
+!*                                                                                 *
+!*  Frequency Sweep: (S)WEEP                                                       *
+!*  Calculate Mode.: (M)ODE                                                        *
+!*  Exit Program...: (E)XIT                                                        *
+!*                                                                                 *
+!*  Answer = S                                                                     *
+!*                                                                                 *
+!*  Frequency Sweep                                                                *
+!*  ---------------                                                                *
+!*  Starting Frequency: 0                                                          *
+!*  Ending Frequency..: 1                                                          *
+!*  Frequency Step....: 0.1                                                        *
+!*                                                                                 *
+!* Frequency= 0.000000 Hz  Determinant= 3.000000                                   *
+!* Frequency= 0.100000 Hz  Determinant= 0.309290                                   *
+!* Frequency= 0.200000 Hz  Determinant=-2.152075                                   *
+!* Frequency= 0.300000 Hz  Determinant= 12.448194                                  *
+!* Frequency= 0.400000 Hz  Determinant= 72.163917                                  *
+!* Frequency= 0.500000 Hz  Determinant= 216.270438                                 *
+!* Frequency= 0.600000 Hz  Determinant= 495.264631                                 *
+!* Frequency= 0.700000 Hz  Determinant= 970.864895                                 *
+!* Frequency= 0.800000 Hz  Determinant= 1716.011159                                *
+!* Frequency= 0.900000 Hz  Determinant= 2814.864876                                *
+!* Frequency= 1.000000 Hz  Determinant= 4362.809029                                *
+!*                                                                                 *
+!* Note: A minimum value of matrix determinant (here T[2,1]) occurs near a         *
+!*       resonance frequency, here f=0.1 hz. Refine sweep to improve solution.     *
+!*                                                                                 *
+!*  Frequency Sweep: (S)WEEP                                                       *
+!*  Calculate Mode.: (M)ODE                                                        *
+!*  Exit Program...: (E)XIT                                                        *
+!*                                                                                 *
+!*  Answer = S                                                                     *
+!*                                                                                 *
+!*  Frequency Sweep                                                                *
+!*  ---------------                                                                *
+!*  Starting Frequency: 0                                                          *
+!*  Ending Frequency..: 0.2                                                        *
+!*  Frequency Step....: 0.01                                                       *
+!*                                                                                 *
+!* Frequency= 0.000000 Hz  Determinant= 3.000000                                   *
+!* Frequency= 0.010000 Hz  Determinant= 2.968464                                   *
+!* Frequency= 0.020000 Hz  Determinant= 2.874417                                   *
+!* Frequency= 0.030000 Hz  Determinant= 2.719543                                   *
+!* Frequency= 0.040000 Hz  Determinant= 2.506646                                   *
+!* Frequency= 0.050000 Hz  Determinant= 2.239654                                   *
+!* Frequency= 0.060000 Hz  Determinant= 1.923618                                   *
+!* Frequency= 0.070000 Hz  Determinant= 1.564708                                   *
+!* Frequency= 0.080000 Hz  Determinant= 1.170219                                   *
+!* Frequency= 0.090000 Hz  Determinant= 0.748567                                   *
+!* Frequency= 0.100000 Hz  Determinant= 0.309290                                   *
+!* Frequency= 0.110000 Hz  Determinant=-0.136951                                   *
+!* Frequency= 0.120000 Hz  Determinant=-0.578374                                   *
+!* Frequency= 0.130000 Hz  Determinant=-1.002074                                   *
+!* Frequency= 0.140000 Hz  Determinant=-1.394023                                   *
+!* Frequency= 0.150000 Hz  Determinant=-1.739074                                   *
+!* Frequency= 0.160000 Hz  Determinant=-2.020955                                   *
+!* Frequency= 0.170000 Hz  Determinant=-2.222272                                   *
+!* Frequency= 0.180000 Hz  Determinant=-2.324510                                   *
+!* Frequency= 0.190000 Hz  Determinant=-2.308031                                   *
+!*                                                                                 *
+!* Note: Now the minimum absolute value is for f = 0.11 hz. Refine again value.    *
+!*                                                                                 *
+!*  Frequency Sweep: (S)WEEP                                                       *
+!*  Calculate Mode.: (M)ODE                                                        *
+!*  Exit Program...: (E)XIT                                                        *
+!*                                                                                 *
+!*  Answer = S                                                                     *
+!*                                                                                 *
+!*  Frequency Sweep                                                                *
+!*  ---------------                                                                *
+!*  Starting Frequency: 0.10                                                       *
+!*  Ending Frequency..: 0.12                                                       *
+!*  Frequency Step....: 0.0005                                                     *
+!*                                                                                 *
+!* Frequency= 0.100000 Hz  Determinant= 0.309290                                   *
+!* Frequency= 0.100500 Hz  Determinant= 0.287050                                   *
+!* Frequency= 0.101000 Hz  Determinant= 0.264794                                   *
+!* Frequency= 0.101500 Hz  Determinant= 0.242523                                   *
+!* Frequency= 0.102000 Hz  Determinant= 0.220238                                   *
+!* Frequency= 0.102500 Hz  Determinant= 0.197942                                   *
+!* Frequency= 0.103000 Hz  Determinant= 0.175635                                   *
+!* Frequency= 0.103500 Hz  Determinant= 0.153319                                   *
+!* Frequency= 0.104000 Hz  Determinant= 0.130995                                   *
+!* Frequency= 0.104500 Hz  Determinant= 0.108665                                   *
+!* Frequency= 0.105000 Hz  Determinant= 0.086330                                   *
+!* Frequency= 0.105500 Hz  Determinant= 0.063992                                   *
+!* Frequency= 0.106000 Hz  Determinant= 0.041652                                   *
+!* Frequency= 0.106500 Hz  Determinant= 0.019312                                   *
+!* Frequency= 0.107000 Hz  Determinant=-0.003027                                   *
+!* Frequency= 0.107500 Hz  Determinant=-0.025363                                   *
+!* Frequency= 0.108000 Hz  Determinant=-0.047695                                   *
+!* Frequency= 0.108500 Hz  Determinant=-0.070021                                   *
+!* Frequency= 0.109000 Hz  Determinant=-0.092340                                   *
+!* Frequency= 0.109500 Hz  Determinant=-0.114651                                   *
+!* Frequency= 0.110000 Hz  Determinant=-0.136951                                   *
+!* Frequency= 0.110500 Hz  Determinant=-0.159239                                   *
+!* Frequency= 0.111000 Hz  Determinant=-0.181514                                   *
+!* Frequency= 0.111500 Hz  Determinant=-0.203774                                   *
+!* Frequency= 0.112000 Hz  Determinant=-0.226018                                   *
+!* Frequency= 0.112500 Hz  Determinant=-0.248243                                   *
+!* Frequency= 0.113000 Hz  Determinant=-0.270449                                   *
+!* Frequency= 0.113500 Hz  Determinant=-0.292634                                   *
+!* Frequency= 0.114000 Hz  Determinant=-0.314796                                   *
+!* Frequency= 0.114500 Hz  Determinant=-0.336933                                   *
+!* Frequency= 0.115000 Hz  Determinant=-0.359045                                   *
+!* Frequency= 0.115500 Hz  Determinant=-0.381129                                   *
+!* Frequency= 0.116000 Hz  Determinant=-0.403184                                   *
+!* Frequency= 0.116500 Hz  Determinant=-0.425207                                   *
+!* Frequency= 0.117000 Hz  Determinant=-0.447199                                   *
+!* Frequency= 0.117500 Hz  Determinant=-0.469156                                   *
+!* Frequency= 0.118000 Hz  Determinant=-0.491078                                   *
+!* Frequency= 0.118500 Hz  Determinant=-0.512962                                   *
+!* Frequency= 0.119000 Hz  Determinant=-0.534807                                   *
+!* Frequency= 0.119500 Hz  Determinant=-0.556612                                   *
+!*                                                                                 *
+!* Note: now our best first resonance frequency is: 0.107 hz (exact value 0.10693).*
+!*       We can now try to calculate the first modal vector:                       *
+!*                                                                                 *
+!*  Frequency Sweep: (S)WEEP                                                       *
+!*  Calculate Mode.: (M)ODE                                                        *
+!*  Exit Program...: (E)XIT                                                        *
+!*                                                                                 *
+!*  Answer = M                                                                     *
+!*                                                                                 *
+!*  Calculate a Mode                                                               *
+!*  ----------------                                                               *
+!*  Resonance Frequency: 0.107                                                     *
+!*                                                                                 *
+!* Node #1 Force= 1.000000 Displacement= 0.000000                                  *
+!* Node #2 Force= 1.000000 Displacement= 1.000000                                  *
+!* Node #3 Force=-0.355965 Displacement= 1.000000                                  *
+!* Node #4 Force=-0.355965 Displacement= 0.644035                                  *
+!* Node #5 Force=-0.647061 Displacement= 0.644035                                  *
+!* Node #6 Force=-0.647061 Displacement=-0.003027                                  *
+!*                                                                                 *
+!* Note: here the modal vector found is [1.000 0.644], exact value is [1 0.6457].  *
+!*       A small error occurs because the frequency is still approximate.          *
+!*       Proceed in the same way to approximate 2nd frequency and modal vector.    *
+!*       This program is only intended to demonstrate the transfer method, it is   *
+!*       not suitable to solve, as is, real problems.                              *
+!* ------------------------------------------------------------------------------- *
+!* REFERENCE: "Mécanique des vibrations linéaires By M. Lalanne, P. Berthier,      *
+!*             J. Der Hagopian, Masson, Paris 1980" [BIBLI 16].                    *
+!*                                                                                 *
+!*                                              F90 Release By J-P Moreau, Paris.  *
+!*                                                     (www.jpmoreau.fr)           *
+!***********************************************************************************
+Program Modes
+
+integer, parameter :: NMAX = 25
+
+INTEGER C(NMAX)
+REAL T(2, 2), T1(2, 2), A(2, 2)
+REAL V1(2), V2(2)
+REAL K1(NMAX), M1(NMAX)
+INTEGER C6, C8
+CHARACTER*3 ANS
+
+PI = 3.1415926535
+
+PRINT *,' '
+PRINT *,' Frequencies and Modes of Mass-spring Systems'
+PRINT *,' By Transfer Method.'
+PRINT *,' '
+PRINT *,' Kind of elements'
+PRINT *,'-----------------'
+PRINT *,'  C(I)=1: Spring'
+PRINT *,'  C(I)=2: Mass'
+PRINT *,' '
+WRITE(*,10,advance='no'); read *, N
+M9 = 0; K9 = 0
+
+PRINT *,' '
+DO I = 1, N
+  WRITE(*,20,advance='no') I,I; read *, C(I)
+  IF (C(I).EQ.1)  K9 = K9 + 1
+  IF (C(I).EQ.2)  M9 = M9 + 1
+END DO
+
+PRINT *,' '
+PRINT *,' Fixed-Fixed System, code=1.'
+PRINT *,' Fixed-Free System,  code=2.'
+PRINT *,' Free-Fixed System,  code=3.'
+PRINT *,' Free-Free System,   code=4.'
+PRINT *,' '
+WRITE(*,30,advance='no'); read *, C8
+PRINT *,' '
+IF (M9.NE.0) THEN  !There are masses
+  DO I = 1, M9
+    WRITE(*,40,advance='no') I; read *, M1(I)
+  END DO
+END IF
+PRINT *,' '
+IF (K9.NE.0) THEN  !There are springs
+  DO I = 1, K9
+    WRITE(*,50,advance='no') I; read *, K1(I)
+  END DO
+END IF
+680 PRINT *,' '
+PRINT *,' Frequency Sweep: SWE'
+PRINT *,' Calculate Mode.: MOD'
+PRINT *,' Exit Program...: EXI'
+PRINT *,' '
+WRITE(*,60,advance='no'); read *, ANS
+IF (ANS.EQ.'MOD') GOTO 1000
+IF (ANS.EQ.'EXI') STOP
+
+PRINT *,' '
+PRINT *,' Frequency Sweep'
+PRINT *,' ---------------'
+WRITE(*,70,advance='no'); read *, F2
+WRITE(*,80,advance='no'); read *, F3
+WRITE(*,90,advance='no'); read *, F4
+GOTO 1280
+
+1000 PRINT *,' Calculate a Mode'
+PRINT *,' ----------------'
+WRITE(*,100,advance='no'); read *, F
+M9 = 0; K9 = 0
+W = 2 * PI * F
+W2 = W * W
+V1(1) = 0.; V1(2) = 0.; C6 = 1
+IF (C8==3.OR.C8==4) THEN  !system is free-fixed or free-free
+  V1(2) = 1.
+ELSE
+  V1(1) = 1.
+END IF
+PRINT *,' Node #',C6,' Force=', V1(1), ' Displacement=', V1(2)
+DO I = 1, N
+  C6 = C6 + 1
+  C1 = C(I)
+  IF (C1==1) THEN
+    CALL S1650(K9,K1,A)
+  ELSE
+    CALL S1600(M9,W2,M1,A)
+  END IF
+  !V2 = A MPY V1
+  V2(1) = A(1, 1) * V1(1) + A(1, 2) * V1(2)
+  V2(2) = A(2, 1) * V1(1) + A(2, 2) * V1(2)
+  V1(1) = V2(1); V1(2) = V2(2)
+  PRINT *,' Node #',C6,' Force=', V1(1), ' Displacement=', V1(2)
+END DO
+GOTO 680
+
+1280 CONTINUE !Frequency sweep
+DO F = F2, F3, F4
+  M9 = 0; K9 = 0
+  W = 2. * PI * F; W2 = W * W; T = 0.
+  DO I = 1, N
+    C1 = C(I)
+    IF (C1==1) THEN
+      CALL S1650(K9,K1,A)
+    ELSE
+      CALL S1600(M9,W2,M1,A)
+    END IF
+    IF (I==1) THEN
+      !T=A
+      T(1, 1) = A(1, 1); T(1, 2) = A(1, 2)
+      T(2, 1) = A(2, 1); T(2, 2) = A(2, 2)
+    ELSE
+
+      !T1=A MPY T
+      T1(1, 1) = A(1, 1) * T(1, 1) + A(1, 2) * T(2, 1)
+      T1(1, 2) = A(1, 1) * T(1, 2) + A(1, 2) * T(2, 2)
+      T1(2, 1) = A(2, 1) * T(1, 1) + A(2, 2) * T(2, 1)
+      T1(2, 2) = A(2, 1) * T(1, 2) + A(2, 2) * T(2, 2)
+      !T=T1
+      T(1, 1) = T1(1, 1); T(1, 2) = T1(1, 2)
+      T(2, 1) = T1(2, 1); T(2, 2) = T1(2, 2)
+    END IF
+  END DO
+  IF (C8==1) THEN
+    X = T(2, 1)
+  ELSE IF (C8==2) THEN
+    X = T(1, 1)
+  ELSE IF (C8==3) THEN
+    X = T(2, 2)
+  ELSE
+    X = T(1, 2)
+  END IF
+  PRINT *,' Frequency=',F,' Hz  Determinant=', X
+END DO
+PRINT *,' '
+GOTO 680
+
+10 FORMAT(' Number of Elements: ')
+20 FORMAT(' Kind of element #',I2,' C(',I2,') = ')
+30 FORMAT(' Code = ')
+40 FORMAT(' Mass #',I2,' = ')
+50 FORMAT(' Spring #',I2,' = ')
+60 FORMAT(' Answer = ')
+70 FORMAT(' Starting Frequency: ')
+80 FORMAT(' Ending Frequency..: ')
+90 FORMAT(' Frequency Step....: ')
+
+100 FORMAT(' Resonance Frequency: ')
+
+END  !of main program
+
+Subroutine S1600(M9,W2,M1,A)  !Mass Matrix
+REAL M1(*), A(2,2)
+M9 = M9 + 1
+A(1, 1) = 1.; A(1, 2) = 0.
+A(2, 1) = 0.; A(2, 2) = 1.
+A(1, 2) = -M1(M9) * W2
+RETURN
+END
+
+Subroutine S1650(K9,K1,A)   !Stiffness Matrix
+REAL K1(*), A(2,2)
+K9 = K9 + 1
+A(1, 1) = 1.; A(1, 2) = 0.
+A(2, 1) = 0.; A(2, 2) = 1.
+A(2, 1) = 1. / K1(K9)
+RETURN
+END
+
+!end of file modes.f90

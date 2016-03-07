@@ -1,0 +1,125 @@
+!*****************************************************
+!*    Program to demonstrate NextRoot subroutine     *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                F90 version by J-P Moreau, Paris.  *
+!*                       (www.jpmoreau.fr)           *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!* (Example: Find another root of sin(x/2))          *
+!*                                                   *
+!* How many rootd have been determined: 3            *
+!*                                                   *
+!* Input the roots as prompted:                      *
+!*                                                   *
+!*     A( 1) = 0                                     *
+!*     A( 2) = 119.38052                             *
+!*     A( 3) = 75.398223                             *
+!*                                                   *
+!* Input the initial guess:                          *
+!*                                                   *
+!*     X0 = 75                                       *
+!*                                                   *
+!* Convergence criterion: .001                       *
+!*                                                   *
+!* Maximum number of iterations: 20                  *
+!*                                                   *
+!*                                                   *
+!* The calculated zero is X = 50.265482              *
+!*                                                   *
+!* The associated Y value is Y =  0.000000           *
+!*                                                   *
+!* The number of steps was: 4                        *
+!*                                                   *
+!*****************************************************
+PROGRAM NextRoot
+
+real*8  A(0:10)
+integer i,l,m,n
+real*8  e,x,x0,yy1,Y
+
+  print *,' '
+  write(*,"(' How many roots have been determined: ')",advance='no') 
+  read *, l
+  print *,' '
+  print *,'Input the roots as prompted:'
+  print *,' '
+  do i=1, l
+    write(*,50,advance='no')  i
+    read *, A(i)
+  end do
+  print *,' '
+  print *,'Input the initial guess:'
+  write(*,"(/'   X0 = ')",advance='no')
+  read *, x0
+  write(*,"(/' Convergence criterion: ')",advance='no')
+  read *, e
+  write(*,"(/' Maximum number of iterations: ')",advance='no')
+  read *, m
+
+  call Next_Root(l,m,n,e,x,x0,A)    ! Call NextRoot subroutine
+
+  write(*,60) x
+  write(*,70) Y(x,yy1)
+  write(*,80) n
+
+  stop
+
+50 format('   A(',i2,') = ')
+60 format(//' The calculated zero is X = ',F9.6)
+70 format(/' The associated Y value is Y = ',F9.6)
+80 format(/' The number of steps was: ',i3//)
+
+end
+
+
+!*******************************************
+!  Function subroutine                       
+real*8 Function Y(x, y1)
+  real*8 x,y1 
+  ! derivative
+  y1 = 0.5d0*dcos(x/2.d0)
+  Y =  dsin(x/2.d0)
+end
+!*******************************************
+
+
+!************************************************
+!*            NextRoot  subroutine              *
+!* -------------------------------------------- *
+!* This routine determines additional roots of  *
+!* a function Y(x), given a set of already      *
+!* established roots. Method applied is Newton- *
+!* Raphson iteration. The l established roots   *
+!* are in A(i). The routine requires an initial *
+!* guess, x0, and an accuracy criteria, e. It   *
+!* also requires a maximum number of iterations.*
+!************************************************
+Subroutine Next_Root(l,m,n,e,x,x0,A)
+  !Label: 100, 200
+  real*8 b,e,x,x0,x1,y1,yy,Y
+  integer i,l,m,n
+  real*8  A(0:10) 
+  n=0
+  ! Given x0, find Y/Y' 
+100 yy=Y(x0,y1)
+  b=y1/yy
+  do i=1, l
+    b = b - 1.d0/(x0-A(i))
+  end do
+  ! Newton-Raphson iteration
+  x1=x0-(1.d0/b)
+  n=n+1
+  ! Test for convergence
+  if (n>=m) goto 200
+  if (dabs(x1-x0)<e) goto 200
+  x0=x1
+  goto 100
+200 x=x1
+  return;
+end
+
+
+! End of file Nextroot.f90

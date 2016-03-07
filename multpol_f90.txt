@@ -1,0 +1,100 @@
+!*****************************************************
+!*  This program multiplies a polynomial P(x) by a   *
+!*  polynomial Q(x)                                  *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       * 
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* MULTIPLY TWO POLYNOMIALS:                         *
+!*                                                   *
+!* P(X) = 'x3 - 6x + 7'                              *
+!* Q(x) = '5x5 -3x4 +x2 -3'                          *
+!*                                                   *
+!*+      5X8 -     3X7 -    30X6 +    54X5 -    21X4 *
+!*-      9X3 +     7X2 +    18X -    21              *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  AddNumber(), EnterPolynom(), DisplayPolynom()    *
+!*  and MultNumber().                                *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+PROGRAM MULTPOL
+Use Polynoms
+
+type(ar_polynom)  P,Q
+
+  print *,''
+  print *,'MULTIPLY TWO POLYNOMIALS:'
+  print *,''
+  if (EnterPolynom(' P(X) = ', P).eq.0) stop
+  if (EnterPolynom(' Q(X) = ', Q).eq.0) stop
+  print *,''
+  if (MultPolynom(P,Q,Q).ne.0) then
+    call DisplayPolynom(Q)
+  else
+    print *,' Error in multiplication.'
+  end if
+  print *,''
+  print *,''
+  stop
+END
+
+
+  ! P(X) * Q(X) = R(X)
+  integer Function MultPolynom(P,Q,R1)
+  USE POLYNOMS
+    type(ar_polynom) P,Q,R,R1
+    type(ar_number)  u
+    R%degree=0                !set R polynomial to zero
+	do i=0, AR_MAXPOL
+      R%coeff(i)%value=0
+	  R%coeff(i)%p=0
+      R%coeff(i)%q=1
+	end do
+    !verify that P and Q are not void
+    if (P%degree.eq.0.and.P%coeff(0)%value.eq.0) then 
+	  MultPolynom=0
+	  return
+    end if
+    if (Q%degree.eq.0.and.Q%coeff(0)%value.eq.0) then 
+	  MultPolynom=0
+	  return
+    end if
+    R%degree=P%degree+Q%degree
+	
+    if (R%degree>AR_MAXPOL) then     !R degree is too big
+	  MultPolynom=0
+	  return
+	end if
+    do n=0, R%degree
+      if (SetNumber(R%coeff(n),'0').eq.0) then
+	    MultPolynom=0
+	    return
+	  end if
+      do i=0, P%degree
+        j=n-i
+        if (j>=0.and.j<=Q%degree) then
+          if (MultNumber(P%coeff(i),Q%coeff(j),u).eq.0) then
+	        MultPolynom=0
+	        return
+		  end if
+          if (AddNumber(R%coeff(n),u,R%coeff(n)).eq.0) then
+	        MultPolynom=0
+	        return
+		  end if
+        end if
+      end do
+    end do
+    MultPolynom=1
+	R1=R
+  End
+
+
+!end of file multpol.f90

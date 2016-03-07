@@ -1,0 +1,109 @@
+!****************************************************
+!*   Program to demonstrate the series inversion    *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*             F90 Version By J.-P. Moreau, Paris.  *
+!*                    (www.jpmoreau.fr)             *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* What is the degree of the input polynomial: 2    *
+!*                                                  *
+!* What is the degree of the inverted polynomial: 6 *
+!*                                                  *
+!* Input the polynomial coefficients:               *
+!*                                                  *
+!*    A( 0) = ? 1                                   *
+!*    A( 1) = ? .1                                  *
+!*    A( 2) = ? .01                                 *
+!*                                                  *
+!* The inverted polynomial coefficients are:        *
+!*                                                  *
+!*    B( 0) =  1.000000                             *
+!*    B( 1) = -0.100000                             *
+!*    B( 2) =  0.000000                             *
+!*    B( 3) =  0.001000                             *
+!*    B( 4) = -0.000100                             *
+!*    B( 5) =  0.000000                             *
+!*    B( 6) =  0.000001                             *
+!*                                                  *
+!****************************************************
+PROGRAM Recipro
+
+real*8, allocatable :: A(:), B(:)
+integer i, m, n
+
+  print *,' '
+  write(*,"(' What is the degree of the input polynomial: ')",advance='no')
+  read *, n
+  write(*,"(' What is the degree of the inverted polynomial: ')",advance='no')
+  read *, m
+
+  allocate(A(10),B(10))
+
+  print *,'Input the polynomial coefficients:'
+  print *,' '
+
+  do i = 0, n
+    write(*,25,advance='no') i 
+	read *, A(i)
+  end do
+
+  call Reciprocal(m,n,A,B)
+
+  print *,' '
+  print *,'The inverted polynomial coefficients are:'
+  print *,' '
+  do i = 0, m
+    write(*,50)  i, B(i)
+  end do 
+  print *,' '
+  stop
+25 format('   A(',i2,') = ') 
+50 format('   B(',i2,') = ',e13.6)  
+end
+
+
+!******************************************************
+!*       Reciprocal power series subroutine           *
+!* Reference: Computational analysis by Henrici       *
+!* -------------------------------------------------- *
+!* The input series coefficients are A(i). The output *
+!* series coefficients are B(i). The degree of the    *
+!* input polynomial is n. The degree of the inverted  *
+!* polynomial is m. The routine takes care of norma-  *
+!* lization using l = A(0).                           *
+!******************************************************
+Subroutine Reciprocal(m,n,A,B)  
+! Label used: 100
+  real*8  A(10), B(10)
+  real*8 l
+  integer i,j,m,n
+  l = A(0)
+  do i = 0, n
+    A(i) = A(i) / l; B(i) = 0.d0
+  end do
+  ! Clear arrays
+  do i = n+1, m
+    A(i) = 0.d0; B(i) = 0.d0
+  end do
+  ! Calculate the B(i) coefficients
+  B(0) = 1.d0
+  do i = 1, m
+    j = 1
+100 B(i) = B(i) - A(j) * B(i - j)
+    j = j + 1
+    if (j <= i) goto 100
+  end do
+  ! Un-normalize the A(i) and B(i)
+  do i = 0, m
+    A(i) = A(i) * l
+    B(i) = B(i) / l
+  end do
+  return
+end
+
+
+! End of file recipro.f90

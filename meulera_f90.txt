@@ -1,0 +1,101 @@
+!*********************************************************************
+!*   This program computes Euler number En using subroutine EULERA   *
+!* ----------------------------------------------------------------- *
+!* SAMPLE RUN:                                                       *
+!*  Compute Euler number En for n = 0,1,...,10.                      *
+!*                                                                   *
+!*  Please enter Nmax: 10                                            *
+!*                                                                   *
+!*    n            En                                                *
+!*  --------------------------                                       *
+!*    0    0.100000000000D+01                                        * 
+!*    2   -0.100000000000D+01                                        *
+!*    4    0.500000000000D+01                                        *
+!*    6   -0.610000000000D+02                                        *
+!*    8    0.138500000000D+04                                        *
+!*   10   -0.505210000000D+05                                        *
+!*  --------------------------                                       *
+!*                                                                   *
+!* ----------------------------------------------------------------- *
+!* REFERENCE: "Fortran Routines for Computation of Special Functions,*
+!*             jin.ece.uiuc.edu/routines/routines.html".             *
+!*                                                                   *
+!*                                 F90 Release By J-P Moreau, Paris. *
+!*                                        (www.jpmoreau.fr)          *
+!*********************************************************************
+    PROGRAM MEULERA
+
+    DOUBLE PRECISION E
+    
+    DIMENSION E(0:200)
+    PRINT *,' '
+    
+    WRITE(*,10,advance='no'); READ *, N
+
+    
+    CALL EULERA(N,E)
+
+    PRINT *,' '
+    
+    WRITE(*,*)'   n            En'
+    
+    WRITE(*,*)' --------------------------'
+    
+    DO K=0,N,2
+      
+      WRITE(*,20)K,E(K)
+    END DO
+    PRINT *,' '
+    STOP
+
+10  FORMAT('  Please enter Nmax: ')
+20  FORMAT(2X,I3,D22.12)
+    
+    END
+
+
+    
+
+    SUBROUTINE EULERA(N,EN)
+
+!   ======================================
+
+!     Purpose: Compute Euler number En
+
+!     Input :  n --- Serial number
+
+!     Output:  EN(n) --- En
+
+!   ======================================
+    
+    IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+    
+    DIMENSION EN(0:N)
+    
+    EN(0)=1.0D0
+    
+    DO M=1,N/2
+      
+      S=1.0D0
+      
+      DO K=1,M-1
+        
+        R=1.0D0
+        
+        DO J=1,2*K
+          
+          R=R*(2.0D0*M-2.0D0*K+J)/J
+        END DO
+        
+        S=S+R*EN(2*K)
+      END DO
+      
+      EN(2*M)=-S
+    END DO
+    
+    RETURN
+    
+    END
+
+
+!end of file meulera.f90

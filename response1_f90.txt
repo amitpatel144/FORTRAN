@@ -1,0 +1,147 @@
+!******************************************************************
+!* Calculate the acceleration of the sismic mass of an elementary *
+!* oscillator (1 degree of freedom), the basis of which is submit-*
+!* ted to a given speed, VIT(t). The input signal VIT is digitali-*
+!* NDATA speed values.                                            *
+!*                                                                *
+!*                            F90 Version By J-P Moreau, Paris    *
+!*                                  (double precision)            *
+!*                                  (www.jpmoreau.fr)             *
+!* SAMPLE RUN:                                                    *
+!*                                                                *
+!* Read data from file speed.dat                                  *
+!* Write results to file reponse.txt.                             *
+!******************************************************************  
+
+! DIGITAL FORTRAN version 1.0 - 01/31/2011
+                                                                                
+      IMPLICIT REAL*8 (A-H,O-Z)                                                 
+      PARAMETER(NMAX=2048)
+      DIMENSION ACC(NMAX),VIT(NMAX)          
+      REAL*8 dzeta, F0, FMAX, T, TBEGIN, temp, temp1, TEND, TS
+
+      open(unit=1,file='speed.dat',status='old')
+      open(unit=2,file='reponse.txt',status='unknown')
+
+      WRITE(2,*) ' '
+      WRITE(2,*) ' Mass Response to speed(T) at Basis'
+      WRITE(2,*) ' '
+      WRITE(2,*) ' '
+                                                                                
+!  Frequency of oscillator                                                         
+      F0=250.D0
+      WRITE(2,12) F0                                                            
+   12 FORMAT(2X,'FREQUENCY OF OSCILLATOR: ',F6.1,' HERTZ'/)                       
+                                                                                
+!  oscillator relative damping                                                 
+      DZETA=0.05D0                                                                 
+      WRITE(2,14) DZETA                                                         
+   14 FORMAT(2X,'DAMPING OF OSCILLATOR: ',F4.2/)                       
+                                                                                
+! READ INPUT SPEED                                                          
+      CALL READATA(VIT,TS,NDATA)
+      CLOSE(1)       
+	  
+	  TBEGIN = 0; TEND = TBEGIN + (TS * (NDATA - 1))                                           
+      FMAX=0.5D0/TS                                                               
+      WRITE(2,110) FMAX 
+  110 FORMAT(2X,'NYQUIST FREQUENCY: ',F6.1/)
+                                          
+! CALL RESPONSE SUBROUTINE                                                    
+      CALL OSCIL(F0,VIT,ACC,TS,DZETA,NDATA)                                    
+      
+! print ACC(I) to output file
+
+      WRITE(2,245)                                                              
+  245 FORMAT(/'   TIME (S)         ACC M/S2  ')         
+      WRITE(2,246)                                                               
+  246 FORMAT( '  ----------       ---------- ')  
+      T=TBEGIN       
+      DO I=1,NDATA                                                          
+        WRITE(2,300) T, ACC(I)
+        T=T+TS 
+	  END DO
+	  
+  300 FORMAT(E13.6,'    ',E13.6)	  	                              
+
+      CLOSE(2)
+	     
+      print *,' '
+	  print *,' Results in file reponse.txt...'
+	  print *,' '		 
+		                                         
+      STOP                                                                   
+      END                                                                       
+                                                                                
+      SUBROUTINE READATA(A,T,N)                                                 
+      IMPLICIT REAL*8 (A-H,O-Z)                                                
+      DIMENSION A(N)                                                         
+      READ (1,*) N                                                             
+      WRITE(2,10) N                                                             
+   10 FORMAT(/2X,I4,' POINTS READ.')                                         
+      READ (1,*) T                                                              
+      WRITE(2,16) T                                                             
+   16 FORMAT(/2X,'SAMPLING DURATION: ',F17.10,' S'/)                      
+      DO I=1,N                                                               
+        READ(1,*) TEMP,A(I)                                                          
+      ENDDO  
+      RETURN                                                                    
+      END                                                                       
+ 
+    !*************************************************************
+    !* This subroutine calculates the acceleration of the sismic *
+    !* mass of an elementary oscillator (1 degree of freedom),   *
+    !* the basis of which is submitted to a given speed, VIT(t). *
+    !* The input signal VIT is digitalized with a constant time  *
+    !* step, TS. The table VIT(I) contains NDATA speed values.   *
+    !* --------------------------------------------------------- *
+    !* INPUTS:                                                   *
+    !*         FREQU........: eigen frequency of oscillator      *
+    !*         VIT..........: input speed signal of basis VIT(t) *
+    !*         TS...........: time step of signal (constant)     *
+    !*         DZETA........: reduced damping factor             *
+    !*         NDATA........: number of points of signal         *
+    !* OUTPUT:                                                   *
+    !*         ACC..........: table containing acceleration res- *
+    !*                        ponse of oscillator (NDATA points) *
+    !*                                                           *
+    !*                         F90 Version By J-P Moreau, Paris. *
+    !*************************************************************                                                                                 
+      SUBROUTINE OSCIL(FREQU,VIT,ACC,T,DZETA,NDATA)                             
+      IMPLICIT REAL*8 (A-H,O-Z)                                                 
+      DIMENSION ACC(NDATA),VIT(NDATA)                                           
+      PI=4.D+00*DATAN(1.D+00)                                                   
+      OMEGA=2.D+00*PI*FREQU                                                     
+      OMEGA2=OMEGA*OMEGA                                                        
+      DELTA=DSQRT(1.D+00-DZETA*DZETA)                                           
+      EXPA=DEXP(-OMEGA*DZETA*T)                                                 
+      GOMEGA=OMEGA*DELTA                                                        
+      ARG=GOMEGA*T                                                              
+      SINARG=DSIN(ARG)                                                          
+      COSARG=DCOS(ARG)                                                          
+      QSI=DZETA/DELTA                                                           
+      Q0=(COSARG-QSI*SINARG)*EXPA                                               
+      Q1=OMEGA2*SINARG/GOMEGA*EXPA                                              
+      Q2=(1.D+00+(QSI*SINARG-COSARG)*EXPA)/T                                    
+      R1=SINARG/GOMEGA*EXPA                                                     
+      R0=COSARG*EXPA+DZETA*OMEGA*R1                                             
+      R2=(1.D+00-DZETA*OMEGA*T)*R1/T-COSARG*EXPA                                
+      R3=1.D+00-R1/T                                                            
+      XPNP1=VIT(1)                                                              
+      YPPNP1=0.D+00                                                             
+      YPNP1=0.D+00                                                              
+      ACC(1)=Q2*XPNP1                                                           
+                                                                                
+      DO I=2,NDATA                                                           
+        YPN=YPNP1                                                                 
+        YPPN=YPPNP1                                                               
+        XPN=XPNP1                                                                 
+        XPNP1=VIT(I)                                                              
+        YPPNP1=Q0*YPPN+Q1*(XPN-YPN)+Q2*(XPNP1-XPN)                                
+        ACC(I)=YPPNP1                                                             
+        YPNP1=R0*YPN+R1*YPPN+R2*XPN+R3*XPNP1                                      
+      ENDDO                                                                          
+      RETURN                                                                    
+      END                                                                       
+                                                                                
+!End of file reponse1.f90

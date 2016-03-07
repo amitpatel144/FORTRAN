@@ -1,0 +1,260 @@
+!*********************************************************
+!*                   SIMPLEX METHOD                      *
+!*                   --------------                      *
+!*                                                       *
+!* LIST OF MAIN VARIABLES:                               *
+!*                                                       *
+!*  R:          MAXIMIZE = Y, MINIMIZE = N               *
+!*  NV:         NUMBER OF VARIABLES OF ECONOMIC FUNCTION *
+!*              (TO MAXIMIZE OR MINIMIZE).               *
+!*  NC:         NUMBER OF CONSTRAINTS                    *
+!*  TS:         SIMPLEX TABLE OF SIZE NC+1 x NV+1        *
+!*  R1:         =1 TO MAXIMIZE, =-1 TO MINIMIZE          *
+!*  R2:         AUXILIARY VARIABLE FOR INPUTS            *
+!* NOPTIMAL     BOOLEAN IF FALSE, CONTINUE ITERATIONS    *
+!*  XMAX:       STORES GREATER COEFFICIENT OF ECONOMIC   *
+!*              FUNCTION.                                *
+!*  RAP         STORES SMALLEST RATIO > 0                *
+!*  V:          AUXILIARY VARIABLE                       *
+!*  P1,P2:      LINE, COLUMN INDEX OF PIVOT              *
+!*  XERR:       BOOLEAN IF TRUE, NO SOLUTION.            *
+!* ----------------------------------------------------- *
+!* PROBLEM DESCRIPTION:                                  *
+!* A builder of houses can make 3 kinds of them with     *
+!* various profits: 15000$, 17000$ and 20000$.           *
+!* Each kind must respect following conditions:          *
+!* 1) for supply reasons, the number of houses of kind 2 *
+!*    built each month must not exceed the number of     *
+!*    kind 3 by more than two.                           *
+!* 2) for staff reasons, the buider can make each month  *
+!*    up to 5, 5 and 3, respectively of kinds 1, 2 and 3.*
+!* 3) for organisation reasons, the builder can make up  *
+!*    to 8 houses monthly of kinds 1,2 and 3, respecti-  *
+!*    vely in the proportions of 3, 2 and 1.             *
+!* The builder, having these data, wants to maximize his *
+!* monthly profit by knowing the number oh houses of     *
+!* each kind to build monthly.                           *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!* (Maximize 15 X1 + 17 X2 + 20 X3 with conditions:      *
+!*                    X2 -   X3 <= 2                     *
+!*           3 X1 + 3 X2 + 5 X3 <= 15                    *
+!*           3 X1 + 2 X2 +   X3 <= 8     )               *
+!*                                                       *
+!* LINEAR PROGRAMMING                                    *
+!*                                                       *
+!* MAXIMIZE ? Y                                          *
+!*                                                       *
+!* NUMBER OF VARIABLES OF ECONOMIC FUNCTION ? 3          *
+!*                                                       *
+!* NUMBER OF CONSTRAINTS ? 3                             *
+!*                                                       *
+!* INPUT COEFFICIENTS OF ECONOMIC FUNCTION:              *
+!*       #1 ? 15                                         *
+!*       #2 ? 17                                         *
+!*       #3 ? 20                                         *
+!*       Right hand side ? 0                             *
+!*                                                       *
+!* CONSTRAINT #1:                                        *
+!*       #1 ? 0                                          *
+!*       #2 ? 1                                          *
+!*       #3 ? -1                                         *
+!*       Right hand side ? 2                             *
+!*                                                       *
+!* CONSTRAINT #2:                                        *
+!*       #1 ? 3                                          *
+!*       #2 ? 3                                          *
+!*       #3 ? 5                                          *
+!*       Right hand side ? 15                            *
+!*                                                       *
+!* CONSTRAINT #3:                                        *
+!*       #1 ? 3                                          *
+!*       #2 ? 2                                          *
+!*       #3 ? 1                                          *
+!*       Right hand side ? 8                             *
+!*                                                       *
+!* RESULTS:                                              *
+!*                                                       *
+!*       VARIABLE #1:  0.333333                          *
+!*       VARIABLE #2:  3.000000                          *
+!*       VARIABLE #3:  1.000000                          *
+!*                                                       *
+!*       ECONOMIC FUNCTION: 76.000000                    *
+!*                                                       *
+!* (Building monthly 1/3, 3 and 1 house(s) of kinds 1,2, *
+!*  3, the builder can make a monthly profit of 76000$). *
+!* ----------------------------------------------------- *
+!* REFERENCE:                                            *
+!* Modèles pratiques de décision Tome 2, By Jean-Pierre  *
+!* Blanger, PSI Editions, France, 1982.                  *
+!*                                                       *
+!*                F90 Release 1.0 By J-P Moreau, Paris.  *
+!*                         (www.jpmoreau.fr)             *
+!*********************************************************
+PROGRAM SIMPLEX
+
+integer, parameter :: CMAX=10, VMAX=10
+
+integer NC, NV, XERR;
+real*8  TS(CMAX,VMAX)
+
+  call Data(NV,NC,TS)
+  call Simplex1(NV,NC,TS,XERR)
+  call Results(NV,NC,TS,XERR)
+
+  stop
+
+END
+
+
+  subroutine Data(NV,NC,TS)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+    real*8 R1,R2
+    character*1 R
+
+	print *,' '
+    print *,'LINEAR PROGRAMMING'
+	print *,' '
+    write(*,30,advance='no'); read *, R
+	print *,' '
+    write(*,40,advance='no'); read *, NV
+	print *,' '
+    write(*,50,advance='no'); read *, NC
+    if (R.EQ.'Y'.OR.R.EQ.'y') then
+      R1 = 1.0
+    else
+      R1 = -1.0
+    end if
+	print *,' '
+    print *,'INPUT COEFFICIENTS OF ECONOMIC FUNCTION:'
+    do J = 1, NV
+	  write(*,10,advance='no') J; read *, R2
+      TS(1,J+1) = R2 * R1
+    end do
+    write(*,60,advance='no'); read *, R2
+    TS(1,1) = R2 * R1
+    do I = 1, NC
+      write(*,20) I
+      do J = 1, NV
+        write(*,10,advance='no') J; read *, R2
+        TS(I + 1,J + 1) = -R2
+      end do
+      write(*,60,advance='no'); read *, TS(I+1,1)
+    end do
+	print *,' '
+    print *,'RESULTS:'
+	print *,' '
+    do J=1, NV  
+	  TS(0,J+1) = float(J)
+    end do
+    do I=NV+1, NV+NC
+	  TS(I-NV+1,0) = float(I)
+    end do
+    return
+10  format('       #',I1,' ? ')
+20  format(' CONSTRAINT #',I1,' ? ')
+30  format(' MAXIMIZE (Y/N) ? ')
+40  format(' NUMBER OF VARIABLES OF ECONOMIC FUNCTION ? ')
+50  format(' NUMBER OF CONSTRAINTS ? ')
+60  format('       Right hand side ? ')
+  end
+
+  Subroutine Simplex1(NV,NC,TS,XERR)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+	integer P1,P2,XERR, NOPTIMAL
+10  call Pivot(NV,NC,TS,P1,P2)
+    call Formula(NV,NC,TS,P1,P2)
+    call Optimize(NV,NC,TS,NOPTIMAL,XERR)
+    if (NOPTIMAL.EQ.1) goto 10
+    return
+  end
+
+  Subroutine Pivot(NV,NC,TS,P1,P2)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+	integer P1,P2
+    real*8 RAP,V,XMAX
+    
+    XMAX = 0.d0
+    do J=2, NV+1
+	  if (TS(1,J) > 0.d0.AND.TS(1,J) > XMAX) then
+        XMAX = TS(1,J)
+        P2 = J
+      end if
+    end do
+    RAP = 999999.d0
+    do I=2, NC+1
+      if (TS(I,P2) >= 0.d0) goto 10
+      V = dabs(TS(I,1) / TS(I,P2))
+      if (V < RAP) then
+        RAP = V
+        P1 = I
+      end if
+10  end do
+    V = TS(0,P2)
+	TS(0,P2) = TS(P1,0)
+	TS(P1,0) = V
+    return
+  end
+
+  Subroutine Formula(NV,NC,TS,P1,P2)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+	integer P1,P2
+    do I=1, NC+1
+      if (I == P1) goto 70
+      do J=1, NV+1
+        if (J == P2) goto 60
+        TS(I,J) = TS(I,J) - TS(P1,J) * TS(I,P2) / TS(P1,P2)
+60    end do
+70  end do
+    TS(P1,P2) = 1.d0 / TS(P1,P2)
+    do J=1, NV+1
+      if (J == P2) goto 100
+      TS(P1,J) = TS(P1,J) * dabs(TS(P1,P2))
+100 end do
+    do I=1, NC+1
+      if (I == P1) goto 110
+      TS(I,P2) = TS(I,P2) * TS(P1,P2)
+110 end do
+    return
+  end   
+
+  Subroutine Optimize(NV,NC,TS,NOPTIMAL,XERR)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+	integer XERR
+    do I=2, NC+1
+      if (TS(I,1) < 0.d0)  XERR = 1
+    end do
+    NOPTIMAL = 0
+    if (XERR == 1) return
+    do J=2, NV+1
+      if (TS(1,J) > 0.d0)  NOPTIMAL = 1
+    end do
+    return
+  end
+
+  Subroutine Results(NV,NC,TS,XERR)
+    integer, parameter :: CMAX=10, VMAX=10
+    real*8 TS(CMAX,VMAX)
+	integer XERR
+	if (XERR == 0) goto 30
+    print *,' NO SOLUTION.'
+	goto 100
+30  do I=1, NV
+	  do J=2, NC+1
+        if (TS(J,0).NE.float(I)) goto 70
+        write(*,120) I, TS(J,1)
+70    end do
+    end do
+    write(*,130) TS(1,1)
+100 print *,' '
+    return
+120 format('       VARIABLE #',I1,': ',F10.6)
+130 format('       ECONOMIC FUNCTION: ',F10.6) 
+  end
+
+! end of file simplex.f90

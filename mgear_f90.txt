@@ -1,0 +1,236 @@
+!************************************************************************
+!*   Solve a first order Stiff System of Differential Equations using   *
+!*   the implicit Gear method of order 4.                               *
+!* -------------------------------------------------------------------- *
+!* Mode of operation:                                                   *
+!* ==================                                                   *
+!* This program can solve two of the 11 examples of file t_dgls using   *
+!* the implicit Gear method of order 4 (see file gear.f90).             *
+!* To test other systems of DEs, please proceed as explained in file    *
+!* t_dgls.f90.                                                          *
+!*                                                                      *
+!*   Inputs:                                                            *
+!*   =======                                                            *
+!*   bspnummer  Number of DE system from t_dgls.pas                     *
+!*   epsabs     desired absolute error bound                            *
+!*   epsrel     desired relative error bound                            *
+!*   x0         left edge of integration                                *
+!*   y0[0]   \  known approximation for the solution at x0              *
+!* ..  .      >                                                         *
+!*   y0[n-1] /                                                          *
+!*   h          initial step size                                       *
+!*   xend       right endpoint of integration                           *
+!*   fmax       maximal number of calls of the right hand side          *
+!*                                                                      *
+!*   The size n of the DE system is passed on from t_dgls.f90.          *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN                                                           *
+!*                                                                      *
+!* Example #1:                                                          *
+!* (Solve set of differential equations (n=2):                          *
+!*     f[0] = y[0] * y[1] + COS(x) - HALF * SIN(TWO * x);               *
+!*     f[1] = y[0] * y[0] + y[1] * y[1] - (ONE + SIN(x));               *
+!*  Find values of f(0), f(1) at x=1.5).                                *
+!*                                                                      *
+!* Input example number (0 to 11): 0                                    *
+!* abs. epsilon: 1e-6                                                   *
+!* rel. epsilon: 1e-8                                                   *
+!* x0: 0                                                                *
+!* y0[0]: 0.5                                                           *
+!* y0[1]: 0.5                                                           *
+!* initial step size h: 0.0001                                          *
+!* right edge xend: 1.5                                                 *
+!* maximal number of calls of right hand side: 6000                     *
+!*                                                                      *
+!* Input data:                                                          *
+!* -----------                                                          *
+!* Example #             0                                              *
+!* Number of DEs =             2                                        *
+!* x0       =   0.000000000000000E+000                                  *
+!* xend     =    1.500000000000000                                      *
+!* epsabs   =   1.000000000000000E-006                                  *
+!* epsrel   =   1.000000000000000E-008                                  *
+!* fmax     =         6000                                              *
+!* h        =   1.000000000000000E-004                                  *
+!* y0[0]    =   0.500000000000000                                       *
+!* y0[1]    =   0.500000000000000                                       *
+!*                                                                      *
+!* Output data:                                                         *
+!* ------------                                                         *
+!* error code from gear4:            0                                  *
+!* final local step size:   6.067837631349489E-002                      *
+!* number of calls of right hand side:          360                     *
+!* Integration stopped at x =    1.50000000000000                       *
+!*                                                                      *
+!* approximate solution y1(x) =    1.23598612893824                     *
+!* approximate solution y2(x) =  -0.104949617981255                     *
+!*                                                                      *
+!* Example #2:                                                          *
+!* (Solve set of differential equations (n=5):                          *
+!*   f[0] = y[1];                                                       *
+!*   f[1] = y[2];                                                       *
+!*   f[2] = y[3];                                                       *
+!*   f[3] = y[4];                                                       *
+!*   f[4] = ((REAL)45.0 * y[2] * y[3] * y[4] -                          *
+!*          (REAL)40.0 * y[3] * y[3] * y[3]) / (NINE * y[2] * y[2]);    *
+!*  Find values of f(0), ..., f(4) at x=1.5).                           *
+!*                                                                      *
+!* Input example number (0 to 11): 3                                    *
+!* abs. epsilon: 1e-10                                                  *
+!* rel. epsilon: 1e-10                                                  *
+!* x0: 0                                                                *
+!* y0[0]: 1                                                             *
+!* y0[1]: 1                                                             *
+!* y0[2]: 1                                                             *
+!* y0[3]: 1                                                             *
+!* y0[4]: 1                                                             *
+!* initial step size h: 0.001                                           *
+!* right edge xend: 1.5                                                 *
+!* maximal number of calls of right hand side: 6000                     *
+!*                                                                      *
+!* Input data:                                                          *
+!* -----------                                                          *
+!* Example #             3                                              *
+!* Number of DEs =           5                                          *
+!* x0       =  0.00000000000000E+000                                    *
+!* xend     =   1.5000000000000                                         *
+!* epsabs   =  1.00000000000000E-010                                    *
+!* epsrel   =  1.00000000000000E-010                                    *
+!* fmax     =         6000                                              *
+!* h        =  1.00000000000000E-003                                    *
+!* y0[0]    =   1.00000000000000                                        *
+!* y0[1]    =   1.00000000000000                                        *
+!* y0[2]    =   1.00000000000000                                        *
+!* y0[3]    =   1.00000000000000                                        *
+!* y0[4]    =   1.00000000000000                                        *
+!*                                                                      *
+!* Output data:                                                         *
+!* ------------                                                         *
+!* error code from gear4:            0                                  *
+!* final local step size:   4.86347662773039E-003                       *
+!* number of calls of right hand side:        3423                      *
+!* Integration stopped at x =    1.50000000000000                       *
+!*                                                                      *
+!* approximate solution y1(x) =    4.36396102990278                     *
+!* approximate solution y2(x) =    4.00000000763431                     *
+!* approximate solution y3(x) =    2.82842715661991                     *
+!* approximate solution y4(x) =   4.861628061106696E-008                *
+!* approximate solution y5(x) =   -3.77123622295567                     *
+!*                                                                      *
+!* -------------------------------------------------------------------- *
+!* REF.: "Numerical Algorithms with C, By Gisela Engeln-Muellges        *
+!*        and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].           *
+!*                                                                      *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!************************************************************************
+! To link with files: awp, fgauss, gear, t_dgls.
+! ----------------------------------------------
+Program MGEAR
+  
+  real*8  &
+  epsabs, &              ! absolute error bound
+  epsrel, &              ! relative error bound
+  x0                     ! left edge of integration interval
+  real*8, pointer :: y0(:),& ! pointer to (0..n-1)-vector: initial values
+  yex(:)                 ! pointer to (0..n-1)-vector: exact solution
+  real*8 h,      &       ! initial, final step size
+  xend                   ! right edge of integration interval
+
+  integer fmax,  &       ! maximal number of calls of right side in gear4
+  aufrufe,       &       ! actual number of function calls
+  bspnummer,     &       ! Number of the system of DEs from t_dgls,
+  n,             &       ! number of DEs in system (see t_dlgs.pas)
+  fehler,        &       ! error code from umleiten, gear4
+  i                      ! loop counter
+  character*70 dgltxt(0:4) !text of equations
+
+! -------------------- read input  --------------------
+  print *,' '
+  write(*,10,advance='no'); read *, bspnummer
+  if (bspnummer.ne.0.and.bspnummer.ne.3) then
+    print *,' '
+    print *,' Example not registered !'
+    stop
+  end if
+
+  write(*,20,advance='no'); read *, epsabs
+  write(*,30,advance='no'); read *, epsrel
+  write(*,40,advance='no'); read *, x0
+
+  call settxt(bspnummer,n,dgltxt)        !read text of equations
+                                         !and parameter n
+! allocate vectors y0, yex
+  allocate(y0(0:n-1),stat=ialloc)
+  allocate(yex(0:n-1),stat=ialloc)
+
+  do i = 0, n-1
+    write(*,50,advance='no') i; read *, y0(i)
+  end do
+
+  write(*,60,advance='no'); read *, h
+  write(*,70,advance='no'); read *, xend
+  write(*,80,advance='no'); read *, fmax
+
+! ----------------- print input data ----------------------
+  print *,' '
+  print *,' =============================================='
+  print *,'   Solve a first order ordinary system of DEs  '
+  print *,' using the implicit method of Gear of 4th order'
+  print *,' =============================================='
+  print *,' '
+  print *,' System of DEs:'
+  print *,' ------------- '
+  do i=0, n-1
+    print *, dgltxt(i)
+  end do
+  print *,' Example #', bspnummer
+  print *,' Number of DEs =', n
+  print *,' x0     = ', x0
+  print *,' xend   = ', xend
+  print *,' epsabs = ', epsabs
+  print *,' epsrel = ', epsrel
+  print *,' fmax   = ', fmax
+  print *,' h      = ', h
+  do i=0, n-1
+    write(*,100,advance='no') i+1; print *, y0(i)
+  end do
+
+! ------------------- Solve system of DEs ------------------------------
+  call gear4(x0,xend,bspnummer,n,y0,epsabs,epsrel,h,fmax,aufrufe,fehler)
+
+  if (fehler.ne.0) then   !something went wrong
+    print *,' Gear4: error n° ', 10+fehler
+    stop
+  end if
+
+! ---------------------- print results ---------------------
+  print *,' '
+  print *,' Output data:'
+  print *,' -----------'
+  print *,' error code from gear4: ', fehler 
+  print *,' final local step size: ', h
+  print *,' number of calls of right hand side: ', aufrufe
+  print *,' Integration stopped at x = ', x0
+  print *,' '
+  do i=0, n-1
+	write(*,110,advance='no') i+1; print *, y0(i)
+  end do
+  print *,' '
+  stop
+
+10 format(' Input example number (0 to 11): ')
+20 format(' abs. epsilon: ')
+30 format(' rel. epsilon: ')
+40 format(' x0: ')
+50 format(' y0(',I1,'): ')
+60 format(' initial step size h: ')
+70 format(' right edge xend: ')
+80 format(' maximal number of calls of right hand side: ')
+
+100 format('  y0(',I1,')  = ')
+110 format('  approximate solution y',I1,'(x) = ')
+
+End
+
+! -------------------------- END mgear.f90 -------------------------

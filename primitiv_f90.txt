@@ -1,0 +1,124 @@
+!********************************************************
+!* This program calculates the discreet primitive of a  *
+!* user defined real function F(x) in n points by using *
+!* a classical Runge-Kutta method of order 4 (better    *
+!* than a Simpson method of order 2).                   *
+!* ---------------------------------------------------- *
+!* SAMPLE RUN:                                          *
+!* (Calculate 20 points of the primitive of F(x)=x      *
+!*  from x=-5 to x=5 with a finesse of 2. the value of  *
+!*  the primitive at x=-5 will be given as 25/2).       *
+!*                                                      *
+!* Calculate the discreet primitive of a function F(x)  *
+!*                                                      *
+!*   Value of x begin: -5                               *
+!*   Value of x end  : 5                                *
+!*   Value of primitive in x begin: 12.5                *
+!*   Number of points to calculate: 20                  *
+!*   Number of intermediate points: 2                   *
+!*                                                      *
+!*  x1 =  -4.500000  y1 =  10.125000                    *
+!*  x2 =  -4.000000  y2 =   8.000000                    *
+!*  x3 =  -3.500000  y3 =   6.125000                    *
+!*  x4 =  -3.000000  y4 =   4.500000                    *
+!*  x5 =  -2.500000  y5 =   3.125000                    *
+!*  x6 =  -2.000000  y6 =   2.000000                    *
+!*  x7 =  -1.500000  y7 =   1.125000                    *
+!*  x8 =  -1.000000  y8 =   0.500000                    *
+!* -----------------------------------                  *
+!*  x16 =   3.000000  y16 =   4.500000                  *
+!*  x17 =   3.500000  y17 =   6.125000                  *
+!*  x18 =   4.000000  y18 =   8.000000                  *
+!*  x19 =   4.500000  y19 =  10.125000                  *
+!*  x20 =   5.000000  y20 =  12.500000                  *
+!*                                                      *
+!* (Exact values are yi = xi*xi/2).                     *
+!*                                                      *
+!*                  F90 version by J-P Moreau, Paris.   *
+!*                          (www.jpmoreau.fr)           *
+!********************************************************
+PROGRAM Test_Primitive
+  integer finesse, n
+  real*8  fa,xa,xb
+
+  print *,' '
+  print *,' Calculate the discreet primitive of a function F(x)'
+  print *,' '
+  write(*,10,advance='no'); read *, xa
+  write(*,11,advance='no'); read *, xb
+  write(*,20,advance='no'); read *, fa
+  write(*,21,advance='no'); read *, n
+  write(*,22,advance='no'); read *, finesse
+
+  print *,' '
+  print *,' '
+
+  call Primitive(xa,xb,fa,n,finesse)
+
+  print *,' '
+  print *,' '
+
+10 format('    Value of x begin: ')
+11 format('    Value of x end  : ')
+20 format('    Value of primitive in x begin: ')
+21 format('    Number of points to calculate: ')
+22 format('    Number of intermediate points: ')
+
+END
+
+
+! given user defined function F(x)
+real*8 Function F(x)
+  real*8 x
+  F = x
+end
+
+
+!*******************************************************
+!* Calculate the discreet primitive of a real function *
+!* F(x) by using a Runge-Kutta method of order 4.      *
+!* --------------------------------------------------- *
+!* INPUTS:                                             *
+!*           a        begin x                          *
+!*           b        end x                            *
+!*           fa       value of primitive at x=a        *
+!*           n        number of calculated points      *
+!*           fi       number of intermediate points    *
+!*                    (finesse)                        *
+!*                                                     *
+!* OUTPUTS:                                            *
+!*           The subroutine displays the n calculated  *
+!*           points (xi,yi) of the primitive of the    *
+!*           user defined function F(x).               *
+!* --------------------------------------------------- *
+!* Ref.: "Mathematiques en Turbo Pascal by Alain Rever-*
+!*        chon and Marc Ducamp, Armand Colin Editor,   *
+!*        Paris, 1990".                                *
+!*******************************************************
+Subroutine Primitive(a, b, fa, n, fi)
+  real*8 a,b,fa
+  integer fi, n
+  real*8 h,h2,h6,ly,lr,x,y,u, F
+  h=(b-a)/fi/n; h2=h/2; h6=h/6
+  lr=fa; ly=F(a)
+  do i=1, n
+    ni=(i-1)*fi-1
+    do j=1, fi
+      x=a+h*(ni+j)
+      u=4*F(x+h2)
+      x=x+h
+      y=F(x)
+      lr=lr+h6*(ly+u+y); ly=y
+    end do
+	if (i<10) then
+      write(*,10)  i, x, i, lr
+    else
+      write(*,11)  i, x, i, lr
+	end if
+  end do
+  return
+10 format('  x',I1,' = ',F10.6,'  y',I1,' = ',F10.6)
+11 format('  x',I2,' = ',F10.6,'  y',I2,' = ',F10.6)
+end
+
+! end of file primitiv.f90

@@ -1,0 +1,177 @@
+!*****************************************************
+!*              Position of planets                  *
+!* ------------------------------------------------- *
+!* This program calculates the ephemeris of a planet *
+!* in our solar system to adjust an equatorial tele- *
+!* scope.                                            *
+!* ------------------------------------------------- *
+!* Ref.: "Mathematiques par l'informatique indivi-   *
+!*        duelle - Programmes en BASIC, MASSON,      *
+!*        Paris, 1982, p 100 - 105" [BIBLI 06].      *
+!* ------------------------------------------------- *
+!* Inputs:                                           *
+!*   Date: day,month,year                            *
+!*   Hour UT: hour                                   *
+!*   Planet number: 1 to 8                           *
+!*   (Mercury: 1 Venus : 2 Mars   : 4 Jupiter: 5     *
+!*    Saturn : 6 Uranus: 7 Neptune: 8)               *
+!* Outputs:                                          *
+!*   Ascent in hours (0 to 24)                       *
+!*   Declination in deg. (-90 to 90 North or South)  *
+!*                                                   *
+!* SAMPLE RUN:                                       *
+!* (Find ascent and declination of planet Mars on    *
+!*  March 10th, 1982 at 6h UT)                       *
+!*                                                   *
+!* Date (D,M,Y): 10,3,1982                           *
+!* Hour UT: 6                                        *
+!* Mercury: 1 Venus : 2 Mars   : 4 Jupiter: 5        *
+!* Saturn : 6 Uranus: 7 Neptune: 8                   *
+!* Planet number: 4                                  *
+!*                                                   *
+!* Ascent     : 13 H  8 MN                           *
+!* Declination:  3 ° 45 MN S                         *
+!*                                                   *
+!* This program allows building the following table: *
+!*                                                   *
+!* Date: March 10th, 1982 at 6H UT.                  *
+!*                                                   *
+!*       Planet     Ascent     Declination           *
+!*       Mercury    21 H 51    14 ° 45 mn S          *
+!*       Venus      20 H 26    14 ° 57 mn S          *
+!*       Mars       13 H 08     3 ° 45 mn S          *
+!*       Jupiter    14 H 32    13 ° 30 mn S          *
+!*       Saturn     13 H 22     5 ° 42 mn S          *
+!*                                                   *
+!*                 F90 Version By J-P Moreau, Paris. *
+!*                         (www.jpmoreau.fr)         *
+!*****************************************************
+PROGRAM PLANETS
+
+real*8 A(9,8),B(12)
+real*8 temp1(9),temp2(9),temp3(9),temp4(9)
+real*8 temp5(9),temp6(9),temp7(9),temp8(9)
+real*8 aa,bb,c,d,g,h,PI,t,x,y,z
+integer n
+
+character*1 A$
+
+!Init planetary constants (fill table A by comumns)
+data temp1 /4.01166,.071425454,1.32493,.000000742289,.823045, &
+            .000000566185,.205615,.122225,.387099/
+data temp2 /3.60861,.027963119,2.271616,.00000065572,1.32291, &
+            .000000436681,.006816,.0592301,.723332/
+data temp3 /1.72727,.0172028,1.76688,.000000818559,0, &
+            0.,.016751,0.,1./
+data temp4 /2.17756,.0091467658,5.83378,.000000879297,.851616, &
+            .000000371232,.093309,.0322939,1.5236/
+data temp5 /4.68279,.00145099,.2289,.000000857,1.73578, &
+            .000000482933,.048376,.0228418,5.202799/
+data temp6 /4.8567,.00058484,1.5974,.000000412,1.96856, &
+            .000000417308,.054311,.0435026,9.552098/
+data temp7 /4.3224,.000205424,2.9523,.000000762,1.2825, &
+            .000000238237,.047319,.013482,19.21694/
+data temp8 /1.5223,.000105061,.7637,.000000393,2.28102, &
+            .00000052517,.008262,.0310536,30.12912/
+!init calendar constants
+data B /0.,31.,59.,25.,90.,25.,120.,25.,151.,25.,181.,25./
+
+do i=1, 9
+  A(i,1)=temp1(i)
+  A(i,2)=temp2(i)
+  A(i,3)=temp3(i)
+  A(i,4)=temp4(i)
+  A(i,5)=temp5(i)
+  A(i,6)=temp6(i)
+  A(i,7)=temp7(i)
+  A(i,8)=temp8(i)
+end do
+
+!call print_mat(9,8,A)
+
+print *,' '
+!input hour, date (DD,MM,YY) and planet number
+write(*,10,advance='no'); read *, j, m, aa
+write(*,20,advance='no'); read *, h
+print *, 'Mercury: 1 Venus : 2 Mars   : 4 Jupiter: 5'
+print *, 'Saturn : 6 Uranus: 7 Neptune: 8'
+write(*,30,advance='no'); read *, n
+
+!calculate time t
+t=365.25*(aa-1901)+B(m)+j
+t=INT(t) + h/24.d0
+!calculate earth coordinates
+call planet_coordinates(3,t,A,x,y,z)    !planet #3 coordinates
+g=x; h=y                                !save earth coordinates
+!calculate coordinates of planet #n
+call planet_coordinates(n,t,A,x,y,z)
+!calculate geocentric equatorial coordinates
+x=x-g; y=y-h
+t=y*.917484d0-z*.397772d0 
+z=y*.397772d0+z*.917484d0
+y=t
+!calculate ascent and declination
+aa=DATAN2(y,x)
+d=DATAN2(z,DSQRT(x*x+y*y))
+!conversion
+PI=4.d0*DATAN(1.d0)
+aa=aa*12.d0/PI
+if (aa<0.d0) aa=24.d0+aa
+h=INT(aa); m=INT(60*(aa-h))
+d=d*180.d0/PI
+A$='N'; if (d<0.d0) A$='S'
+d=ABS(d); bb=INT(d); c=INT(60*(d-bb))
+!print results
+print *,' '
+write(*,50)  INT(h), m
+write(*,60)  INT(bb), INT(c), A$
+print *,' '
+
+10 format(' Date (D,M,Y): ')
+20 format(' Hour UT: ')
+30 format(' Planet number: ')
+
+50 format(' Ascent     : ',I2,' H ',I2,' MN')
+60 format(' Declination: ',I2,' ø ',I2,' MN ',A1)
+
+END
+
+Subroutine planet_coordinates(j,t,A,x,y,z)
+real*8 A(9,8)
+real*8 t,x,y,z
+real*8 xl,xm,o,p,q,e,xi,xa,xj,r,u,v
+integer j
+
+!calculate planetary constants
+  XL=A(1,j)+A(2,j)*t
+  O=A(3,j)+A(4,j)*t
+  P=A(5,j)+A(6,j)*t
+  E=A(7,j)
+  XI=A(8,j)
+  XA=A(9,j)
+!solve Kepler's equation
+  xm=XL-O; u=xm
+  do j=1, 10
+    u=xm+E*dsin(u)
+  end do
+!formula (3) of reference book
+ r=XA*(cos(u)-E)
+ v=XA*DSQRT(1.d0-E*E)*dsin(u)
+ O=O-P; xm=dsin(O); O=dcos(O)
+ q=dsin(P); P=dcos(P)
+ xj=dsin(XI); XI=dcos(XI)
+ x=(P*O-XI*q*xm)*r+(-P*xm-XI*q*O)*v
+ y=(q*O+XI*P*xm)*r+(-q*xm+XI*P*O)*v
+ z=xj*xm*r+xj*O*v
+return
+end
+
+!optional
+subroutine print_mat(n,m,A)
+real*8 A(n,m)
+write(*,10) ((A(i,j),j=1,m),i=1,n)
+10 format(8(' ',E13.6))
+return
+end
+
+!end of file planets.f90

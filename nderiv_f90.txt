@@ -1,0 +1,133 @@
+!*********************************************************
+!*  Estimate the nth derivative of a real function f(x)  *
+!*  at point x with step h (n from 1 to 5).              *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* Nth derivative of a real function f(x):               *
+!*                                                       *
+!* Function to derivate: x^3                             *
+!*                                                       *
+!* At point x0= 10                                       *
+!* Order of derivative (1 to 5): 1                       *
+!* Value of step h= 0.1                                  *
+!*                                                       *
+!* f'(x0)=300.000000                                     *  
+!*                                                       *
+!* At point x0= 10                                       *
+!* Order of derivative (1 to 5): 2                       *
+!* Value of step h= 0.1                                  *
+!*                                                       *
+!* f"(x0)= 60.000000                                     *
+!*                                                       *
+!* ----------------------------------------------------- *
+!* Ref.: "Analyse numérique en C By Alain Reverchon and  *
+!*        Marc Ducamp, Armand Colin Editeur, Paris,      *
+!*        1990" [BIBLI 14].                              *
+!*                                                       *
+!*                            F90 version by J-P Moreau. *
+!*                                (www.jpmoreau.fr)      *
+!*********************************************************
+Program Nderiv
+
+  real*8  d,h,x
+  integer n
+
+  print *,' '
+  print *,' Nth derivative of a real function f(x):'
+  print *,' '
+  print *,' Function to derivate: x^3'
+  print *,' '
+  write(*,10,advance='no'); read *, x
+  write(*,20,advance='no'); read *, n
+  write(*,30,advance='no'); read *, h
+  print *,' '
+
+  d = ar_nderiv(x,n,h)
+
+  Select Case (n)
+    case (1) 
+	  write(*,50)  d
+    case (2)
+	  write(*,51)  d
+    case (3)
+	  write(*,52)  d
+    case (4)
+	  write(*,53)  d
+    case (5)
+	  write(*,54)  d
+  End Select
+
+  if (n<1.or.n>5)  &
+    print *,' n must be between 1 and 5 !'
+
+  print *,' '
+
+10 format('  At point x0= ')
+20 format('  Order of derivative (1 to 5): ')
+30 format('  Value of step h= ')
+
+50 format('  f''(x0)=',F10.6)
+51 format('  f"(x0)=',F10.6)
+52 format('  f"''(x0)=',F10.6)
+53 format('  f""(x0)=',F10.6)
+54 format('  f""''(x0)=',F10.6)
+
+  stop
+
+END
+
+
+
+!sample function f(x)=x^3
+real*8 Function f(x)
+real*8 x
+f = x*x*x
+return
+end
+
+! returns the value of nth derivative of function
+! f(x) at point x0 with increment step h
+! Note that for polynomial functions h must not be
+! too small. Here h=1 gives best results than h=0.01
+real*8 Function ar_nderiv(x, n, h)
+real*8  f,fa,fb,fc,fd,h,t,x
+integer n, i
+
+integer table(1:5,0:6)
+
+  table(1,0)=3; table(1,1)=45; table(1,2)=-9; table(1,3)=1
+  table(1,4)=0; table(1,5)=0; table(1,6)=60
+  table(2,0)=3; table(2,1)=270; table(2,2)=-27; table(2,3)=2
+  table(2,4)=0; table(2,5)=0; table(2,6)=180
+  table(3,0)=4; table(3,1)=-488; table(3,2)=338; table(3,3)=-72
+  table(3,4)=7; table(3,5)=0; table(3,6)=240
+  table(4,0)=4; table(4,1)=-1952; table(4,2)=676; table(4,3)=-96
+  table(4,4)=7; table(4,5)=0; table(4,6)=240
+  table(5,0)=5; table(5,1)=1938; table(5,2)=-1872; table(5,3)=783
+  table(5,4)=-152; table(5,5)=13; table(5,6)=288
+
+  if (n>5) then
+    ar_nderiv=0.d0
+    return
+  end if
+  fa = f(x)
+  t=0.d0
+  do i=1, table(n,0)
+    fb = f(x-i*h)
+    fc = f(x+i*h)
+    if (MOD(n,2).ne.0) then
+      t = t + table(n,i)*(fc-fb)
+    else
+      t = t + table(n,i)*((fc-fa) + (fb-fa))
+    end if
+  end do
+  t = t / table(n,6)
+  do i=1, n
+    t = t / h
+  end do
+  ar_nderiv= t
+  return
+End
+
+!end of file nderiv.f90

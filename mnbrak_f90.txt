@@ -1,0 +1,128 @@
+!********************************************************
+!*    Bracketing a minimum of a real function Y=F(X)    *
+!*             using MNBRAK subroutine                  *
+!* ---------------------------------------------------- *
+!* REFERENCE: "Numerical Recipes, The Art of Scientific *
+!*             Computing By W.H. Press, B.P. Flannery,  *
+!*             S.A. Teukolsky and W.T. Vetterling,      *
+!*             Cambridge University Press, 1986"        *
+!*             [BIBLI 08].                              *
+!* ---------------------------------------------------- *
+!* Sample run:                                          *
+!*                                                      *
+!* Find 3 points of function X*SIN(X)-2*COS(X)          *
+!* bracketing a minimum, given two initial points.      *
+!*                                                      *
+!* X1=4.d0  X2=5.d0                                     *
+!*                                                      *
+!* The three points are:                                *
+!*                                                      *
+!* X1=  4.000000  X2=  5.000000  X3=  6.618034          *
+!*                                                      *
+!* Corresponding function values:                       *
+!*                                                      *
+!* F1= -1.719923  F2= -5.361946  F3=  0.285940          *
+!*                                                      *
+!********************************************************
+PROGRAM TEST_MNBRAK
+
+REAL*8  X1, X2, X3, F1, F2, F3
+
+X1=4.D0; X2=5.D0
+
+CALL MNBRAK(X1,X2,X3,F1,F2,F3)
+
+print *,' '
+print *,' The three points are:'
+print *,' '
+write(*,10) X1, X2, X3
+print *,' '
+print *,' Corresponding function values:'
+print *,' '
+write(*,20) F1, F2, F3
+print *,' '
+print *,' '
+stop
+10 format('  X1=',F10.6,'  X2=',F10.6,'  X3=',F10.6)
+20 format('  F1=',F10.6,'  F2=',F10.6,'  F3=',F10.6)
+end 
+
+!Function to be analyzed
+REAL*8 FUNCTION FUNC(X)
+  REAL*8 X  
+  FUNC=X*SIN(X)-2.D0*COS(X)
+RETURN
+END  
+
+SUBROUTINE MNBRAK(AX,BX,CX,FA,FB,FC)
+!Given a function FUNC(X), and given distinct initial points AX and
+!BX, this routine searches in the downhill direction (defined by the
+!function as evaluated at the initial points) and returns new points
+!AX, BX, CX which bracket a minimum of the function. Also returned
+!are the function values at the three points, FA, FB and FC.
+IMPLICIT REAL*8 A-H,O-Z
+PARAMETER(GOLD=1.618034,GLIMIT=100.,TINY=1.D-20)
+!The first parameter is the default ratio by which successive intervals
+!are magnified; the second is the maximum magnification allowed for
+!a parabolic-fit step.
+FA=FUNC(AX)
+FB=FUNC(BX)
+IF(FB.GT.FA) THEN
+  DUM=AX
+  AX=BX
+  BX=DUM
+  DUM=FB
+  FB=FA
+  FA=DUM
+ENDIF
+CX=BX+GOLD*(BX-AX)
+FC=FUNC(CX)
+1 IF(FB.GE.FC) THEN
+  R=(BX-AX)*(FB-FC)
+  Q=(BX-CX)*(FB-FA)
+  U=BX-((BX-CX)*Q-(BX-AX)*R)/(2.*SIGN(MAX(ABS(Q-R),TINY),Q-R))
+  ULIM=BX+GLIMIT*(CX-BX)
+  IF((BX-U)*(U-CX).GT.0) THEN
+    FU=FUNC(U)
+    IF(FU.LT.FC) THEN
+	  AX=BX
+	  FA=FB
+	  BX=U
+	  FB=FU
+	  GOTO 1
+    ELSE IF(FU.GT.FB) THEN
+	  CX=U
+	  FC=FU
+	  GOTO 1
+    ENDIF
+	U=CX+GOLD*(CX-BX)
+	FU=FUNC(U)
+  ELSE IF((CX-U)*(U-ULIM).GT.0) THEN
+    FU=FUNC(U)
+	IF(FU.LT.FC) THEN
+	  BX=CX
+	  CX=U
+	  U=CX+GOLD*(CX-BX)
+	  FB=FC
+	  FC=FU
+	  FU=FUNC(U)
+    ENDIF
+  ELSE IF((U-ULIM)*(ULIM-CX).GE.0) THEN
+    U=ULIM
+	FU=FUNC(U)
+  ELSE
+    U=CX+GOLD*(CX-BX)
+	FU=FUNC(U)
+  ENDIF
+  AX=BX
+  BX=CX
+  CX=U
+  FA=FB
+  FB=FC
+  FC=FU
+  GOTO 1
+ENDIF
+RETURN
+END
+
+!End of file mnbrak.f90

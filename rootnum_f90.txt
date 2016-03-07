@@ -1,0 +1,151 @@
+!*****************************************************
+!*        Program to demonstrate the complex         *
+!*             root counting subroutine              *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                F90 version by J-P Moreau, Paris.  *
+!*                       (www.jpmoreau.fr)           *
+!* ------------------------------------------------- *
+!* Example: Find the number of complex roots of      *
+!*          F(z) = z^2 + 1                           *
+!*                                                   *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* Where is the center of the search circle (x0,y0): *
+!*                                                   *
+!*    X0 = 0                                         *
+!*    Y0 = 0                                         *
+!*                                                   *
+!* What is the radius of this circle: 4              *
+!* How many evaluation points per quadrant: 4        *
+!*                                                   *
+!* Number of complete cycles found:  2               *
+!* Residual:  0                                      *
+!*                                                   *
+!*****************************************************
+PROGRAM ROOTNUM1
+
+integer i,m,nn
+real*8  a,w,x0,y0,PI
+
+  print *,' '
+  print *,'Where is the center of the search circle (x0,y0):'
+  print *,' '
+  write(*,"('    X0 = ')",advance='no')
+  read *, x0
+  write(*,"('    Y0 = ')",advance='no')
+  read *, y0
+  print *,' '
+  write(*,"(' What is the radius of this circle: ')",advance='no')
+  read *, w
+  print *,' '
+  write(*,"(' How many evaluation points per quadrant: ')",advance='no') 
+  read *, m
+  
+  if (m>20) m=20
+  
+  call RootNum(m,nn,a,w,x0,y0)    ! Call RootNum subroutine
+
+  write(*,50) nn
+  if (a.ne.0.d0) then
+    write(*,60) a
+  else
+    print *,' '
+    print *,'Residual: 0'
+    print *,' '
+    print *,' '	 
+  end if
+
+  stop
+
+50 format(//' Number of complete cycles found: ',i2)
+60 format(/' Residual: ',E13.6//)
+
+end
+
+!***************************************************
+! Complex function(x,y) subroutine         
+Subroutine Eval(x, y, u, v)
+  real*8 x,y,u,v
+  u=x*x-y*y+1.d0
+  v=2.d0*x*y
+  return
+end
+!***************************************************
+
+
+!*************************************************
+!*       Complex root counting subroutine        *
+!* --------------------------------------------- *
+!* This routine calculates the number of complex *
+!* roots within a circle of radius w centered on *
+!* (x0,y0) by counting (u,v) transitions around  *
+!* the circumference. The input parameters are:  *
+!*     w      radius of the circle               *
+!*     x0,y0  center of the circle               *
+!*     m      evaluation points per quadrant     *
+!* The routine returns nn, the number of roots   *
+!* found, and a, where a<>0 indicates a failure. *
+!*************************************************
+Subroutine RootNum(m,nn,a,w,x0,y0)
+  ! Label: 100
+  integer i,nn
+  real*8  a,w,x0,y0,x,y,u,v,PI
+  integer N(1:80)
+  PI=4.d0*datan(1.d0)
+  a=PI/(2.d0*m)
+  ! Establish the N(i) array
+  do i = 1, 4*m
+    x=w*dcos(a*dfloat(i-1))+x0
+    y=w*dsin(a*dfloat(i-1))+y0
+    call Eval(x,y,u,v)    ! Call complex function subroutine
+    if (u>=0) then
+	  if (v>=0) N(i)=1
+    end if
+    if (u< 0) then 
+	  if (v>=0) N(i)=2
+    end if
+    if (u< 0) then
+	  if (v< 0) N(i)=3
+    end if
+    if (u>=0) then
+	  if (v< 0) N(i)=4
+    end if
+  end do
+  ! Count complete cycles counterclockwise
+  nn=N(1); a=0.d0
+  do i = 2, 4*m
+    if (nn.eq.N(i)) goto 100
+    if (nn.ne.4) then
+	  if (nn.eq.N(i)+1) a=a-1
+    end if
+    if (nn.eq.1) then
+	  if (N(i).eq.4) a=a-1
+    end if
+    if (nn.eq.4) then
+	  if (N(i).eq.1) a=a+1
+    end if
+    if (nn+1.eq.N(i)) a=a+1
+    nn=N(i)
+100 end do
+  ! Complete circle
+  if (nn.ne.4) then
+    if (nn.eq.N(1)+1) a=a-1
+  end if
+  if (nn.eq.1) then
+    if (N(1).eq.4) a=a-1
+  end if
+  if (nn.eq.4) then
+    if (N(1).eq.1) a=a+1
+  end if
+  if (nn+1.eq.N(1)) a=a+1
+  a=dabs(a)
+  nn=a/4
+  a=a-4.d0*a/4
+  return
+end
+
+
+! End of file rootnum.f90

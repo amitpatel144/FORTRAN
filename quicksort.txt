@@ -1,0 +1,160 @@
+!***************************************************************
+!*          Sorting an array by Quicksort method               *
+!* ----------------------------------------------------------- *
+!* REFERENCE:                                                  *
+!*      "NUMERICAL RECIPES by W.H. Press, B.P. Flannery,       *
+!*       S.A. Teukolsky and W.T. Vetterling, Cambridge         *
+!*       University Press, 1986".                              *
+!* ----------------------------------------------------------- *
+!* SAMPLE RUN:                                                 *
+!*                                                             *
+!* Table to be sorted:                                         *
+!*                                                             *
+!* 102.2 837.1 270.3 484.0 164.8 236.6 805.3 142.6 988.2  23.2 *
+!* 352.8   7.4 745.3 691.9 907.8 674.6 918.7 854.5 894.6 845.9 *
+!* 207.4 116.6 992.9 291.4 974.7 494.5 115.0 262.6 831.1 554.4 *
+!* 135.3 937.0 383.4 567.8 640.7 894.0 147.0 754.9 266.1 673.7 *
+!* 579.2 271.0 345.8 927.9 229.9  31.0 663.1 295.8 823.6  30.0 *
+!*  82.1 987.1   1.7 661.4 580.2 415.0 553.6 577.1 593.7 334.0 *
+!* 853.8 183.1 255.2 793.3 692.3 137.7 820.9 871.2 224.9 814.9 *
+!* 335.0 509.0  53.5 141.2 725.4 462.4 805.6 652.7 641.2 609.3 *
+!*                                                             *
+!* Sorted table (Quicksort method):                            *
+!*                                                             *
+!*   1.7   7.4  23.2  30.0  31.0  53.5  82.1 102.2 115.0 116.6 *
+!* 135.3 137.7 141.2 142.6 147.0 164.8 183.1 207.4 224.9 229.9 *
+!* 236.6 255.2 262.6 266.1 270.3 271.0 291.4 295.8 334.0 335.0 *
+!* 345.8 352.8 383.4 415.0 462.4 484.0 494.5 509.0 553.6 554.4 *
+!* 567.8 577.1 579.2 580.2 593.7 609.3 640.7 641.2 652.7 661.4 *
+!* 663.1 673.7 674.6 691.9 692.3 725.4 745.3 754.9 793.3 805.3 *
+!* 805.6 814.9 820.9 823.6 831.1 837.1 845.9 853.8 854.5 871.2 *
+!* 894.0 894.6 907.8 918.7 927.9 937.0 974.7 987.1 988.2 992.9 *
+!*                                                             *
+!* ----------------------------------------------------------- *
+!Note: This method is less efficient then the Heapsort method, *
+!      in particular when the given array is nearly sorted.    *
+!*                                                             *
+!*************************************************************** 
+Program Test_Quicksort
+  real    A(100)     !Table to be sorted
+  real    MAX_VALUE  !Maximum value of table
+  integer Count(1)   !Current value of system clock
+
+  !initialize random number generator
+  call System_Clock(Count(1))
+  call Random_Seed(Put=Count)
+
+  N=80  !initialize size of table
+  MAX_VALUE = 1000
+
+  !generate random table of numbers (from 0 to 1000)
+  do i=1, N
+    call Random_Number(x)  !returns random x >= 0 and <1  
+    A(i)=MAX_VALUE*x
+  end do
+
+  print *,' '
+  print *,'Table to be sorted:'
+  call TWRIT(N,A)
+ 
+  !call quicksort subroutine
+  call QCKSRT(N,A)
+
+  print *,' '
+  print *,'Sorted table (Quicksort method):'
+  call TWRIT(N,A)
+
+  print *,' '
+  stop
+
+End !of main program
+
+
+!***********************************************************
+!* Sorts an array ARR of length N into ascending numerical *
+!* order using the Quicksort algorithm. N is input, ARR is *
+!* replaced on output by its sorted rearrangement.         *
+!*********************************************************** 
+Subroutine QCKSRT(N,ARR)
+
+  Parameter(M=7,NSTACK=50,FM=7875.,FA=211.,FC=1663.,FMI=1./FM)
+! Here M is the size of subarrays sorted by straight insertion, 
+! NSTACK is the required auxuliary storage, and the remaining
+! constants are used by the random generating statements.
+
+   Dimension ARR(N), ISTACK(NSTACK)
+   JSTACK=0
+   L=1; IR=N; FX=0.
+10 If (IR-L.LT.M) Then
+     Do 13 J=L+1, IR
+	   A=ARR(J)
+	   Do 11 I=J-1,1,-1
+	     If (ARR(I).LE.A) Go To 12
+		 ARR(I+1)=ARR(I)
+11     Continue
+       I=0
+12     ARR(I+1)=A
+13   Continue
+     If(JSTACK.EQ.0) Return
+	 IR=ISTACK(JSTACK)
+	 L=ISTACK(JSTACK-1)
+	 JSTACK=JSTACK-2
+   else
+     I=L; J=IR
+	 FX=MOD(FX*FA+FC,FM) !Generate a random integer IQ between L and IR inclusive.
+	 IQ=L+(IR-L+1)*(FX*FMI)
+	 A=ARR(IQ)
+	 ARR(IQ)=ARR(L)
+20   Continue
+       If (J.GT.0) Then
+21       If(A.LT.ARR(J)) Then
+           J=J-1
+		   Go To 21
+         End If
+	   End If
+	   If (J.LE.I) Then
+	     ARR(I)=A
+		 Go To 30
+	   End If
+	   ARR(I)=ARR(J)
+	   I=I+1
+22     If (I.LE.N) Then
+         If (A.GT.ARR(I)) Then
+		   I=I+1
+		   Go To 22
+		 End If
+	   End If
+	   If (J.LE.I) Then
+	     ARR(J)=A
+		 I=J
+		 Go To 30
+	   End If
+	   ARR(J)=ARR(I) 	  	    
+	   J=J-1	 	 
+     Go To 20
+30   JSTACK=JSTACK+2
+     If (JSTACK.GT.NSTACK) Pause 'NSTACK too small!'
+	 If (IR-I.GE.I-L) Then
+	   ISTACK(JSTACK)=IR
+	   ISTACK(JSTACK-1)=I+1
+	   IR=I-1
+	 Else
+	   ISTACK(JSTACK)=I-1
+	   ISTACK(JSTACK-1)=L
+	   L=I+1
+	 End If    	 	 	    		   
+   End If
+   Go To 10
+End
+  
+!write table of size N to standard output
+SUBROUTINE TWRIT(N,ARR)
+real ARR(N)
+  print *,' '
+  WRITE(*,10) (ARR(I),I=1,N)
+  return
+10 FORMAT(10F6.1)
+END
+
+! end of file tqcksrt.f90
+  

@@ -1,0 +1,116 @@
+!********************************************************
+!*      Program to demonstrate synthetic division       *
+!*              of polynomials subroutine               *
+!* ---------------------------------------------------- *
+!*   Reference: BASIC Scientific Subroutines, Vol. II   *
+!*   By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].  *
+!*                                                      *
+!*                  F90 version by J-P Moreau, Paris.   *
+!*                         (www.jpmoreau.fr)            *
+!* ---------------------------------------------------- *
+!* SAMPLE RUN:                                          *
+!* ( Example: Divide (x+1)^5 by (x+1) )                 *
+!*                                                      *
+!*          DIVISION OF POLYNOMIALS                     *
+!*                                                      *
+!* What is the degree of the first polynomial: 5        *
+!*                                                      *
+!* Input the first polynomial coefficients as prompted: *
+!*                                                      *
+!*   C( 0) = 1                                          *
+!*   C( 1) = 5                                          *
+!*   C( 2) = 10                                         *
+!*   C( 3) = 10                                         *
+!*   C( 4) = 5                                          *
+!*   C( 5) = 1                                          *
+!*                                                      *
+!* What is the degree of the second polynomial: 1       *
+!*                                                      *
+!* Input the second polynomial coefficients as prompted:*
+!*                                                      *
+!*   B( 0) = 1                                          *
+!*   B( 1) = 1                                          *
+!*                                                      *
+!* The coefficients of the resulting polynomial are:    *
+!*                                                      *
+!*   A( 0) =  1.000000                                  *
+!*   A( 1) =  4.000000                                  *
+!*   A( 2) =  6.000000                                  *
+!*   A( 3) =  4.000000                                  *
+!*   A( 4) =  1.000000                                  *
+!*                                                      *
+!********************************************************
+PROGRAM RSYNDIV
+
+parameter(SIZE=25)
+
+integer i,n1,n2
+real*8  A(0:SIZE), B(0:SIZE), C(0:SIZE)
+
+  print *,' '
+  print *,'         DIVISION OF POLYNOMIALS'
+  print *,' '
+  write(*,"(' What is the degree of the first polynomial: ')",advance='no')
+  read *, n1
+  print *,' '
+  print *,'Input the first polynomial coefficients as prompted:'
+  print *,' '
+  do i=0, n1
+    write(*,25,advance='no') i;  
+    read *, C(i)
+  end do
+  print *,' '
+  write(*,"(' What is the degree of the second polynomial: ')",advance='no')
+  read *, n2
+  print *,' '
+  print *,'Input the second polynomial coefficients as prompted:'
+  print *,' '
+  do i=0, n2
+    write(*,30,advance='no') i;  
+    read *, B(i)
+  end do
+  
+  call Division(n1,n2,A,B,C)
+
+  print *,' '
+  print *,' '
+  print *,'The coefficients of the resulting polynomial are:'
+  print *,' '
+  do i=0, n1-n2
+    write(*,40)  i, A(i)
+  end do
+  print *,' '
+  
+  stop
+
+25 format('   C(',i2,') = ')
+30 format('   B(',i2,') = ')   
+40 format('   A(',i2,') = ',F9.6)  
+
+end
+
+!************************************************
+!* Synthetic Division of polynomials Subroutine *
+!* -------------------------------------------- *
+!* It is assumed that polynomial coefficients   *
+!* are real.  Calculates A(x)=C(x)/B(x).        *
+!* C(x) is of order n1,  B(x) is of order n2,   *
+!* A(x) is at most of order n1-n2 (n1>n2).      *
+!************************************************
+Subroutine Division(n1,n2,A,B,C)  
+  !Label 100
+  parameter(SIZE=25)
+  real*8  A(0:SIZE), B(0:SIZE), C(0:SIZE)
+  integer i,j,n1,n2
+  do i=n1,  n2, -1
+   A(i-n2)=C(i)/B(n2)
+   if (i.eq.n2) goto 100
+   do j=0,  n2
+     C(i-j)=C(i-j)-A(i-n2)*B(n2-j)
+   end do
+100 end do
+  return
+end
+
+
+! End of file rsyndiv.f90

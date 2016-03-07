@@ -1,0 +1,182 @@
+!******************************************************
+!*         Computing the means and moments            *
+!*           of a statistical variable                *
+!*                                                    *
+!* -------------------------------------------------- *
+!* REFERENCE:  "Mathematiques et statistiques By      *
+!*              H. Haut, PSI Editions, France, 1981"  *
+!*              [BIBLI 13].                           *
+!*                                                    *
+!*              F90 version by J-P Moreau, Paris      *
+!*                      (www.jpmoreau.fr)             *
+!* -------------------------------------------------- *
+!* SAMPLE RUN:                                        *
+!*                                                    *
+!* TUTORIAL                                           *
+!*                                                    *
+!* Means and moments of a statistical variable X(i)   *
+!* with frequency F(i)                                *
+!*                                                    *
+!* 1. Input number n of data                          *
+!*                                                    *
+!* 2. Input successively the n values X(i) and F(i)   *
+!*                                                    *
+!* Number of data: 3                                  *
+!*                                                    *
+!*   1  1 6                                           *
+!*   2  3 4                                           *
+!*   3  5 8                                           *
+!*                                                    *
+!* Calculate generalized mean for t= 2                *
+!*                                                    *
+!*                                                    *
+!* Arithmetic mean:    3.22222222222222               *     
+!*                                                    *
+!* Geometric mean :    2.61023903453025               *
+!*                                                    *
+!* Harmonic mean  :    2.01492535879416               *
+!*                                                    *
+!* Moments:                                           *
+!*                                                    *
+!*   M1=    3.22222222222222                          *
+!*   M2=    3.06172839506173                          *
+!*   M3=   -1.16323731138546                          *
+!*   M4=    12.5688157293097                          *
+!*                                                    *
+!* Flatness coefficient....:    1.34079084287202      *
+!* Coefficient of asymmetry:  -0.217129249387422      *
+!*                                                    *
+!* Gen. mean M(  2.0000)...:    3.66666666666667      *
+!*                                                    *
+!******************************************************
+PROGRAM Test_Moments
+
+real*8 X(100), F(100)
+real*8 t,a,g,h,xm1,xm2,xm3,xm4,ap,asy,xmt
+
+  print *,' '
+  print *,' TUTORIAL'
+  print *,' '
+  print *,' Means and moments of a statistical variable X(i)'
+  print *,' with frequency F(i)'
+  print *,' '
+  print *,' 1. Input number n of data'
+  print *,' '
+  print *,' 2. Input sucessively the n values X(i) and F(i)'
+  print *,' '
+  write(*,"('  Number of data: ')",advance='no')
+  read  *, n
+  print *,' '
+
+  do i=1, n
+    write(*,10,advance='no')  i
+    read *, X(i), F(i)
+  end do
+  print *,' '
+  write(*,"('  Calculate generalized mean for t= ')",advance='no')
+  read  *, t
+  print *,' '
+
+  call calculate(n,X,F,t,a,g,h,xm1,xm2,xm3,xm4,ap,asy,xmt,ite)
+
+  !print results
+  print *,' '
+  print *,' Arithmetic mean: ', a
+  print *,' '
+  print *,' Geometric mean : ', g
+  print *,' '
+  if (ite.eq.1) then
+    print *,' Harmonic mean undefined.'
+  else
+    print *,' Harmonic mean  : ', h
+  end if
+  print *,' '
+  print *,' Moments:'
+  print *,' '
+  print *,'   M1= ', xm1
+  print *,'   M2= ', xm2
+  print *,'   M3= ', xm3
+  print *,'   M4= ', xm4
+  print *,' '
+  print *,' Flatness coefficient....: ', ap
+  print *,' Coefficient of asymmetry: ', asy
+  print *,' '
+  write(*,20)  t, xmt
+  print *,' '
+
+  stop
+
+10 format('   ',i2,'  ')
+20 format('  Gen. mean M(',f8.4,')...: ',f19.14//)
+
+END
+
+! Subroutine to calculate the means and moments of a
+! statistical variable X(i)
+Subroutine Calculate(n,X,F,t,a,g,h,xm1,xm2,xm3,xm4,ap,asy,xmt,ite)
+!*****************************************************
+!* INPUTS:                                           *
+!*          n: number of data X(i) and F(i)          *
+!*          X: n values X(i)                         *
+!*          F: n values F(i), frequency of X(i)      *
+!*          t: coefficient of generalized mean M(t)  *
+!*             to calculate                          *
+!* OUTPUTS:                                          *
+!*          a: arithmetic mean of X(i)               *
+!*          g: geometric mean of X(i)                *
+!*          h: harmonic mean of X(i)                 *
+!*        xm1: moment of first order                 *
+!*        xm2: moment of second order                *
+!*        xm3: moment of third order                 *
+!*        xm4: moment of fourth order                *
+!*         ap: flatness coefficient                  *
+!*        asy: coefficient of assymetry              *
+!*        xmt: generalized mean M(t)                 *
+!*        ite: test flag (if ite=1, harmonic mean h  *
+!*             is not defined                        *
+!*****************************************************
+real*8 X(100),F(100)
+real*8 t,a,g,h,xm1,xm2,xm3,xm4,ap,asy,xmt
+real*8 v1,v2,v3,v4,v7,xm
+  ite=0
+  v1=0.d0; v2=0.d0; v3=0.d0; v4=0.d0
+  v5=1.d0; v6=0.d0; v7=0.d0; xm=0.d0
+  !Calculate necessary sums
+  do i=1, n
+    vt=F(i)*X(i)
+    v1=v1+vt
+    v2=v2+vt*X(i)
+    v3=v3+vt*X(i)**2
+    v4=v4+vt*X(i)**3
+    xm=xm+F(i)
+    v7=v7+F(i)*X(i)**t
+    !test for a X(i)=0
+    if (X(i).eq.0.d0) then
+      ite=1
+      goto 100
+    end if
+    ! if one X(i)=0, the harmonic mean is undefined
+    ! and the geometric mean = 0
+    if (ite.eq.1) goto 100
+    v5=v5*X(i)**F(i)
+    v6=v6+F(i)/X(i)
+100 end do
+  !prepare outputs
+  a=v1/xm
+  xmt=(v7/xm)**(1.d0/t)
+  xm1=a
+  xm2=(v2-2.d0*a*v1+a*a*xm)/xm
+  xm3=(v3-3.d0*a*v2+3.d0*a*a*v1-xm*a**3)/xm
+  xm4=(v4-4.d0*a*v3+6.d0*a*a*v2-4.d0*v1*a**3+xm*a**4)/xm
+  ap=xm4/xm2/xm2
+  asy=xm3/(xm2**1.5d0)
+  if (ite.eq.1) then  !one X(i)=0
+    g=0.d0
+    return
+  end if
+  g=v5**(1.d0/xm)
+  h=xm/v6
+  return
+end
+
+! End of file moment.f90

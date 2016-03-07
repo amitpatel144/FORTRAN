@@ -1,0 +1,327 @@
+!************************************************************************
+!*                                                                      *
+!* Solve a two point boundary problem of first order with the shooting  *
+!* -------------------------------------------------------------------  *
+!* method                                                               *
+!* ------                                                               *
+!*                                                                      *
+!* Programming language: ANSI C                                         *
+!* Author:               Klaus Niederdrenk (FORTRAN)                    *
+!* Adaptation:           Juergen Dietel, Computer Center, RWTH Aachen   *
+!* Source:               existing C, Pascal, QuickBASIC and FORTRAN     *
+!*                       codes                                          *
+!* Date:                 6.2.1992; 10.30.1995                           *
+!*                                                                      *
+!*                                                                      *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                          (www.jpmoreau.fr)           *
+!* -------------------------------------------------------------------- *
+!* REF.: "Numerical Algorithms with C, By Gisela Engeln-Muellges        *
+!*        and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].           *
+!************************************************************************
+
+!print a vector of length n and its name
+Subroutine zeig(s, v, n)
+character*(*) s
+real*8 v(0:n-1)
+  write(*,*) s
+  write(*,10) (v(i), i=0, n-1) 
+  write(*,*) ' '
+  return
+10 format(10E13.6)
+End
+
+Subroutine randbed(ya, yb, r)
+integer, parameter :: NMAX=1
+real*8 ya(0:NMAX), yb(0:NMAX), r(0:NMAX)
+  r(0) = ya(0)
+  r(1) = yb(0)
+Return
+End
+
+Subroutine Copy_Vector(a, b, n)
+real*8 a(0:n-1), b(0:n-1)
+  do i=0, n-1
+    a(i)=b(i)
+  end do
+  return
+End
+
+! ---------------------------------------------------------------------
+!Shooting method for boundary value problem of 1st order
+integer Function rwp (  &
+         a,  &                   !left end point .....................
+         b,  &                   !right end point ....................
+         h,  &                   !starting step size .................
+         y_start,  &             !initial approximation or solution ..
+                                 !initial value problem  y(a) ........
+         n,        &             !number of differential equations ...
+         awpnumm,  &             !number of desired IVP solver .......
+         epsawp,   &             !error bound for initial value       
+                                 !problem ............................
+         epsrb,    &             !error bound for boundary value      
+                                 !problem ............................
+         fmax,     &             !maximal number of calls of dgl .....
+         itmax,    &             !maximal number of Newton iterations 
+         act_iter  &             !actual number of Newton steps ......
+       )
+USE AB_MOU
+USE BULIRSCH
+real*8  y_start(0:n-1)
+real*8  a, b, h, epsawp, epsrb
+integer awpnumm, fmax, act_iter
+!************************************************************************
+!* This function solves the first order boundary value problem          *
+!*                                                                      *
+!*     y' = F(x,y),    a <= x <= b,    R(y(a),y(b)) = 0.                *
+!*                                                                      *
+!* It uses the shooting method starting with an approximate y_start for *
+!* the associated initial value y(a), from which it constructs an       *
+!* approximate solution using as initial value solver the function awp()*
+!* The nonlinear system arising in the shooting method is solved using  *
+!* Newton's method.                                                     *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* a        left end point                                              *
+!* b        right end point  (b > a)                                    *
+!* h        suitable step size for solving the associated initial value *
+!*          problem for the shooting method approximately               *
+!* y_start  [0..n-1] vector, initial approximation for y(a)             *
+!* n        number of differential equations                            *
+!* awpnumm  label for the desired IVP solver in the shooting method:    *
+!*          = 1: Runge-Kutta embedding formula of 4/5th order; England  *
+!*               formula from awp().                                    *
+!*          = 2: Predictor-corrector method of order 4 by Adams-        *
+!*               Bashforth-Moulton (from prae_korr())                   *
+!*          = 3: Runge-Kutta embedding formula of 7/8th order (from     *
+!*               einb_rk())                                             *
+!*          = 4: Extrapolation method of  Bulirsch-Stoer (from          *
+!*               bul_stoe())                                            *
+!*          = 5: implicit Runge-Kutta-Gauss method (from implruku())    *
+!* epsawp   desired accuracy for the solution of the associated initial *
+!*          value problem                                               *
+!* epsrb    desired accuracy for which the approximation y_start for    *
+!*          the initial value  y(a) of a solution of the boundary value *
+!*          problem should satisfy the boundary condition R.            *
+!* fmax     upper bound for number of calls of dgl() in the system of   *
+!*          differential equations when solving the associated initial  *
+!*          value problem                                               *
+!* itmax    upper bound for number of Newton iterations when solving    *
+!*          the nonlinear systems in the shooting method                *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* y_start   [0..n-1] approximation for the initial value y(a) of a     *
+!*           solution  y of the boundary problem                        *
+!* act_iter  number of Newton iterations performed                      *
+!*                                                                      *
+!* Return value :                                                       *
+!* ==============                                                       *
+!* error code                                                           *
+!* = 0: all is ok                                                       *
+!* = 1: at least one of the accuracy bounds  epsawp, epsrb too small    *
+!* = 2: b <= a                                                          *
+!* = 3: h <= 0                                                          *
+!* = 4: n <= 0                                                          *
+!* = 5: improper input for awpnumm                                      *
+!* = 6: maximal number of allowed function evaluations exceeded         *
+!* = 7: act_iter > itmax. number of allowd Newton steps exceeded without*
+!*      finding a suitable value for  y_start.                          *
+!* = 8: The Jacobi matrix for Newton iterations is singular.            *
+!* = 9: lack of memory space                                            *
+!* >  9: error in one of the IVP solvers at first node                  *
+!* > 19: error in one of the IVP solvers at second node                 *
+!*                                                                      *
+!************************************************************************
+integer, parameter :: SINGU=1   ! Name for the return value of gauss
+                                ! which indicates that the matrix is
+                                ! singular.
+integer, parameter :: ENGL45=6  ! awp shall use the England embedding
+                                ! formula of 4th and 5th order.
+
+logical, parameter :: VON_VORNE=.TRUE.
+logical, parameter :: NOT_SAVE=.FALSE.
+
+real*8,  parameter :: HALF = 0.5d0
+
+real*8,  parameter :: MACH_EPS = 2.25d-16
+real*8,  parameter :: ONE = 1.d0
+
+logical  Debug             ! if True, print debugging infos             
+real*8   yk(0:NMAX),  &    ! [0..n-1] vector with value of solution     
+                           ! at right end point                         
+         yaj(0:NMAX), &    ! [0..n-1] vector of modified y_start used   
+                           ! for forming the Jacobi matrix              
+         r(0:NMAX),   &    ! [0..n-1] vector with left boundary         
+                           ! condition, which serves as the right hand  
+                           ! side for the linear system in the Newton   
+                           ! method.                                    
+         rj(0:NMAX),  &    ! [0..n-1] vector with left end boundary     
+                           ! condition of the modified initial value    
+                           ! problem.                                   
+         d(0:NMAX),   &    ! [0..n-1] vector, the solution of the       
+                           ! linear system.                             
+  amat(0:NMAX,0:NMAX), &   ! [0..n-1,0..n-1] array of the Jacobi        
+                           ! matrix for the  Newton step.               
+         yk2(0:NMAX), &    ! [0..n-1] vector with the values of the     
+                           ! solution of the DE at the left endpoint    
+                           ! for implruku().                            
+         xk,      &        ! left end point for  awp                  
+         hk,      &        ! desired step size for awp                
+         epsabs,  &        ! absolute accuracy desired in  awp        
+         epsrel,  &        ! relative accuracy in awp()                 
+         rmax,    &        ! Maximum norm of the left boundary          
+                           ! condition                                  
+         delta,   &        ! Aux variable for  Jacobi matrix            
+         mach1,   &        ! accuracy bounds depending on computer      
+         mach2             !                                            
+integer  aufrufe, &        ! number of function evaluations in awp    
+         pivot(0:NMAX), &  ! Permutation vector for Gaussian elimin.    
+         i,       &        ! loop counter                               
+         jacobi,  &        ! counter for columns of Jacobi matrix       
+         mark,    &        ! error code from gauss                    
+         sign_det, &       ! sign of the permutation in gauss         
+         fehler            ! error code in awp
+		 
+!auxiliary vectors for awp
+real*8  yhilf(0:9), k1(0:9), k2(0:9), k3(0:9), k4(0:9), k5(0:9), k6(0:9)		                       
+real*8  lumat(0:NMAX,0:NMAX)  !dummy matrix not used here
+
+  mach1  = MACH_EPS**0.75d0
+  mach2  = 100.d0 * MACH_EPS
+
+  Debug = .FALSE.
+
+  if (epsrb < mach2) rwp=1        !check input
+  if (b <= a)  rwp=2
+  if (h <= mach2 * DABS(a)) rwp=3
+  if (n <= 0)  rwp=4
+  if (awpnumm < 1.or.awpnumm > 5) rwp=5
+
+  act_iter = 0
+  epsabs    = HALF * epsawp
+  epsrel    = epsabs
+
+  if (epsrel < 1.d-10)  then
+    epsrel2 = 1.d-10 
+  else 
+    epsrel2 = epsrel
+  end if
+
+  !**********************************************************************
+  !* If  y_start proves to be a sufficiently good approximation for y(a)*
+  !* in the following loop, we report the success and check the         *
+  !* remaining input data in awp.                                       *
+  !**********************************************************************
+
+  Do While (.TRUE.)
+
+    if (Debug) call zeig('Y_start:', y_start, n)
+
+    call copy_vector(yk, y_start, n)
+    xk = a
+    hk = h
+
+    Select Case(awpnumm)
+      case (1)
+	     call awp(xk, b, 0, n, yk, epsabs, epsrel, hk, ENGL45, fmax, aufrufe, fehler,  &
+		          yhilf, k1, k2, k3, k4, k5, k6)
+      case (2)
+	     fehler = prae_korr(xk, yk, n, b, hk, epsabs,epsrel, fmax, aufrufe, ONE,VON_VORNE)
+      case (3)
+	     fehler = bul_stoe(xk, b, n, yk, epsabs, epsrel,hk, ONE, VON_VORNE, fmax, aufrufe)
+    End Select
+
+    if (fehler.ne.0) then
+      rwp = 10+fehler                 !error in IVP solver ?
+      return
+    end if
+
+    if (Debug) call zeig('Yk:', yk, n)
+
+    call randbed(y_start, yk, r)
+
+    rmax=0.d0
+    do i = 0, n-1
+	  if (rmax < DABS(r(i)))  rmax = DABS(r(i))
+    end do
+
+    if (rmax < epsrb) then            !boundary condition satisfied ?
+      rwp = 0                         !report success
+      return                          !normal exit
+    end if
+
+    act_iter = act_iter + 1
+
+    if (act_iter > itmax) then        !approximation not good enough
+      rwp = 6                         !after  itmax Newton steps ?
+      return                          !report failure
+    end if
+
+    !find a better approximation  y_start for y(a) by using the
+    !Newton method with a Jacobi matrix that is approximated by one-
+    !sides difference quotients.
+
+    do jacobi = 0, n-1
+
+      call copy_vector(yk,  y_start, n)
+      call copy_vector(yaj, y_start, n)
+
+      if (DABS(yk(jacobi)) < mach2) then
+        yk(jacobi) = yk(jacobi) + mach1
+        delta      = ONE / mach1
+      else
+        yk(jacobi) = yk(jacobi) * (ONE + mach1)
+        delta      = ONE / (mach1 * yk(jacobi))
+      end if
+      yaj(jacobi) = yk(jacobi)
+      xk = a
+      hk = h
+
+      if (Debug)  call zeig('Yaj:', yaj, n)
+
+      Select Case(awpnumm)
+        case (1)
+	       call awp(xk, b, 0, n, yk, epsabs, epsrel, hk, ENGL45, fmax, aufrufe, fehler,  &
+		            yhilf, k1, k2, k3, k4, k5, k6)
+        case (2)
+	       fehler = prae_korr(xk, yk, n, b, hk, epsabs,epsrel, fmax, aufrufe, ONE,VON_VORNE)
+        case (3)
+	       fehler = bul_stoe(xk, b, n, yk, epsabs, epsrel,hk, ONE, VON_VORNE, fmax, aufrufe)
+      End Select
+
+      if (fehler.ne.0) then                !error in IVP solver ?
+        rwp = 20 + fehler
+        return
+      end if
+
+      if (Debug) call zeig('Yk:', yk, n)
+
+      call randbed(yaj, yk, rj)
+
+      do i = 0, n-1
+        amat(i,jacobi) = (rj(i) - r(i)) * delta
+      end do
+
+    end do !jacobi loop
+
+    call gauss(0, n, amat, lumat, pivot, r, d, sign_det, mark)
+
+	if (mark == SINGU) then                !Jacobi matrix singular?
+      rwp = 8                              !return error
+      return
+    end if                             
+
+    if (Debug) call zeig('D:', d, n)
+
+    do i = 0, n-1                          !correct y_start
+      y_start(i) = y_start(i) - d(i)
+    end do
+
+  end do !while True
+  rwp = 999
+  return
+End
+
+! ---------------------------- END rwp.f90 ----------------------------

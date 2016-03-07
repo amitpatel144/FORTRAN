@@ -1,0 +1,109 @@
+!******************************************************
+!*    Program to demonstrate the use of searching     *
+!*    subroutines of module SearchSubs.               *
+!* -------------------------------------------------- *
+!* SAMPLE RUN:                                        *
+!* (An ordered list of 16 names is given in text file *
+!*  "search.dat").                                    *
+!*                                                    *
+!* # of items in list = 16                            *
+!* What name would you like to look for? David        *
+!* Linear serach for (f)irst, (a)ll, or (b)inary? f   *
+!* David               found at position  5.          *
+!* Try again (y/n)? y                                 *
+!* What name would you like to look for? Grace        *
+!* Linear serach for (f)irst, (a)ll, or (b)inary? a   *
+!* Grace               at position  9.                *
+!* Grace               at position 10.                *
+!* Grace               at position 11.                *
+!*  3 occurence(s) found.                             *
+!* Try again (y/n)? y                                 *
+!* What name would you like to look for? Grace        *
+!* Linear serach for (f)irst, (a)ll, or (b)inary? b   *
+!* Grace               found at position 10.          *
+!* Try again (y/n)? n                                 *
+!*                                                    *
+!* -------------------------------------------------- *
+!* Ref.: "Problem Solving with Fortran 90, By David R.*
+!*        Brooks, Springer Verlag, 1997".             *
+!******************************************************
+MODULE Setup
+  IMPLICIT NONE
+  CHARACTER(20) a(100), target
+
+  CONTAINS
+
+  SUBROUTINE GetList(size)
+    IMPLICIT NONE
+    INTEGER, INTENT(INOUT) :: size
+
+    OPEN(1,file="search.dat")
+    size=1
+10  READ(1,*,END=20) a(size)
+    size=size+1
+    GOTO 10
+20  size=size-1
+    CLOSE(1)
+   
+    WRITE(*,30)  size
+
+30  format(' # of item in list = ',I3)
+
+  END SUBROUTINE GetList     
+
+END MODULE Setup
+
+
+PROGRAM SEARCH
+  USE SETUP           !read ordered list of names
+  USE SearchSubs      !seraching subroutines
+  IMPLICIT NONE
+  CHARACTER YesNo, choice
+  INTEGER size,where,how_many
+
+    CALL GetList(size)  !read names from input file
+
+10  CONTINUE          !start main loop
+	WRITE(*,20,advance='no'); READ *, target
+	WRITE(*,30,advance='no'); READ *, choice
+	
+	SELECT CASE(choice)
+	  CASE('a')
+	    CALL FindAll(size,how_many)
+		IF (how_many>0) THEN
+		  WRITE(*,50)  how_many
+        ELSE
+		  PRINT *, target,' not found.'
+        END IF
+	  CASE('b')
+	    CALL Binary(1,size,where)
+		IF (where>0) THEN
+		  WRITE (*,60) target, where
+        ELSE
+		  PRINT *, target,' not found.'
+        END IF
+	  CASE('f')
+	    CALL FindFirst(size,where)
+		IF (where>0) THEN
+		  WRITE (*,60) target, where
+        ELSE
+		  PRINT *, target,' not found.'
+        END IF
+	END SELECT
+
+	WRITE(*,40,advance='no'); READ *, YesNo
+
+	IF (YesNo.EQ.'y') GOTO 10
+
+	stop
+
+20 format(' What name would you like to look for? ')
+30 format(' Linear serach for (f)irst, (a)ll, or (b)inary? ')
+40 format(' Try again (y/n)? ')
+
+50 format(' ',I2,' occurence(s) found.')
+60 format(' ',A20,'found at position ',I2,'.') 
+
+END
+
+!end of file search.f90

@@ -1,0 +1,618 @@
+!*********************************************************************
+!*   Frequencies and eigenmodes, masses and modal stiffnesses of a   *
+!*   Mass-Spring undamped system represented by Motion Equation:     *
+!*                 [M] . [X]' + [K] . [X] = [0}                      *
+!* ----------------------------------------------------------------- *
+!* EXPLANATION:                                                      *
+!* Let us take the 3 D.O.F. Mass-Spring System below:                *
+!*                                                                   *
+!*     \|    k     ------    2k    ------    k     ------            *
+!*     \|--/\/\/\--| 2m |--/\/\/\--| m  |--/\/\/\--| 3m |            *
+!*     \|          ------          ------          ------            *
+!*                                                                   *
+!*                      | 2  0  0 |                                  *
+!* The Mass Matrix M is | 0  1  0 |  assuming m=1.                   *
+!*                      | 0  0  3 |                                  *
+!*                                                                   *
+!*                           |  3 -2  0 |                            *
+!* The Stiffness Matrix K is | -2  3 -1 |  assuming k=1.             *
+!*                           |  0 -1  1 |                            *
+!*                                                                   *
+!* The resonance fresuencies are:                                    *
+!*             F1 = w1/2pi = 0.05161 sqr(k/m)                        *
+!*             F2 = w2/2pi = 0.1431 sqr(k/m)                         *
+!*             F3 = w3/2pi = 0.3151 sqr(k/m)                         *
+!* with the corresponding modal vectors:                             *
+!*             |   1   |         |   1    |         |    1    |      *
+!*      phi1 = | 1.395 |  phi2 = | 0.6914 |  phi3 = | -2.420  |      *
+!*             | 2.038 |         |-0.4849 |         |  0.2249 |      *
+!*                                                                   *
+!* (See program ndof01.bas).                                         *
+!* ----------------------------------------------------------------- *
+!* SAMPLE RUN:                                                       *
+!*                                                                   *
+!* Order of system: 3                                                *
+!*                                                                   *
+!* M(1,1) = 2                                                        *
+!* M(1,2) = 0                                                        *
+!* M(1,3) = 0                                                        *
+!* M(2,2) = 1                                                        *
+!* M(2,3) = 0                                                        *
+!* M(3,3) = 3                                                        *
+!*                                                                   *
+!* K(1,1) = 3                                                        *
+!* K(1,2) = -2                                                       *
+!* K(1,3) = 0                                                        *
+!* K(2,2) = 3                                                        *
+!* K(2,3) = -1                                                       *
+!* K(3,3) = 1                                                        *
+!*                                                                   *
+!* Number of eigenvectors asked for: 3                               *
+!*                                                                   *
+!* What precision for eigenvalues: 1e-5                              *
+!*                                                                   *
+!* Maximum number of iterations: 100                                 *
+!*                                                                   *
+!*                                                                   *
+!* Eigenvector #1, Convergence after 10 iterations.                  *
+!* Eigenvector #2, Convergence after 9 iterations.                   *
+!* Eigenvector #3, Convergence after 2 iterations.                   *
+!*                                                                   *
+!*                                                                   *
+!* Eigenvalues:                                                      *
+!*                                                                   *
+!* L(1) =  0.105173                                                  *
+!* L(2) =  0.808612                                                  *
+!* L(3) =  3.919443                                                  *
+!*                                                                   *
+!* Pulsations:                                                       *
+!*                                                                   *
+!* W(1) =  0.324304                                                  *
+!* W(2) =  0.899229                                                  *
+!* W(3) =  1.979758                                                  *
+!*                                                                   *
+!* Frequencies:                                                      *
+!*                                                                   *
+!* F(1) =  0.051615                                                  *
+!* F(2) =  0.143117                                                  *
+!* F(3) =  0.315088                                                  *
+!*                                                                   *
+!* Eigenvectors:                                                     *
+!*                                                                   *
+!* E.V.        1                                                     *
+!*             1.000000                                              *
+!*             1.394827                                              *
+!*             2.037782                                              *
+!*                                                                   *
+!* E.V.        2                                                     *
+!*             1.000000                                              *
+!*            0.6913836                                              *
+!*           -0.4849012                                              *
+!*                                                                   *
+!* E.V.        3                                                     *
+!*             1.000000                                              *
+!*            -2.419588                                              *
+!*            0.2249037                                              *
+!*                                                                   *
+!* Modal Mass Matrix:                                                *
+!*                                                                   *
+!*  16.40321  -0.00001   0.00000                                     *
+!*  -0.00001   3.18340  -0.00003                                     *
+!*   0.00000  -0.00003   8.00615                                     *
+!*                                                                   *
+!* Modal Stiffness Matrix:                                           *
+!*                                                                   *
+!*   1.72517   0.00000   0.00000                                     *
+!*   0.00000   2.57413   0.00001                                     *
+!*  -0.00000   0.00001  31.38051                                     *
+!*                                                                   *
+!* ----------------------------------------------------------------- *
+!* REFERENCE: "Mécanique des vibrations linéaires By M. Lalanne,     *
+!*             P. Berthier, J. Der Hagopian, Masson, Paris 1980"     *
+!*             [BIBLI 16].                                           *
+!*                                                                   *
+!*                                F90 Release By J-P Moreau, Paris   *
+!*                                      (in simple precision).       *
+!*                                        (www.jpmoreau.fr)          *
+!*********************************************************************
+Program NDOF02
+
+ integer, parameter :: NMAX = 20
+
+ REAL*4 M(NMAX, NMAX), K(NMAX,NMAX)
+
+ REAL*4 A(NMAX, NMAX), B(NMAX, NMAX), C(NMAX, NMAX), S(NMAX, NMAX)
+ REAL*4 R(NMAX, NMAX), R1(NMAX, NMAX), R2(NMAX, NMAX)
+ REAL*4 K1(NMAX,NMAX), D(NMAX,NMAX)
+ REAL*4 V(NMAX, NMAX), S1(NMAX, NMAX), DUMMY(NMAX,1)
+ REAL*4 X(NMAX), F(NMAX), F1(NMAX), T(NMAX, NMAX), T1(NMAX, NMAX)
+ REAL*4 L(NMAX)
+ REAL*4 M1
+
+   PI = 4. * ATAN(1.)
+
+   PRINT *,' '
+   WRITE(*,10,advance='no'); READ *, N
+10 FORMAT(' Order of system: ')
+   PRINT *,' '
+
+   DO I = 1, N
+     DO J = I, N
+       WRITE(*,20,advance='no') I, J; READ *, M(I,J)
+     END DO
+   END DO
+20 FORMAT(' M(', I2, ',', I2, ') = ')
+   PRINT *,' '
+
+   DO I = 1, N
+     DO J = I, N
+       WRITE(*,30,advance='no') I, J; READ *, K(I,J)
+     END DO
+   END DO
+30 FORMAT(' K(', I2, ',', I2, ') = ')
+   PRINT *,' '
+
+   A1 = 0.; A2 = 0.
+   DO I = 1, N
+     DO J = I, N
+       A1 = A1 + M(I, I)
+       A2 = A2 + K(I, I)
+       M(J, I) = M(I, J)
+       K(J, I) = K(I, J)
+     END DO
+   END DO
+
+   PRINT *,' '
+   WRITE(*,40,advance='no'); READ *, N1
+40 FORMAT(' Number of eigenvectors asked for: ')
+   K8 = 1
+
+   PRINT *,' '
+   WRITE(*,50,advance='no'); READ *, P
+50 FORMAT(' What precision for eigenvalues: ')
+   P = P * P
+   PRINT *,' '
+   WRITE(*,60,advance='no'); READ *, N3
+60 FORMAT(' Maximum number of iterations: ')
+   PRINT *,' '
+
+   A0 = A2 / A1 / 10.
+   DO I = 1, N
+     DO J = 1, N
+       K1(I, J) = K(I, J) + A0 * M(I, J)
+     END DO
+   END DO
+
+   !K1=INV(K1)
+   CALL MATINV(N,0,K1,DUMMY,DET)
+
+   !D=K1 MPY M
+   CALL MATMUL(K1,M,D,N)
+
+   !V=0
+   DO I = 1, N
+     DO J = 1, N1
+       V(I, J) = 0.
+     END DO
+   END DO
+   !S1=D
+   DO I = 1, N
+     DO J = 1, N
+       S1(I, J) = D(I, J)
+     END DO
+   END DO
+
+800 DO I = 1, N
+     X(I) = 1.
+   END DO
+
+   K9 = 0
+
+820 K9 = K9 + 1
+   ! F=S1 MPY X
+   DO I = 1, N
+     SUM = 0.
+     DO J = 1, N
+       SUM = SUM + S1(I, J) * X(J)
+     END DO
+     F(I) = SUM
+   END DO
+   W2 = 1. / F(1)
+   L(K8) = W2 - A0
+   DO I = 1, N
+     F(I) = F(I) * W2
+   END DO
+   DO I = 1, N
+     F1(I) = F(I) - X(I)
+   END DO
+   D1 = 0.; M1 = 0.
+   DO I = 1, N
+     D1 = D1 + F1(I) * F1(I)
+     M1 = M1 + F(I) * F(I)
+     X(I) = F(I)
+   END DO
+
+970 IF (K9 - N3 <= 0) GOTO 1070
+   WRITE(*,70,advance='no') K9
+70 FORMAT(' No convergence after ', I3, ' Iterations.')
+   STOP
+
+1070 IF (P - D1 / M1 < 0.) GOTO 820
+   WRITE(*,80,advance='no')  K8, K9
+80 FORMAT(' Eigenvector #',I2,', Convergence after ',I2,' iterations.'/)
+
+   DO I = 1, N
+     V(I, K8) = X(I)
+   END DO
+   IF (K8 >= N1) GOTO 1490  !print results
+
+1160 N2 = N - K8
+   !T=TRN(V)
+   DO I = 1, N
+     DO J = 1, N1
+       T(J, I) = V(I, J)
+     END DO
+   END DO
+
+   !T1=T MPY M
+   CALL MATMUL(T,M,T1,N)
+
+   DO I = 1, K8
+     DO J = 1, N
+       IF (J <= K8) THEN
+         R(I, J) = T1(I, J)
+         GOTO 1290
+       END IF
+       J1 = J - K8
+       R1(I, J1) = T1(I, J)
+1290 END DO
+   END DO
+
+   !R=INV(R)
+   CALL MATINV(K8,0,R,DUMMY,DET)
+
+   !R2(N,N2)=R(N,K8) MPY R1(N,N2)
+   DO I = 1, K8
+     DO J = 1, N2
+       SUM = 0.
+       DO K0 = 1, K8
+         SUM = SUM + R(I, K0) * R1(K0, J)
+         R2(I, J) = SUM
+       END DO
+     END DO
+   END DO
+
+   !S=Identity Matrix
+   DO I = 1, N
+     DO J = 1, N
+       IF (J == I) THEN
+         S(I, J) = 1.
+       ELSE
+         S(I, J) = 0.
+       END IF
+     END DO
+   END DO
+
+   DO I = 1, K8
+     S(I, I) = 0
+     DO J = K8 + 1, N
+       J1 = J - K8
+       S(I, J) = -R2(I, J1)
+     END DO
+   END DO
+
+   !S1=D MPY S
+   CALL MATMUL(D,S,S1,N)
+
+   K8 = K8 + 1
+   GOTO 800  !go to next eigenvalue/eigenvector
+
+   !results section
+1490 PRINT *,' '
+   PRINT *,' Eigenvalues:'
+   PRINT *,' '
+   DO I = 1, N1
+     WRITE(*,100) I, L(I)
+   END DO
+100 FORMAT(' L(',I2,') = ',F12.6)   
+ 
+   PRINT *,' '
+   PRINT *,' Pulsations:'
+   PRINT *,' '
+   DO I = 1, N1
+     WRITE(*,101) I, SQRT(L(I))
+   END DO
+101 FORMAT(' W(',I2,') = ',F12.6)
+
+   PRINT *,' '
+   PRINT *,' Frequencies:'
+   PRINT *,' '
+   DO I = 1, N1
+     WRITE(*,102) I, SQRT(L(I))/2./PI
+   END DO
+102 FORMAT(' F(',I2,') = ',F12.6)
+
+   PRINT *,' '
+   PRINT *,' Eigenvectors:'
+   PRINT *,' '
+   DO J = 1, N1
+     PRINT *,' '
+     PRINT *,' E.V.', J
+     DO I = 1, N
+       PRINT *,'             ', V(I, J)
+     END DO
+   END DO
+
+   !S1(N,N1)=M(N,N) MPY V(N,N1)
+   DO I = 1, N
+     DO J = 1, N1
+       SUM = 0.
+       DO K0 = 1, N
+         SUM = SUM + M(I, K0) * V(K0, J)
+         S1(I, J) = SUM
+       END DO
+     END DO
+   END DO
+
+   !T1=TRN(V)
+   DO I = 1, N
+     DO J = 1, N1
+       T1(J, I) = V(I, J)
+     END DO
+   END DO
+
+   !R(N1,N1)=T1(N1,N) MPY S1(N,N1)
+   DO I = 1, N1
+     DO J = 1, N1
+       SUM = 0.
+       DO K0 = 1, N
+         SUM = SUM + T1(I, K0) * S1(K0, J)
+         R(I, J) = SUM
+       END DO
+     END DO
+   END DO
+
+   !print modal mass matrix
+   PRINT *,' '
+   PRINT *,' Modal Mass Matrix:'
+   PRINT *,' '
+ 
+   WRITE(*,110) ((R(I,J),J=1,N),I=1,N)
+ 
+   !S1(N,N1)=K(N,N) MPY V(N,N1)
+   DO I = 1, N
+     DO J = 1, N1
+       SUM = 0.
+       DO K0 = 1, N
+         SUM = SUM + K(I, K0) * V(K0, J)
+         S1(I, J) = SUM
+       END DO
+     END DO
+   END DO
+ 
+   !R(N1,N1)=T1(N1,N) MPY S1(N,N1)
+   DO I = 1, N1
+     DO J = 1, N1
+       SUM = 0.
+       DO K0 = 1, N
+         SUM = SUM + T1(I, K0) * S1(K0, J)
+         R(I, J) = SUM
+       END DO
+     END DO
+   END DO
+
+   !print modal stiffness matrix
+   PRINT *,' '
+   PRINT *,' Modal Stiffness Matrix:'
+   PRINT *,' '
+   WRITE(*,110) ((R(I,J),J=1,N),I=1,N)
+   PRINT *,' '
+   STOP
+
+110 FORMAT(3F10.5)
+
+END !of main program
+
+!*******************************************
+!*  SOLVING A LINEAR MATRIX SYSTEM AX = B  *
+!*  with Gauss-Jordan method using full    *
+!*  pivoting at each step. During the pro- *
+!* cess, original A and B matrices are     *
+!* destroyed to spare storage location.    *
+!* --------------------------------------- *
+!* INPUTS:    A   MATRIX N*N               *
+!*            B   MATRIX N*M               *
+!* --------------------------------------- *
+!* OUTPUS:    A   INVERSE OF A N*N         *
+!*            DET  DETERMINANT OF A        *
+!*            B   SOLUTION MATRIX N*M      *
+!* --------------------------------------- *
+!* NOTA - If M=0 inversion of A matrix     *
+!*        only.                            *
+!*******************************************
+      SUBROUTINE MATINV(N,M,AA,BB,DET)
+      integer, parameter :: NMAX = 20
+      REAL*4,PARAMETER :: EPSMACH = 1.E-16                                    
+      REAL*4 AA(NMAX,*),BB(NMAX,*)                                                   
+      INTEGER PC(N),PL(N)
+	  REAL*4 CS(N)                                                  
+      REAL*4 PV,PAV,DET,TT    
+	         
+!Initializations :                       
+      DET=1.
+      DO I=1,N                                                                                                                   
+        PC(I)=0
+	    PL(I)=0
+	    CS(I)=0.
+      END DO
+!main loop                                                                   
+      DO K=1,N                                                                  
+!Searching greatest pivot :                                               
+        PV=AA(K,K)                                                              
+        IK=K                                                                    
+        JK=K                                                                    
+        PAV=ABS(PV)                                                            
+        DO I=K,N                                                                
+          DO J=K,N                                                              
+            IF (ABS(AA(I,J)).GT.PAV) THEN                                      
+              PV=AA(I,J)                                                        
+              PAV=ABS(PV)                                                      
+              IK=I                                                              
+              JK=J                                                              
+            ENDIF                                                               
+          ENDDO                                                                 
+        ENDDO                                                                   
+                                                                               
+!Search terminated, the pivot is in location I=IK, J=JK.
+!Memorizing pivot location: :                                        
+        PC(K)=JK                                                                
+        PL(K)=IK                                                                
+                                                                               
+!Determinant DET is actualised
+!If DET=0, ERROR MESSAGE and STOP
+!Machine dependant EPSMACH equals here 1.DE-20                                        
+                                                                               
+        IF (IK.NE.K) DET=-DET                                                   
+        IF (JK.NE.K) DET=-DET                                                   
+        DET=DET*PV                                                              
+        IF (ABS(DET).LT.EPSMACH) THEN                                          
+!Error message and Stop                                                     
+          PRINT 10                                                              
+          STOP                                                                  
+        ENDIF                                                                   
+                                                                               
+!POSITIONNING PIVOT IN K,K:                                              
+        IF(IK.NE.K) THEN                                                        
+          DO I=1,N                                                              
+!EXCHANGE LINES IK and K:                                            
+            TT=AA(IK,I)                                                         
+            AA(IK,I)=AA(K,I)                                                    
+            AA(K,I)=TT                                                          
+          ENDDO                                                                 
+        ENDIF                                                                   
+      IF (M.NE.0) THEN                                                          
+        DO I=1,M                                                               
+          TT=BB(IK,I)                                                           
+          BB(IK,I)=BB(K,I)                                                      
+          BB(K,I)=TT                                                            
+        ENDDO                                                                   
+      ENDIF                                                                     
+!Pivot is at correct line                                                
+        IF(JK.NE.K) THEN                                                        
+          DO I=1,N                                                              
+!Exchange columns JK and K of matrix AA                                         
+            TT=AA(I,JK)                                                         
+            AA(I,JK)=AA(I,K)                                                    
+            AA(I,K)=TT                                                          
+          ENDDO                                                                 
+        ENDIF                                                                   
+!Pivot is at correct column and located in K,K                                              
+                                                                               
+!Store column K in vector CS                             
+!then set column K to zero                                             
+        DO I=1,N                                                                
+          CS(I)=AA(I,K)                                                         
+          AA(I,K)=0.D0                                                          
+        ENDDO                                                                   
+!                                                                               
+        CS(K)=0.                                                                
+        AA(K,K)=1.                                                              
+!Modify line K :                                            
+        IF(ABS(PV).LT.EPSMACH) THEN                                            
+          WRITE(*,*) '  PIVOT TOO SMALL - STOP'                               
+          STOP                                                                  
+        ENDIF                                                                   
+        DO I=1,N                                                                
+          AA(K,I)=AA(K,I)/PV                                                    
+        ENDDO                                                                   
+        IF (M.NE.0) THEN                                                        
+          DO I=1,M                                                             
+            BB(K,I)=BB(K,I)/PV                                                  
+          ENDDO                                                                 
+        ENDIF                                                                   
+!Modify other lines of matrix AA:                                        
+        DO J=1,N                                                                
+          IF (J.EQ.K) CONTINUE                                                  
+          DO I=1,N                                                              
+!Modify line J of matrix AA :                                            
+            AA(J,I)=AA(J,I)-CS(J)*AA(K,I)                                       
+          ENDDO                                                                 
+          IF (M.NE.0) THEN                                                      
+            DO I=1,M                                                          
+              BB(J,I)=BB(J,I)-CS(J)*BB(K,I)                                     
+            ENDDO                                                               
+          ENDIF                                                                 
+        ENDDO                                                                   
+!Line K is ready.                                                
+      ENDDO                                                                     
+!End of K loop                                                              
+                                                                               
+!The matrix AA is inverted - Rearrange AA                         
+                                                                               
+!Exchange lines                                                            
+      DO I=N,1,-1                                                               
+        IK=PC(I)                                                                
+        IF (IK.EQ.I) CONTINUE                                                   
+!EXCHANGE LINES I AND PC(I) OF AA:                                         
+        DO J=1,N                                                                
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(IK,J)                                                      
+          AA(IK,J)=TT                                                           
+        ENDDO                                                                   
+        IF (M.NE.0) THEN                                                        
+          DO J=1,M                                                             
+            TT=BB(I,J)                                                          
+            BB(I,J)=BB(IK,J)                                                    
+            BB(IK,J)=TT                                                         
+          ENDDO                                                                 
+        ENDIF                                                                   
+!NO MORE EXCHANGE NEEDED                                                      
+!GO TO NEXT LINE                                                  
+      ENDDO                                                                     
+                                                                               
+!EXCHANGE COLUMNS                                                          
+                                                                               
+      DO J=N,1,-1                                                               
+        JK=PL(J)                                                                
+        IF (JK.EQ.J) CONTINUE                                                   
+!EXCHANGE COLUMNS J AND PL(J) OF AA :                                       
+        DO I=1,N                                                                
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(I,JK)                                                      
+          AA(I,JK)=TT                                                           
+        ENDDO                                                                   
+!NO MORE EXCHANGE NEEDED                                                      
+!GO TO NEXT COLUMN   
+      ENDDO                                                                     
+!REARRANGEMENT TERMINATED.                                                        
+      RETURN                                                                    
+   10 FORMAT(//'  DETERMINANT EQUALS ZERO, NO SOLUTION!'/)                    
+      END                                                                       
+
+!*******************************************
+!*    MULTIPLICATION OF TWO SQUARE REAL    *
+!*    MATRICES                             *
+!* --------------------------------------- *
+!* INPUTS:    A1 MATRIX N*N                *
+!*            B  MATRIX N*N                *
+!*            N  INTEGER                   *
+!* --------------------------------------- *
+!* OUTPUTS:   C  MATRIX N*N PRODUCT A*B    *
+!*                                         *
+!*******************************************
+      SUBROUTINE MATMUL(A,B,C,N)
+      integer, parameter :: NMAX = 20
+      REAL*4 A(NMAX,*),B(NMAX,*),C(NMAX,*),SUM                                           
+      DO I=1,N                                                                  
+        DO J=1,N                                                                
+          SUM=0.                                                                
+          DO K=1,N                                                              
+            SUM=SUM+A(I,K)*B(K,J)                                               
+          ENDDO                                                                 
+          C(I,J)=SUM                                                            
+        ENDDO                                                                   
+      ENDDO                                                                     
+      RETURN                                                                    
+      END                      
+
+!end of file ndof02.f90

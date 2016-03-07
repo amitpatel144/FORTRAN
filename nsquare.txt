@@ -1,0 +1,13 @@
+  program delhibelly    
+
+    implicit none
+
+    integer n,p
+
+    write (*,*) 'Enter the value of terms'
+    
+    read(*,*)n
+            p= (1*n*(n+1)*((2*n)+1))/6
+           write(*,*)'sums of square',p
+    end program delhibelly
+

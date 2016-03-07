@@ -1,0 +1,58 @@
+!**************************************************************
+!*     One-dimensional cellular automata with rule that       *
+!*           generates a Sierpinski triangle                  *
+!* ---------------------------------------------------------- *
+!* Ref.: "Problem Solving with Fortran 90 By David R. Brooks, *
+!*        Springer-Verlag New York, 1997".                    *
+!************************************************************** 
+Program Sierpinski
+
+Implicit None  !All variables must be declared
+
+Integer, parameter :: Size = 60
+
+Logical a(Size), old_a(Size), a_1, a0, a1
+
+Character*1 b(Size)
+
+Integer i, j, cycle, n_cycles
+
+Data n_cycles,a,b /15,Size*.FALSE.,Size*' '/
+
+  cycle = 0
+  a(Size/2) = .TRUE.  !start with a single live cell
+  b(Size/2) = '*'
+  
+  print *,' '
+  print *,'                                Sierpinski  Triangle'
+  print *,' '
+  Write(*,1000) cycle, b 
+
+! Generate more cycles.
+
+  Do i = 1, n_cycles
+    old_a = a
+    Do j = 2, Size-1
+      a_1 = old_a(j-1)
+      a0 = old_a(j)
+      a1 = old_a(j+1)
+      a(j) = (a_1.and.(.not.a0).and.(.not.a1))  &
+	    .or.((.not.a_1).and.a1)
+    End Do
+    Do j = 1, Size
+      If (a(j)) Then
+        b(j) = '*'
+      Else
+        b(j) = ' '
+      End If
+    End Do
+    Write(*,1000) i, b
+  End Do
+
+  print *,' '
+
+1000 Format(' Generation ',i2,60a1)
+
+End
+
+!end of file sierpins.f90

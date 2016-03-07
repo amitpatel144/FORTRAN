@@ -1,0 +1,161 @@
+!**********************************************************
+!*   Demonstration Program of In-place Merge Sorting      * 
+!*(about n*log(n) comparisons used with no extra storage) *
+!* ------------------------------------------------------ *
+!* Reference: After a java algorithm By Jason Harrison,   * 
+!*            1995 University of British Columbia.        *
+!*                                                        *
+!*                    F90 Version By J-P Moreau, Paris.   *
+!*                           (www.jpmoreau.fr)            *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*                                                        *
+!* Initial table A:                                       *
+!*  4.00   3.00   1.00  67.00  55.00   8.00   0.00   4.00 *
+!* -5.00  37.00   7.00   4.00   2.00   9.00   1.00  -1.00 *
+!*                                                        *
+!* Sorted table A:                                        *
+!* -5.00  -1.00   0.00   1.00   1.00   2.00   3.00   4.00 *
+!*  4.00   4.00   7.00   8.00   9.00  37.00  55.00  67.00 *
+!*                                                        *
+!**********************************************************
+Program MSORT
+
+parameter(NMAX=1024)
+
+real*8 a(NMAX)
+
+    n=16
+    
+    a(1) = 4; a(2) = 3;  a(3) =1; a(4) =67
+    a(5) =55; a(6) = 8;  a(7) =0; a(8) = 4
+    a(9) =-5; a(10) =37; a(11)=7; a(12)= 4
+    a(13)= 2; a(14)= 9;  a(15)=1; a(16)=-1
+
+    print *,' '
+    print *,' Initial table A:'
+    write(*,10) (a(i),i=1,n)
+
+    call sort(a,1, n)
+
+    print *,' '
+    print *,' '
+    print *,' Sorted table A:'
+    write(*,10) (a(i),i=1,n)
+    print *,' '
+    stop
+
+10  format(8F7.2)
+
+END       
+
+!*****************************************************
+!*  Sorts an array RA of length N in ascending order *
+!*                by the Heapsort method             *
+!* ------------------------------------------------- *
+!* INPUTS:                                           *
+!*	    N	  size of table RA                   *
+!*          RA	  table to be sorted                 *
+!* OUTPUT:                                           *
+!*	    RA    table sorted in ascending order    *
+!*                                                   *
+!* NOTE: The Heapsort method is a N Log N routine,   *
+!*       and can be used for very large arrays.      *
+!* ------------------------------------------------- *
+!* REFERENCE:                                        *
+!*  "NUMERICAL RECIPES by W.H. Press, B.P. Flannery, *
+!*   S.A. Teukolsky and W.T. Vetterling, Cambridge   *
+!*   University Press, 1986".                        *
+!*****************************************************         
+SUBROUTINE HPSORT(N,RA)
+  real*8 RA(N)
+  L=N/2+1
+  IR=N
+  !The index L will be decremented from its initial value during the
+  !"hiring" (heap creation) phase. Once it reaches 1, the index IR 
+  !will be decremented from its initial value down to 1 during the
+  !"retirement-and-promotion" (heap selection) phase.
+10 continue
+  if(L > 1)then
+    L=L-1
+    RRA=RA(L)
+  else
+    RRA=RA(IR)
+    RA(IR)=RA(1)
+    IR=IR-1
+    if(IR.eq.1)then
+      RA(1)=RRA
+      return
+    end if
+  end if
+  I=L
+  J=L+L
+20 if(J.le.IR)then
+  if(J < IR)then
+    if(RA(J) < RA(J+1))  J=J+1
+  end if
+  if(RRA < RA(J))then
+    RA(I)=RA(J)
+    I=J; J=J+J
+  else
+    J=IR+1
+  end if
+  goto 20
+  end if
+  RA(I)=RRA
+  goto 10
+END
+
+ !******************************************************
+ !*  In-place sorting of a table a in ascending order  *
+ !* -------------------------------------------------- *
+ !* Inputs:                                            *
+ !*         a :  Table of n real numbers               *
+ !*         lo:  Starting index (>=0)                  *
+ !*         hi:  Ending index (<=n-1), with lo<hi.     *
+ !* Output:                                            *
+ !*         a :  Table sorted in ascending order.      *
+ !******************************************************
+  Subroutine sort(a, lo, hi)
+  parameter(NMAX=1024)
+  real*8 a(NMAX)
+  integer hi, end_lo, start_hi
+  real*8 T
+
+  if (lo.ge.hi) return  !no action  
+  mid = (lo+hi) / 2
+
+  !Partition the list into two lists and sort them with heapsort
+  !(to avoid a recursive call of sort).
+  call hpsort(mid,a)
+  call hpsort(mid,a(mid + 1))
+
+  !Merge the two sorted lists
+  start_hi = mid + 1
+  end_lo = mid
+  do while (lo <= end_lo.and.start_hi <= hi)
+    if (a(lo) < a(start_hi)) then
+      lo=lo+1
+    else
+    ! a(lo) >= a(start_hi)
+    ! The next element comes from the second list, 
+    ! move the a[start_hi] element into the next 
+    ! position and shuffle all the other elements up.
+      T = a(start_hi)
+      do k = start_hi - 1, lo, -1 
+        a(k+1) = a(k)
+      end do
+      a(lo) = T
+      lo=lo+1
+      end_lo=end_lo+1
+      start_hi=start_hi+1
+    end if
+  end do
+
+  return
+
+10  format(8F7.2)
+
+  End
+
+!end of file msort.f90

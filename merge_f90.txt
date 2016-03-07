@@ -1,0 +1,115 @@
+!**********************************************
+!*   Demonstration program of Merge sorting   * 
+!*      (about n*log(n) comparisons used).    *
+!* ------------------------------------------ *
+!* Reference: "A book on C By Al Kelley and   *
+!* Ira Pohl, The Benjamin/Cummings Publishing *
+!* Company, Inc, 1984" [BIBLI 09].            *
+!*                                            *
+!*                F90 version by J-P Moreau.  *
+!*                    (www.jpmoreau.fr)       *
+!* ------------------------------------------ *
+!* SAMPLE RUN:                                *
+!*                                            *
+!* Initial table A:                           *
+!* 4 3 1 67 55 8 0 4 -5 37 7 4 2 9 1 -1       *
+!*                                            *
+!* Sorted table A:                            *
+!* -5 -1 0 1 1 2 3 4 4 4 7 8 9 37 55 67       *
+!*                                            *
+!**********************************************
+Program Merge_Sorting
+
+integer i,ialloc,error,n
+integer, pointer :: a(:) 
+
+  n=16; Allocate(a(0:n-1),STAT=ialloc)
+
+  a(0)=4;  a(1)=3;  a(2)=1;  a(3)=67
+  a(4)=55; a(5)=8;  a(6)=0;  a(7)=4
+  a(8)=-5; a(9)=37; a(10)=7; a(11)=4
+  a(12)=2; a(13)=9; a(14)=1; a(15)=-1
+
+  print *,' '
+  print *,' Initial table A:'
+  write(*,10) (a(i),i=0,n-1)
+  
+  call MergeSort(a,n,error)
+
+  if (error==0) then
+    print *,' '
+    print *,' Sorted table A:'
+    write(*,10) (a(i),i=0,n-1)
+  end if
+  print *,' '
+  print *,' '
+
+  stop
+
+10 format(16I4)
+
+END
+
+!Merge Sorting of a() of size m and b() of size n
+!into c() of size m+n
+Subroutine Merge(a,b,c,m,n)
+integer m,n,a(0:m-1),b(0:n-1),c(0:m+n-1)
+integer i,j,k
+  i=0; j=0; k=0
+  do while (i<m.and.j<n)
+    if (a(i)<b(j)) then
+      c(k)=a(i)
+      i=i+1
+    else
+      c(k)=b(j)
+      j=j+1
+    end if
+    k=k+1
+  end do
+  do while (i<m)  !pick up any remainder
+    c(k)=a(i)
+    k=k+1; i=i+1
+  end do
+  do while (j<n)
+    c(k)=b(j)
+    k=k+1; j=j+1
+  end do
+  return
+End
+
+!use function Merge() to sort an array key() of size n
+!In this version, n is a power of two }
+Subroutine MergeSort(key,n,error)
+integer n, key(0:n-1), error
+integer j,k,m,m1, w(0:n-1)   !w is a work space
+  w=0
+  m=1
+  error=0
+  do m1=1,n-1
+    do while (m<n) 
+	  m=m*2
+    end do
+  end do
+  if (n==m) then   !n is a power of two
+    k=1
+    do while (k<n)
+      j=0  
+      do while (j<n-k)
+        call Merge(key(j), key(j+k), w(j), k, k)
+        j=j+2*k
+      end do
+      k=k*2
+      do j=0, n-1          !write w back into key
+        key(j) = w(j)
+      end do
+    end do
+  else
+    print *,' Error: size n of array not a power of 2!'
+    error=1
+  end if
+  return
+End  !mergesort()
+
+!end of file merge.f90
+
+

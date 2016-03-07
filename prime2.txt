@@ -1,0 +1,69 @@
+!**********************************************
+!*           TABLE OF PRIME NUMBERS           *
+!* ------------------------------------------ *
+!* This small program writes a table of prime *
+!* numbers from 1 to N (here N=2000).         *
+!* ------------------------------------------ *
+!*                                            *
+!*                F90 version by J-P Moreau.  *
+!*                    (www.jpmoreau.fr)       *
+!**********************************************
+PROGRAM Table_of_primes
+
+
+!LABEL: 10
+
+IMPLICIT NONE
+INTEGER   i, j, m, N, prem;
+INTEGER   Premier(400), Raye(2000)
+CHARACTER s
+
+  N = 2000
+
+  do i=1, N  
+    Raye(i)=0
+  end do
+  Raye(1) = 1
+
+  prem = 1
+  do while (prem*prem <= N)
+    do while (1<2)  !permanent condition
+      prem=prem+1
+      if (prem > N.or.Raye(prem).eq.0) goto 10
+    end do
+10  i = 2*prem
+    do while (i<=N)
+      Raye(i) = 1
+      i = i + prem
+    end do
+  end do
+  
+  j = 0
+  do i=1, N
+    if (Raye(i).eq.0) then
+      j=j+1 
+      Premier(j) = i
+    end if
+  end do
+
+  m=0
+  write(*,20)  N, j
+  print *,''
+  do i=1, j
+    m=m+1
+    write(*,30,advance='no') Premier(i)
+    if (m.eq.15) then 
+	  print *,''
+	  m=0
+	end if
+  end do
+  print *,''
+  write(*,40,advance='no')
+  read *, s
+  stop
+20 format(' Between 1 and ',I4,', there are ',I3,' prime numbers:')
+30 format(I5)
+40 format(' Hit key + <Enter> to exit... ')
+END
+
+!end of file primes.f90

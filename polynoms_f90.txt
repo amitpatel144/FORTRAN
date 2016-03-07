@@ -1,0 +1,531 @@
+!*****************************************************
+!*       Elementary operations on Polynomials        *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *   
+!* ------------------------------------------------- *
+!*                                                   *
+!*                F90 version by J-P Moreau, Paris.  *
+!*                        (www.jpmoreau.fr)          *
+!*****************************************************
+MODULE POLYNOMS
+
+parameter(AR_MAXPOL=20)            !max degree of a polynomial
+parameter(AR_MAXLONG=44000000)     !max long integer
+parameter(AR_SMALL=2.d-16)         !small real*8 number
+
+
+type ar_number
+  integer is_real   ! TRUE=real number,FALSE=fractional or integer number
+  real*8 value      ! value of real number
+  integer*4 p,q     ! p/q if fractional number, q=1 for integer number
+end type ar_number
+
+type ar_polynom
+  integer degree                      ! degree of polynomial
+  type(ar_number) coeff(0:AR_MAXPOL)  !coefficients of polynomial
+end type ar_polynom
+
+
+CONTAINS
+
+  ! return greater common divisor of two long integers
+  integer*4 Function GCD(a, b)
+    integer*4 a, b, ta, tb
+    integer*4 r
+	ta=a; tb=b
+    a=abs(a)
+    b=abs(b)
+    if (a.eq.0.or.b.eq.0) then
+	  GCD=1
+	  return
+    end if
+    if (a<b) then
+      r=a; a=b; b=r
+    end if
+	r=1
+    do while (r>0)
+      r=MOD(a, b)
+      a=b; b=r
+    end do
+	GCD=a; a=ta; b=tb
+  end Function GCD 
+
+!convert string ch to a real*8 (positive only)
+REAL*8 Function StrDbl(ch)
+character*(*) ch
+integer i, ipos
+real*8  x
+
+do i=1, LEN_TRIM(ch)
+  if (ch(i:i).eq.'.') ipos=i
+end do
+
+x=0.d0
+do i=1, ipos-1
+  x=x+(IACHAR(ch(i:i))-48)*10**(ipos-1-i)
+end do
+
+do i=ipos+1, LEN_TRIM(ch)
+  x=x+REAL(IACHAR(ch(i:i))-48)/10**(i-ipos)
+end do
+
+StrDbl=x
+END Function StrDbl
+
+!convert string ch to an integer*4 (positive only)
+INTEGER*4 Function StrInt(ch)
+character*(*) ch
+integer i, ilen
+integer*4 j
+
+j=0
+
+ilen=LEN_TRIM(ch)
+do i=1, ilen+1
+  if (i.eq.ilen) then
+    j=j+IACHAR(ch(i:i))-48
+  else
+    j=j+INT((IACHAR(ch(i:i))-48)*10**(ilen-i))
+  end if
+end do
+
+StrInt=j
+END Function StrInt
+
+!convert string ch to an integer (positive only)
+INTEGER Function StrInt2(ch)
+character*(*) ch
+integer i,j,ilen
+
+j=0;
+
+ilen=LEN_TRIM(ch)
+do i=1, ilen+1
+  if (i.eq.ilen) then
+    j=j+IACHAR(ch(i:i))-48
+  else
+    j=j+INT((IACHAR(ch(i:i))-48)*10**(ilen-i))
+  end if
+end do
+
+StrInt2=j
+END Function StrInt2
+
+  ! Convert a string into a number of type ar_number (double, integer or fractional) 
+  ! Examples of valid strings: 5.56874 or 15/187 or 255
+  integer Function SetNumber(n, ch)
+    type(ar_number) n; character*(*) ch
+    integer*4 r; character*20 temp; integer signe
+	n%is_real=0; is_fract=0; temp=''; signe=1
+	if (ch(1:1).eq.'-') signe=-1
+	if (ch(1:1).eq.'-'.or.ch(1:1).eq.'+') then
+    !remove first character - or +
+	  ilen=LEN_TRIM(ch)
+	  do i=2, ilen
+	    ch(i-1:i-1)=ch(i:i)
+      end do
+	  do i=ilen, LEN(ch)
+        ch(i:i)=' '
+      end do
+	end if
+	!end remove
+	do i=0, len_trim(ch)
+	  if (ch(i:i).eq.'.') n%is_real=1    !detect a point in string ch
+    end do
+    if (n%is_real.ne.0) then 
+      n%value=StrDbl(ch) 
+    else
+	  do i=1, LEN_TRIM(ch)
+	    if (ch(i:i).eq.'/') then
+		  ipos=i; is_fract=1             !detect / in string ch
+		  goto 10
+        end if
+      end do 
+10    if (is_fract.ne.0) then            !case of a fractional number
+		do i=1, ipos-1 
+		  temp(i:i)=ch(i:i)
+        end do
+		n%p=StrInt(temp)
+		temp=''
+		do i=ipos+1, LEN_TRIM(ch) 
+		  temp(i-ipos:i-ipos)=ch(i:i)
+        end do
+		n%q=StrInt(temp)
+        !simplify p and q ?
+        r=GCD(n%p,n%q)
+        n%p=n%p/r; n%q=n%q/r; n%value=REAL(n%p)/REAL(n%q)
+      else                               !case of an integer
+		n%value=StrDbl(ch) 
+		n%p=StrInt(ch); n%q=1
+      end if
+    end if
+	!case sign is negative
+	if (signe.eq.-1) then
+      n%value=-n%value
+	  n%p=-n%p
+	end if
+    SetNumber=1  !all ok
+  end Function SetNumber
+
+
+  !Add two numbers of type ar_number (double, integer or fractional)
+  integer Function AddNumber(x, y, z)
+    type(ar_number) x,y,z
+    integer*4 s; integer negative
+    z%is_real=x%is_real + y%is_real
+    z%value=x%value+y%value
+    if (x%value.eq.0.d0) then
+	  z=y
+    else
+      if (y%value.eq.0.d0) then
+	    z=x
+      else 
+        if (abs(x%p) > AR_MAXLONG.or.abs(x%q) > AR_MAXLONG.or.  &
+          abs(y%p) > AR_MAXLONG.or.abs(y%q) > AR_MAXLONG)  &
+            z%is_real = 1
+        if (z%is_real.eq.0) then
+          s=GCD(x%q,y%q)
+          z%p=x%p*y%q+x%q*y%p; z%q=x%q*y%q
+          if (z%p*z%q<0) then
+		    negative=1
+          else
+		    negative=0
+          end if
+          z%p=abs(z%p) /s
+          z%q=abs(z%q) /s
+          if (negative.ne.0) z%p=-z%p
+        end if
+      end if
+    end if
+    AddNumber=1
+  end Function AddNumber
+
+
+  !Multiply two numbers of type ar_number (double, integer or fractional)
+  integer Function MultNumber(x, y, z)
+    type(ar_number) x,y,z 
+    integer*4 s; integer negative
+    z%is_real=x%is_real + y%is_real
+    z%value=x%value * y%value
+    if (z%is_real.ne.0.and.z%value.eq.0.d0) then
+      z%p=0; z%q=1;
+    else
+      if (abs(x%p) > AR_MAXLONG.or.abs(x%q) > AR_MAXLONG.or.  &
+        abs(y%p) > AR_MAXLONG.or.abs(y%q) > AR_MAXLONG)  &
+          z%is_real = 1
+      if (z%is_real.eq.0) then   !integer or fractional number
+        z%p=x%p*y%p; z%q=x%q*y%q
+        s=GCD(z%p,z%q)
+        if (z%p*z%q<0) then
+		  negative=1
+        else
+		  negative=0
+        end if
+        z%p=abs(z%p) /s
+        z%q=abs(z%q) /s
+        if (negative.ne.0) z%p=-z%p
+      end if
+    end if
+	MultNumber=1
+  end Function MultNumber
+
+
+  !Divide two numbers of type ar_number (double, integer or fractional)
+  integer Function DivNumber(x, y, z)
+    type(ar_number) x,y,z
+    integer*4 s; integer negative
+    if (y%value.eq.0.d0) then
+	  DivNumber=0
+	  return
+    end if
+    z%is_real=x%is_real + y%is_real
+    if (abs(x%p) > AR_MAXLONG.or.abs(x.q) > AR_MAXLONG.or.  &
+      abs(y.p) > AR_MAXLONG.or.abs(y.q) > AR_MAXLONG)  &
+        z%is_real = 1
+    if (z%is_real.eq.0) then  !integer or fractional number
+      z%p=x%p*y%q; z%q=x%q*y%p; s=GCD(z%p,z%q)
+      if (z%p*z%q<0) then
+	    negative=1
+      else
+	    negative=0
+      end if
+      z%p=abs(z%p) /s; z%q=abs(z%q) /s
+      if (negative.ne.0) z%p=-z%p
+    end if
+    z%value=x%value/y%value
+    DivNumber=1
+  end Function DivNumber
+
+  !read from screen a number of type ar_number (double, integer or fractional)
+  Subroutine ReadNumber(tx, n)
+    character*(*) tx; type(ar_number) n
+    character*20 ch;
+    do i=1, 3
+      write(*,10,advance='no') tx; read *, ch; 
+	  if (SetNumber(n,ch).ne.0) return
+      !MessageBeep
+    end do
+10  format(A)
+  end Subroutine ReadNumber
+
+  !write to screen a number of type ar_number (double, integer or fractional)
+  Subroutine WriteNumber(n)
+    type(ar_number) n
+    if ((n%is_real.ne.0.and.n%value<0.d0).or.n%p<0) then
+	  write(*,11,advance='no')
+	else 
+	  write(*,10,advance='no')
+    end if 
+    if (n%is_real.ne.0) then
+	  if (dabs(n%value)<1.d6) then 
+        write(*,20) dabs(n%value)
+      else
+        write(*,21) dabs(n%value)
+	  end if
+    else
+	  if (n%p<1000000) then
+        write(*,30,advance='no') abs(n%p)
+      else
+        write(*,32,advance='no') abs(n%p)
+	  end if
+	  if (n%q<1000000) then
+        if (abs(n%q).ne.1) write(*,31) abs(n%q)
+      else
+        write(*,33) abs(n%q)
+	  end if
+    end if
+	return
+10  format('+ ')
+11  format('- ')
+20  format(F12.6)
+21  format(E13.6)
+30  format(I6)
+31  format('/',I6)
+32  format(I10)
+33  format('/',I10)
+  end Subroutine WriteNumber
+
+  !function called by EnterPolynom()
+  !Analysis of elementary monom, examples: +5.25x3 or +5x3 or 5/3x3
+  integer Function ExtractMonom(ch, p)
+    character*(*) ch; type(ar_polynom) p
+    type(ar_number) coeff,signe0
+	character*100 chn
+    integer degree,xpos,sppos,signe
+	chn=''
+    !eliminate blank spaces
+	ch = ADJUSTL(ch)
+	if (LEN_TRIM(ch)<1) then
+	  ExtractMonom=0
+	  return
+    end if
+	if (ch(1:1).eq.'-') then
+	  signe=-1
+    else
+	  signe=1
+    end if
+	if (ch(1:1).eq.'+'.or.ch(1:1).eq.'-') then
+	  ilen=LEN_TRIM(ch)
+	  do i=2, ilen
+	    ch(i-1:i-1)=ch(i:i)
+      end do
+	  do i=ilen, LEN(ch)
+        ch(i:i)=' '
+      end do
+    end if 
+	ch = ADJUSTL(ch)
+	if (LEN_TRIM(ch)<1) then
+	  ExtractMonom=0
+	  return
+    end if
+	!seek x characters
+	do i=1, LEN_TRIM(ch)+1 
+	  if (ch(i:i).eq.'x') then
+	    xpos=i; goto 10
+      end if 
+    end do
+	xpos=-1
+10	if (xpos<0) then  !no more x found = constant term
+	  if (SetNumber(coeff, ch).eq.0) return
+	  if (SetNumber(signe0,'1').eq.0)  return
+	  if (MultNumber(coeff,signe0,p%coeff(0)).eq.0) return
+	  if (signe.eq.-1) then
+	    p%coeff(0)%p=-p%coeff(0)%p
+		p%coeff(0)%value=-p%coeff(0)%value
+      end if
+	  ch=''
+	  return
+    else      !term with x found
+	  if (xpos.eq.1) then
+		chn='1' 
+	  else
+		do i=1, xpos-1
+		  chn(i:i)=ch(i:i)
+        end do
+		chn(xpos:xpos)=' ' 
+      end if
+	  if (SetNumber(coeff, chn).eq.0) return
+      !seek a blank space
+	  sppos=-1
+	  do i=1, len_trim(ch)+1 
+	    if (ch(i:i).eq.' ') then
+		  sppos=i
+		  goto 20
+        end if
+	  end do 		  
+20	  if (sppos<0)  sppos=len_trim(ch)+1
+	  if (xpos.eq.sppos-1)  then
+	    degree=1
+	  else
+	    do i=xpos+1, sppos-1
+		  chn(i-xpos:i-xpos)=ch(i:i)
+		end do
+		do i=sppos-xpos, LEN(chn)
+		  chn(i:i)=' '
+        end do
+        degree=StrInt2(chn)
+		if (degree > AR_MAXPOL) then
+		  ExtractMonom=0
+		  return
+        end if
+      end if
+	  if (sppos > len_trim(ch)) then
+	    ch=' '
+	  else 
+	    ilen=LEN_TRIM(ch)
+        do i=sppos+1, ilen
+		  ch(i-sppos:i-sppos)=ch(i:i)
+        end do
+		do i=ilen+1-sppos, LEN(ch)
+		  ch(i:i)=' '
+        end do
+      end if
+    end if
+	if (signe.eq.-1) then
+	  coeff%p = -coeff%p
+	  coeff%value = -coeff%value
+    end if
+	if (AddNumber(coeff, p%coeff(degree),p%coeff(degree)).eq.0) then
+	  ExtractMonom=0
+	  return
+    end if
+	if (degree > p%degree)  p%degree=degree
+    ExtractMonom=1
+  end Function ExtractMonom
+
+  !Convert a valid string into a polynomial of type ar_polynom.
+  !Example of valid string:   x5 +3/5x4 -12x2 +8x -1/4
+  !tx is a prompting message, example: Enter polynomial P(x):
+  !Note that a blank space is required between monomes.
+  integer Function EnterPolynom(tx, p)
+    character*(*) tx; type(ar_polynom) p
+    integer i; character*100 ch
+	!put polynomial p to zero
+	p%degree=0; 
+	do i=0,AR_MAXPOL
+	  if (SetNumber(p%coeff(i),"0").eq.0) then
+        EnterPolynom=0
+		return
+	  end if
+	end do   
+    do i=1, 3
+      write(*,10,advance='no')  tx 
+      read *, ch
+	  ch=ADJUSTL(ch)
+      do while (LEN_TRIM(ch)>0.and.ExtractMonom(ch,p).ne.0)
+	  end do 
+      if (ch(1:1).eq.' ') then  !string is completely analysed
+	    EnterPolynom=1           !with no error
+	    return
+	  end if	 
+	  !MessageBeep(0)
+    end do 
+	EnterPolynom=0
+10  format(A)
+  end Function EnterPolynom
+
+
+  !This subroutine displays to screen the symbolic
+  !representation of a polynom of type ar_polynom
+  Subroutine DisplayPolynom(p)
+    type(ar_polynom) p
+    integer*4 lp,lq
+	print *,''
+    if (p%degree.eq.0.and.p%coeff(0)%value.eq.0) then
+	  print *, '0'
+    else
+	  j=1
+      do i=p%degree, 0, -1
+        if (dabs(p%coeff(i)%value) > AR_SMALL.or.p%coeff(i)%p.ne.0) then
+		  if ((p%coeff(i)%is_real.ne.0.and.p%coeff(i)%value<0.d0).or.p%coeff(i)%p<0) then
+		    write(*,15,advance='no') '-'
+          else
+		    write(*,15,advance='no') '+'
+		  end if	 
+		  if (p%coeff(i)%is_real.ne.0) then
+			write(*,10,advance='no') dabs(p%coeff(i)%value)
+		  else
+			lp=abs(p%coeff(i)%p)
+            lq=abs(p%coeff(i)%q)
+			if (lp.ne.1.or.lq.ne.1.or.i.eq.0)  write(*,20,advance='no') lp
+			if (lq.ne.1) write(*,30,advance='no') lq
+          end if
+		  !print X+exponent
+		  if (i>10) then
+		    write(*,40,advance='no') i
+		  else if (i>1) then
+		    write(*,41,advance='no') i
+          else if (i.eq.1) then
+		    write(*,42,advance='no')
+		  else if (i.eq.0) then 
+		    write(*,15,advance='no') ' '
+		  end if	 
+		end if
+		if ((p%coeff(i)%value.ne.0.d0.or.p%coeff(i)%p.ne.0).and.p%coeff(i)%p.ne.1) j=j+1
+		if (p%coeff(i)%is_real.eq.0.and.p%coeff(i)%q.ne.1) j=j+1
+		if (j>7) then    !new line after 7 terms <> 0 and <> 1
+		  print *,''
+		  j=1
+        end if
+      end do
+    end if
+    print *,''
+10  format(F10.6)
+15  format(A1)
+20  format(I6)
+30  format('/',I6)
+40  format(' X',I2,' ')
+41  format(' X',I1,' ')
+42  format(' X ')
+
+  end Subroutine DisplayPolynom
+
+
+  !return the value y of a polynomial p of type ar_polynom for argument=x
+  !x and y are of type ar_number  (double, integer or fractional) 
+  integer Function EvaluatePolynom(p, x, y)
+    type(ar_polynom) p; type(ar_number) x, y
+    if (p%degree > AR_MAXPOL) then
+	  EvaluatePolynom=0
+	  return
+    end if
+    if (SetNumber(y, '0').eq.0) return
+    do i=0, p%degree
+      if (MultNumber(y,x,y).eq.0) then
+	    EvaluatePolynom=0
+	    return
+      end if	  
+      if (AddNumber(y,p%coeff(p%degree-i),y).eq.0) then
+	    EvaluatePolynom=0
+	    return
+      end if
+    end do
+    EvaluatePolynom=1
+  end Function EvaluatePolynom
+
+
+END MODULE POLYNOMS
+
+!End of file polynoms.f90

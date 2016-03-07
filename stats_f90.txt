@@ -1,0 +1,148 @@
+!******************************************
+!* Module for basic statistical Functions *
+!******************************************
+Module Stats
+
+Contains
+
+!---------------------------------------------------------
+! Basic description statistics for normally distributed
+! data. Calculates either sample or population statistics.
+! Sets std_dev to -1 if error condition is detected.
+!---------------------------------------------------------
+  Subroutine NormalStats(a,n,flag,avg,std_dev)
+    Implicit None
+
+	Integer, Intent(IN) :: n
+    Real, Intent(IN) :: a(n)
+	Character, Intent(IN) :: flag ! 'P' or 'S' statistics
+
+    Real, Intent(OUT) :: avg, std_dev
+
+	Real sum_, sum_sq, variance
+
+	sum_ = SUM(a)
+	sum_sq = DOT_PRODUCT(a,a)
+
+	Select Case(flag)
+	  Case ('p','P')
+	    variance = (sum_sq-sum_**2/n)/n
+	  Case ('s','S')
+	    variance = (sum_sq-sum_**2/n)/(n-1)
+      Case DEFAULT
+	    print *,' From NormalStats: Flag Error, <P> assumed.'
+        variance = (sum_sq-sum_**2/n)/n
+	End Select
+	
+	If (variance < 0.) Then  !an error exists
+      print *,' From NormalStats: negative variance ',variance
+	  std_dev = -1
+    Else
+	  std_dev = SQRT(variance)
+    End If
+
+	avg = sum_/n
+
+  End Subroutine NormalStats
+	  	 
+!----------------------------------------------------------
+! For data to be represented by y=ax+b, calculates linear 
+! regression coefficients, sample standard error of y on x,
+! and sample correlation coefficients. Sets r=0 if an error
+! exists. If the intercept coefficient a is set to 0 on
+! input, the regression is forced through (0,0).
+!----------------------------------------------------------
+  Subroutine LinearReg(x,y,n,flag,a,b,s_yx,r)
+    Implicit None
+
+	Integer, Intent(IN) :: n
+    Real, Intent(IN) :: x(n), y(n)
+	Character, Intent(IN) :: flag ! 'P' or 'S' statistics
+
+    Real, Intent(OUT) :: b, s_yx, r
+	Real, Intent(INOUT) :: a
+
+    Real avg, std_dev
+	Real sum_x,sum_y,sum_xy,sum_xx,sum_yy,temp
+
+	sum_x = SUM(x)
+	sum_y = SUM(y)
+	sum_xy = DOT_PRODUCT(x,y)
+	sum_xx = DOT_PRODUCT(x,x)
+	sum_yy = DOT_PRODUCT(y,y)
+
+	If (a /= 0.) Then  !calculate full expression
+	  temp = n*sum_xx - sum_x**2
+	  a = (sum_y*sum_xx - sum_x*sum_xy)/temp
+	  b = (n*sum_xy - sum_x*sum_y)/temp
+	  s_yx = SQRT((sum_yy - a*sum_y - b*sum_xy)/n)
+    Else   !just calculate slope
+	  b = sum_y/sum_x
+	  s_yx = SQRT((sum_yy - 2.*b*sum_xy + b*b*sum_xx)/n)
+    End If
+
+	Select Case(flag)
+	  Case ('p','P')
+	  Case ('s','S')	  
+        s_yx = s_yx * SQRT(Real(n)/Real(n-2))
+      Case DEFAULT
+	    print *,' From LinearReg: Flag error, <P> assumed.'
+	End Select
+	
+! Use NormalStats to get standard deviation of y
+    Call NormalStats(y,n,flag,avg,std_dev)
+	
+	If (std_dev > 0.) Then
+	  temp = 1. - (s_yx/std_dev)**2
+	  If (temp > 0.) Then
+	    r = SQRT(temp)
+	  Else  !an error exists
+	    r = 0.
+	    print *,' From LinearReg: error in temp ', temp
+	  End If
+	Else    !an error exists
+	  r = 0.
+	End If
+	
+  End Subroutine LinearReg 	        		 
+
+!-----------------------------------------------------------
+! Generates an array of normal random numbers from pairs of
+! of uniform random numbers in range [0,1].
+!-----------------------------------------------------------
+  Subroutine NormalArray(a,n)
+    Implicit None
+	
+	Integer, Intent(IN) :: n
+    Real, Intent(OUT) :: a(n)
+
+	Integer i
+	Integer Count(1)  !for random number generator
+
+	Real pi, u1,u2
+	Parameter(pi=3.1415926535)
+
+	Call System_Clock(Count(1))
+	Call Random_Seed(Put=Count)
+	Call Random_Number(a)  !fills array with uniform random
+
+    Do i=1,n,2
+	  u1 = a(i)
+	  u2 = a(i+1)
+	  If (u1==0.) u1 = 1e-15  !u must not be zero
+	  If (u2==0.) u2 = 1e-15
+	  a(i) = SQRT(-2.0*LOG(u1))*COS(2.0*pi*u2)
+	  a(i+1) = SQRT(-2.0*LOG(u2))*SIN(2.0*pi*u2)
+	End Do
+	
+	If (MOD(n,2) /= 0) Then  !there is one extra element
+	  If (a(n) == 0.)  a(n) = 1e-15  	   
+      a(n) = SQRT(-2.0*LOG(a(n)))*SIN(2.0*pi*a(n))
+    End If
+
+  End Subroutine NormalArray
+
+
+End Module Stats
+
+!end of file Stats.f90

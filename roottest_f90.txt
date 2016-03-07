@@ -1,0 +1,106 @@
+!*****************************************************
+!*       ROOT TESTING PROGRAM OF A POLYNOMIAL        *
+!* ------------------------------------------------- *
+!*    Réf.: Basic Scientific Subroutines Vol. II,    *
+!*  By F.R. Ruckdeschel. BYTE/McGRAW-HILL, 1981 [1]. *
+!*                                                   *
+!*                       F90 version by J-P Moreau   *
+!*                           (www.jpmoreau.fr)       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!* (Example: Where to look for roots of polynomial   *
+!*           X^5+5*X^4+10*X^3+10*X^2+5*X+1)          *
+!*                                                   *
+!*   This program will help you determine            *
+!*  where to look for roots of a polynomial.         *
+!*                                                   *
+!*  What is the degree of the polynomial: 5          *
+!*                                                   *
+!*  Input the polynomial coefficients as prompted:   *
+!*                                                   *
+!*     A( 0) = 1                                     *
+!*     A( 1) = 5                                     *
+!*     A( 2) = 10                                    *
+!*     A( 3) = 10                                    *
+!*     A( 4) = 5                                     *
+!*     A( 5) = 1                                     *
+!*                                                   *
+!*  There are 5 roots.                               *
+!*                                                   *
+!*  The magnitude of the largest root is <= 2.236068 *
+!*                                                   *
+!*  There is at least one negative real root.        *
+!*                                                   *
+!*  There are at most 5 negative real roots.         *
+!*                                                   *
+!*****************************************************
+PROGRAM ROOTTEST
+
+! LABELS: 100,200,300
+
+real*8  aa
+real*8, allocatable :: A(:)
+integer b,c,d,i,n
+
+  print *,' This program will help you determine'
+  print *,'where to look for roots of a polynomial.'
+  write(*,"(/' What is the degree of the polynomial: ')",advance='no')
+  read *, n
+
+  Allocate(A(0:n))
+
+  print *,' '
+  print *,' Input the polynomial coefficients as prompted:'
+  print *,' '
+  do i=0, n
+    write(*,50,advance='no')  i
+    read *, A(i)
+  end do
+  write(*,60) n
+  ! Find the maximum value of root
+  aa=A(n-1)*A(n-1)-2.d0*A(n-2)
+  if (aa>0) goto 100
+  print *,'There are at least two complex roots.'
+  print *,' '
+  stop
+100 aa=dsqrt(aa)
+  write(*,70) aa
+  aa=-1.d0
+  if (int(n/2).eq.(n/2)) aa=-aa
+  aa=A(0)/aa
+  ! b will flag a negative root
+  b=0
+  if (aa>0) goto 200
+  print *,'There is at least one negative real root.'
+  print *,' '
+  b=1
+  ! Test for Descartes rule nø 1
+200 c=0
+  do i=1, n
+    if (A(i-1)*A(i)<0) c=c+1
+  end do
+  if (c.eq.1) print *,'There is at most one positive real root.'
+  if (c>1) write(*,80) c 
+  ! Test for Descartes rule nø 2
+  d=0
+  do i=1, n
+    if (A(i-1)*A(i)>0) d=d+1
+  end do
+  if (d.eq.1) print *,'There is at most one negative real root.'
+  if (d>1) write(*,81) d 
+  if (int(c/2).eq.(c/2)) goto 300
+  print *,' There is at least one positive real root.'
+300 if (int(d/2).eq.(d/2)) stop
+  if (b.eq.1) stop
+  print *,'There is at least one negative real root.'
+  print *,' '
+  print *,' '
+  stop
+50 format('   A(',i1,') = ')
+60 format(/' There are ',i2,' roots.'/)
+70 format(' The magnitude of the largest root is <= ',F9.6/)
+80 format(' There are at most ',i2,' positive real roots.'/)
+81 format(' There are at most ',i2,' negative real roots.'/)
+end
+
+! End of file Roottest.f90

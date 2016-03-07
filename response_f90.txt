@@ -1,0 +1,157 @@
+!***************************************************************
+!* Program to calculate the mass response of a 1 dof oscillator*
+!*                                                             *
+!*                          F90 Version By J-P Moreau, Paris.  *
+!*                                 (www.jpmoreau.fr)           *
+!* ----------------------------------------------------------- *
+!* SAMPLE RUN:                                                 *
+!*                                                             *
+!* Input data file (tfft.dat):                                 *
+!*                                                             *
+!* (The test signal contains 3 frequencies: 50, 250, 500 hz)   *
+!*                                                             *
+!* 1024                                                        *
+!* 0.00000000000000E+0000   0.00000000000000E+0000             *
+!* 1.95503421309917E-0004   3.53914399999776E+0001             *
+!* 3.91006842619834E-0004   5.95684899999760E+0001             *
+!* 5.86510263929974E-0004   6.54621699999552E+0001             *
+!* 7.82013685239669E-0004   5.24038399999845E+0001             *
+!* ...                      ...                                *
+!* 1.98826979472187E-0001   2.77372500000183E-0001             *
+!* 1.99022482893497E-0001  -2.43361500000174E+0000             *
+!* 1.99217986314807E-0001  -4.84236799999780E+0000             *
+!* 1.99413489736116E-0001  -6.02247899999929E+0000             *
+!* 1.99608993157426E-0001  -5.45615399999951E+0000             *
+!* 1.99804496578736E-0001  -3.22824200000105E+0000             *
+!* 2.00000000000045E-0001  -2.96010699999982E-0003             *
+!*                                                             *
+!* Output file (response.lst):                                 *
+!*                                                             *
+!*        Time        Mass Response                            *
+!*        (Hz)           (m/s2)                                *
+!*  -----------------------------------                        *
+!*       0.0000         0.000000                               *
+!*       0.0002         1.086857                               *
+!*       0.0004         6.069040                               *
+!*       0.0006        16.052865                               *
+!*       0.0008        29.932272                               *
+!*       0.0010        44.695331                               *
+!*       0.0012        56.432558                               *
+!*       0.0014        61.679697                               *
+!*       0.0016        58.610419                               *
+!*       0.0018        47.653751                               *
+!*       0.0020        31.323971                               *
+!*       0.0022        13.338342                               *
+!*       --/--          --/--                                  *
+!*       0.1990        -2.561815                               *
+!*       0.1992        -8.139107                               *
+!*       0.1994       -13.283557                               *
+!*       0.1996       -17.590142                               *
+!*       0.1998       -20.583757                               *
+!*       0.2000       -21.790780                               *
+!*                                                             *
+!***************************************************************
+PROGRAM MASS_RESPONSE
+
+integer i,j,ndata
+real*8  dt,dzeta,f,t,temp,tbegin,tend
+
+real*8  signal(1024),response(1024)
+
+  !open input and output file
+  OPEN(UNIT=1,FILE='tfft.dat',STATUS='OLD')	                              
+  OPEN(UNIT=2,FILE='response.lst',STATUS='UNKNOWN')
+  !read number of input signal points in input file
+  read(1,*)  ndata
+  !read ndata couples T(i), Y(i) in input data file
+  do i=1, ndata
+    read(1,*)  temp, signal(i)
+    if (i.eq.1)  tbegin=temp
+    if (i.eq.ndata)  tend=temp
+  end do
+  close(unit=1)
+  !calculate sampling increment dt of input signal
+  dt = (tend-tbegin)/(ndata-1)
+  !input damping factor dzeta
+  dzeta=0.05d0
+  !input oscillator frequency
+  f=250.d0
+
+  !calculate mass response of oscillator
+  call _1dof_Oscillator_Response(f,signal,response,dt,dzeta,ndata)
+
+  !print response to output file
+  t=tbegin
+  write(2,*) ' '
+  write(2,*) '        Time        Mass Response    '
+  write(2,*) '        (Hz)           (m/s2)        '
+  write(2,*) '  -----------------------------------'
+  do i=1, ndata
+    write(2,100)  t, response(i)
+    t=t+dt
+  end do
+
+  close(unit=2)
+  print *,' '
+  print *,'Results in file response.lst.'
+  print *,' '
+  stop
+
+100 format('        ',F6.4,'     ',F12.6)
+
+END !of main program
+
+
+  !************************************************************
+  !* This procedure calculates the acceleration of the sismic *
+  !* mass of an elementary oscillator (1 degree of freedom),  *
+  !* the basis of which is submitted to a given acceleration, *
+  !* x"(t).                                                   *
+  !*  The input signal x" is digitalized with a constant time *
+  !* step, Sampling_Incr. The table signal contains N accele- *
+  !* ration values.                                           *
+  !* -------------------------------------------------------- *
+  !* INPUTS:                                                  *
+  !*         f............: eigen frequency of oscillator     *
+  !*         signal.......: input acceleration signal x"(t)   *
+  !*         dt...........: time step of signal (constant)    *
+  !*         dzeta........: reduced damping factor            *
+  !*         ndata........: number of points of signal        *
+  !* OUTPUT:                                                  *
+  !*         response.....: table containing acceleration     *
+  !*                        response of oscillator (N points) *
+  !*                                                          *
+  !*                        F90 version by J-P Moreau, Paris  *
+  !************************************************************
+Subroutine _1dof_Oscillator_Response(f,signal,response,dt,dzeta,ndata)
+    real*8 f,signal(1024),response(1024),dt,dzeta
+    integer ii,ndata
+    real*8 arg,cosA,delta,dQ2,omega,p0,Pi,Q,q1,q2,sq2
+    real*8 xn,xnm1,yn,ynm1,ynm2
+    Pi=3.1415926535d0
+    omega=2.d0*Pi*f
+    IF (dzeta<1.d-6)  dzeta=1.d-6
+    Q=1.d0/(2.d0*dzeta)
+    dQ2=2.d0*Q*Q
+    delta=DSQRT(2.d0*dQ2-1.d0)
+    p0=omega*dt/Q
+    q2=DEXP(-p0)
+    sq2=DSQRT(q2)
+    arg=0.5d0*p0*delta
+    cosA=DCOS(arg)
+    q1=-2.d0*sq2*cosA
+    p1=p0*sq2*((dQ2-1.d0)*DSIN(arg)/delta-cosA)
+    ynm1=0.d0
+    xn=signal(1)
+    yn=0.d0
+    response(1)=yn
+    do ii=2, ndata
+      ynm2=ynm1; ynm1=yn; xnm1=xn
+      xn=signal(ii)
+      yn=p0*xn+p1*xnm1-q1*ynm1-q2*ynm2
+      response(ii)=yn
+    end do
+return
+end
+
+!End of file response.f90

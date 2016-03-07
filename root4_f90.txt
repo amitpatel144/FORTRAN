@@ -1,0 +1,285 @@
+!********************************************************
+!*             Equations of degree 2 to 4               *
+!* ---------------------------------------------------- *
+!* This program calculates the real or complex roots of *
+!* algebraic equations of degree 2, 3 and 4.            *
+!* ---------------------------------------------------- *
+!* Reference: Mathématiques et statitiques - Programmes *
+!*            en BASIC. Editions du P.S.I., 1981        *
+!*            [BIBLI 13].                               *
+!*                                                      *
+!*                   F90 version by J-P Moreau, Paris   *
+!*                          (www.jpmoreau.fr)           *
+!* ---------------------------------------------------- *
+!* SAMPLE RUN:                                          *
+!*                                                      *
+!* ROOTS OF EQUATIONS OF DEGREE 2, 3 OU 4               *
+!* Example: X^4+4X^2-3X+3 = 0                           *
+!*                                                      *
+!* INSTRUCTIONS:                                        *
+!*                                                      *
+!* 1. Input degree of equation                          *
+!* 2. Input coefficients beginning with highest exponent*
+!* 3. Solutions are given under the form:               *
+!*     (real part) + I (imaginary part)                 *
+!*                                                      *
+!* Degree of equation (2 to 4): 4                       *
+!*                                                      *
+!* Coefficient of X^4 = 1                               *
+!* Coefficient of X^3 = 0                               *
+!* Coefficient of X^2 = 4                               *
+!* Coefficient of X^1 = -3                              *
+!* Coefficient of X^0 = 3                               *
+!*                                                      *
+!* Root 1 = 0.449702657 + I 0.731070322                 *
+!* Root 2 = 0.449702657 - I 0.731070322                 *
+!* Root 1 = -0.449702657 + I 1.967231848                *
+!* Root 2 = -0.449702657 - I 1.967231848                *
+!*                                                      *
+!********************************************************
+PROGRAM DEMO_ROOT_4
+
+real*8 A(1:4,0:4), r(1:4)
+integer i,n
+real*8 ii,im
+
+  print *,' '
+  print *,'ROOTS OF EQUATIONS OF DEGREE 2, 3 OR 4'
+  print *,'EXAMPLE : X^4+4X^2-3X+3 = 0'
+  print *,' '
+  print *,'INSTRUCTIONS:'
+  print *,' '
+  print *,' 1. Input degree of equation'
+  print *,' 2. Input coefficients beginning by highest exponent'
+  print *,' 3. Solutions are given under the form:'
+  print *,'    (real part) + I (imaginary part)'
+  print *,' '
+  write(*,"(' DEGREE OF EQUATION (2 to 4): ')",advance='no')
+  read *, n
+  if (n < 2) n = 2
+  if (n > 4) n = 4
+  print *,' '
+  do i=n, 0, -1
+    write(*,50,advance='no')  i 
+    read *, A(n,i)
+  end do
+  print *,' '
+  ! calling root search main subroutine
+  call Root_4(n,a,r,im,ii)
+  ! writing results
+  if (n.eq.2) then
+    !case n=2
+    if (im .eq. 0) then
+	  write(*,60) r(1)
+	  write(*,70) r(2)
+    else 
+	  write(*,80) r(1), im
+	  write(*,90) r(2), im
+    end if
+  else if (n.eq.3) then
+    !case n=3
+    write(*,100) r(3)
+    if (im .eq. 0) then 
+	  write(*,110) r(1)
+	  write(*,120) r(2)
+    else 
+	  write(*,130) r(1), im
+	  write(*,140) r(2), im
+    end if
+  else if (n.eq.4) then
+    !case n=4
+    if (im.eq.0) then
+	  write(*,60) r(1)
+	  write(*,70) r(2)
+    else
+	  write(*,80) r(1), im
+          write(*,90) r(2), im
+    end if
+    if (ii.eq.0) then
+	  write(*,150) r(3)
+	  write(*,160) r(4)
+    else
+	  write(*,170) r(3), ii
+      write(*,180) r(4), ii
+    end if
+  end if
+  print *,' '
+
+  stop
+
+50  format(' COEFFICIENT OF X^',i2,' = ')
+60  format(' Root 1 = ',F12.9)
+70  format(' Root 2 = ',F12.9)
+80  format(' Root 1 = ',F12.9,' +I ',F12.9)
+90  format(' Root 2 = ',F12.9,' -I ',F12.9)
+100 format(' Root 1 = ',F12.9)
+110 format(' Root 2 = ',F12.9)
+120 format(' Root 3 = ',F12.9)
+130 format(' Root 2 = ',F12.9,' +I ',F12.9)
+140 format(' Root 3 = ',F12.9,' -I ',F12.9)
+150 format(' Root 3 = ',F12.9)
+160 format(' Root 4 = ',F12.9)
+170 format(' Root 3 = ',F12.9,' +I ',F12.9)
+180 format(' Root 4 = ',F12.9,' -I ',F12.9)
+
+end !main
+
+Subroutine f(x,A,y)
+  real*8 x,A(1:4,0:4),y
+  y = x * x * x + A(3,2) * x * x + A(3,1) * x + A(3,0)
+  return
+end
+
+
+!*******************************************
+!* This Subroutine calculates the roots of *
+!*    X^2 + A(2,1)*X + A(2,0) = 0          *
+!*    W = Determinant of equation          *
+!*******************************************
+Subroutine Root_2(A,r,im)
+  real*8 A(1:4,0:4), r(1:4), im
+  real*8 q1, q2, w
+  w = A(2,1) * A(2,1) - 4.d0 * A(2,0)
+  q1 = -A(2,1) / 2.d0
+  if (w < 0) then
+    q2 = dsqrt(-w) / 2.d0
+    im = q2
+    r(1) = q1; r(2) = q1
+  else if (w.eq.0) then
+    r(1) = q1; r(2) = q1; im = 0.d0
+  else if (w > 0) then
+    q2 = dsqrt(w) / 2.d0; im = 0.d0
+    r(1) = q1 + q2; r(2) = q1 - q2
+  end if
+  return
+end
+
+
+!********************************************
+!* This subroutine calculates the roots of  *
+!* X^3 + A(3,2)*X^2 + A(3,1)*X + A(3,0) = 0 *
+!********************************************
+Subroutine Root_3(A,sw,r,im)
+  !Labels 100,200,500
+  integer sw
+  real*8 A(1:4,0:4), r(1:4), im
+  real*8 aa, am, b, er, te, temp, tt, xa, xb, xc, y1, y2
+  ! one root equals zero
+  if (A(3,0).eq.0.d0) then
+    xc = 0.d0; goto 500
+  end if
+  ! looking for( maximum coefficient in fabsolute magnitude
+  am = dabs(A(3,0))
+  do i=1, 3
+    tt = dabs(A(3,i))
+    if (am < tt) am = tt
+  end do
+  !Define interval where a real root exists
+  ! according to sign of A(3,0)  
+  if (A(3,0) > 0) then
+    aa = -am - 1.d0
+    b = 0.d0
+    goto 100
+  end if
+  aa = 0; b = am + 1.d0
+
+  ! Searching for( xc = real root in interval (a,b)
+  !   (by Bisection method)
+  
+  ! Define segment (xa,xb) including the root
+100 xa = aa; xb = b
+  call f(aa,A,y1)
+  call f(b,A,y2)
+
+  ! Desired précision
+  er = 0.000001d0
+  if (y1.eq.0) then
+    xc = aa; goto 500
+  end if
+  if (y2.eq.0) then
+    xc = b; goto 500
+  end if
+  ! xc : middle of segment
+200 xc = (xa + xb) / 2.d0; 
+  call f(xc,A,te)
+  if (te.eq.0.d0) goto 500
+  if ((xb - xa) < er) goto 500
+  call f(xa,A,temp)
+  if (temp * te > 0) then
+    xa = xc; goto 200
+  end if
+  xb = xc; goto 200
+  ! r(3) is a real root
+500 r(3) = xc
+  if (sw.eq.-1) return
+  ! Calculates the roots of remaining quadratic equation
+  ! Define the equation coefficients
+  A(2,1) = A(3,2) + xc
+  A(2,0) = A(3,1) + A(3,2) * xc + xc * xc
+  call Root_2(A,r,im)
+  return
+end
+
+! Root search main subroutine
+Subroutine Root_4(n,A,r,im,ii)
+  integer i,n
+  real*8 A(1:4,0:4),r(1:4),im,ii
+  real*8 aa,b,c,d,k,l,m,q,rr,s
+  ! Labels: e100,e200,e300
+  ! Normalization of coefficients
+  do i=0, n-1
+    A(n,i) = A(n,i) / A(n,n)
+  end do
+  ! Branching according to degree n
+  if (n.eq.2) then
+    call Root_2(A,r,im)
+    return
+  else if (n.eq.3) then
+    call Root_3(A,0,r,im)
+    return
+  else if (n.eq.4) then
+    aa = A(4,3)
+    b = A(4,2)
+    c = A(4,1)
+    d = A(4,0)
+    q = b - (3.d0 * aa * aa / 8.d0)
+    rr = c - (aa * b / 2.d0) + (aa * aa * aa / 8.d0)
+    s = d - (aa * c / 4.d0) + (aa * aa * b / 16.d0) - (3.d0 * aa * aa * aa * aa / 256.d0)
+    ! Défine coefficients of cubic equation
+    A(3,2) = q / 2.d0
+    A(3,1) = (q * q - 4.d0 * s) / 16.d0
+    A(3,0) = -(rr * rr / 64.d0)
+    ! Calculate a real root of this equation
+    if (rr.ne.0.d0.OR.A(3,1)>=0.d0) goto 100
+    ! Particular case when this equation is of 2nd order
+    A(2,1) = A(3,2); A(2,0) = A(3,1)
+    call Root_2(A,r,im)
+    ! One takes the positive root
+    r(3) = r(1)
+    goto 200
+    ! Calling Root_3() with 2nd parameter sw = -1 to calculate one root only
+100 call Root_3(A,-1,r,im)
+    ! real root of above equation
+200 k = dsqrt(r(3))
+    ! Calculate L and M if k=0
+    if (k.eq.0.d0) then
+      rr = dsqrt(q * q - 4.d0 * s); goto 300
+    end if
+    q = q + (4.d0 * r(3))
+    rr = rr / (2.d0 * k)
+300 l = (q - rr) / 2.d0; m = (q + rr) / 2.d0
+    ! Solving two equations of degree 2
+    A(2,1) = 2.d0 * k; A(2,0) = l
+    ! 1st equation
+    call Root_2(A,r,im)
+    ! Transferring solutions in r[3], r[4], ii
+    r(3) = r(1) - (A(4,3) / 4.d0); r(4) = r(2) - (A(4,3) / 4.d0); ii = im
+    A(2,1) = -2.d0 * k; A(2,0) = m
+    ! 2nd equation
+    call Root_2(A,r,im)
+    r(2) = r(2) - (A(4,3) / 4.d0); r(1) = r(1) - (A(4,3) / 4.d0)
+  endif
+  return
+end
+
+! End of file root4.f90

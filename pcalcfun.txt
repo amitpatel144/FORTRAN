@@ -1,0 +1,451 @@
+!***********************************************************
+!*  Math operations on strings - Module used by calc.cpp,  *
+!*  calculator on huge integers.                           *
+!* ------------------------------------------------------- *
+!* Ref.: "PC Magazine Turbo Pascal for Windows, Techniques *
+!*        and Utilities By Neil J. Rubenking, Ziff Davis   *
+!*        Press, 1992.                                     *
+!*                                                         *
+!*                  F90 Release 1.0 By J-P Moreau, Paris.  *
+!*                            (www.jpmoreau.fr)            *
+!***********************************************************
+MODULE PCALCFUN
+
+implicit none
+
+integer, parameter :: cer_Ok=0,        &
+                      cer_Overflow=1,  &
+					  cer_LowMemory=2, &
+					  cer_DivideBy0=3, &
+					  cer_Quit=4,      &
+					  cer_Invalid=5 
+
+integer, parameter :: SIZE = 5000  !max. length of result
+
+
+CONTAINS
+
+character*1 Function SubChar(C1, C2, borrow)
+character*1 C1,C2
+logical borrow
+integer tmp
+
+  borrow=.FALSE.
+  tmp = IACHAR(C1)-IACHAR(C2)
+  if (tmp<0) then
+    tmp = tmp + 10
+    borrow=.TRUE.
+  end if
+  SubChar=ACHAR(tmp+48)
+  return
+End Function SubChar
+
+character*1 Function AddChar(C1, C2, carry)
+character*1 C1,C2
+logical carry
+integer i, tmp
+  carry=.FALSE.
+  tmp = IACHAR(C1)+IACHAR(C2)-96
+  if (tmp>=10) then 
+    tmp = tmp - 10
+    carry=.TRUE.
+  end if
+  AddChar=ACHAR(tmp+48)
+  return
+End Function AddChar
+
+Subroutine TrimLead0(P)
+character*(*) P
+integer i, Len
+!Trims leading zeros from a string P
+  i=1; Len=Len_Trim(P)
+  do while (i<=Len.and.P(i:i)=='0')
+    P(i:i)=' '; i=i+1
+  end do
+  P = ADJUSTL(P) !trims leading blanks
+  return
+END Subroutine TrimLead0   
+
+Subroutine addWTrail(A, B, TrailB, MaxLen, Status)
+  character*(*) A, B
+  integer TrailB, MaxLen, Status
+  integer i, LB, LnA, LnB, Len 
+  Logical carry 
+  integer PsnA, PsnB 
+  character*1 ChA, ChB 
+  character*SIZE TB
+
+  LnA = Len_Trim(A) 
+  LnB = Len_Trim(B) + TrailB 
+  Len = LnA; 
+  if (LnB > Len)  Len = LnB 
+  Len=Len+1 
+
+  Status = cer_Overflow 
+  if (LnA >= MaxLen-1.or.LnB >= MaxLen-1.or.LnA == 0.or.LnB == 0) return
+  
+  Status = cer_Ok 
+! make copy of parameter B and pad with 
+! trailing 0's, if any are required. 
+  TB = B
+! FillChar(TB[StrLen(B)], TrailB, '0');  
+  do i=1, TrailB
+    LB=Len_Trim(B)
+    TB(LB+i:LB+i)='0'
+  end do
+  carry = .FALSE.
+
+! "Grow" A to hold result
+! StrMove(A+Len-LnA, A, Succ(Lna));
+! memcpy(A+Len-LnA, A, strlen(A));
+  do i=Len, Len-LnA, -1
+    A(i:i) = A(i-Len+LnA:i-Len+LnA)
+  end do
+
+! FillChar(A^, Len-LnA, '0');
+  do i=1, Len-LnA
+    A(i:i)='0'
+  end do
+
+  PsnA = Len 
+  PsnB = LnB
+  
+! add digits from right to left 
+  do while (PsnB >= 0.or.PsnA > 0) 
+    PsnB=PsnB-1; PsnA=PsnA-1 
+    ChA = A(PsnA+1:PsnA+1) 
+    if (PsnB >= 0) then
+	  ChB = TB(PsnB+1:PsnB+1) 
+    else 
+	  ChB = '0'
+	end if   
+    if (carry==.TRUE.) then 
+      A(PsnA+1:PsnA+1) = AddChar(ACHAR(IACHAR(ChA)+1), ChB, carry)
+    else
+      A(PsnA+1:PsnA+1) = AddChar(ChA, ChB, carry)
+	end if   
+  end do 
+  if (carry==.TRUE.)  A(PsnA+1:PsnA+1) = 'l' 
+  call TrimLead0(A)
+  return
+end subroutine addWTrail 
+
+subroutine add(A, B, MaxLen, Status)
+  character*(*) A, B
+  integer MaxLen, Status 
+  call addWTrail(A, B, 0, MaxLen, Status)
+  return 
+end subroutine add
+ 
+integer Function Compare(X, Y)
+  character*(*) X, Y
+! Returns -n if X < Y, 0 if equal, +n if X > Y 
+  integer  Xl, Yl, Xs, Ys 
+  Xl = Len_Trim(X); Xs = 0
+  do while (Xs <= Xl.and.X(Xs:Xs)=='0')  
+    Xs = Xs + 1
+  end do	; 
+  Yl = Len_Trim(Y); Ys = 0 
+  do while (Ys <= Yl.and.Y(Ys:Ys)=='0')  
+    Ys = Ys + 1
+  end do	 
+  if ((Xl-Xs) == (Yl-Ys)) then
+    !return (strcmp(X+Xs, Y+Ys))
+	if (ACHAR(IACHAR(X)+Xs) < ACHAR(IACHAR(Y)+Ys)) then
+	  Compare=-1
+	else if (ACHAR(IACHAR(X)+Xs)==ACHAR(IACHAR(Y)+Ys)) then
+	  Compare=0
+	else
+	  Compare=1
+	end if       
+  else if ((Xl-Xs) > (Yl-Ys)) then
+    Compare=1 
+  else 
+    Compare=-1
+  end if
+  return
+end function Compare  	 
+ 
+Subroutine sub(A, B, MaxLen, Status)
+  character*(*) A, B
+  integer MaxLen, Status
+  integer i, Len, LnA, LnB 
+  character*500 TB 
+  integer PsnA, PsnB 
+  logical borrow, minus 
+  character*1 ChA, ChB 
+ 
+  LnA = Len_Trim(A) 
+  LnB = Len_Trim(B) 
+ 
+  if (LnA >= MaxLen-1.or.LnB >= MaxLen-1.or.LnA==0.or.LnB==0) return 
+! subtract smaller from larger 
+  if (Compare(A, B) < 0) then 
+    TB=A; A=B
+    Len = LnA 
+    LnA	= LnB 
+    LnB	= Len 
+    minus = .TRUE.
+  else 
+    TB=B;
+    minus = .FALSE.
+  end if
+
+  Status = cer_LowMemory
+  if (Len_Trim(TB)==0) return 
+  Status = cer_Ok 
+  borrow = .FALSE. 
+  Len = LnA
+
+  if (LnB > Len) Len = LnB 
+  Len = Len + 1 
+
+! "Grow" A to hold result 
+! memcpy(A+(Len-LnA), A, LnA+1);
+  do i=Len, Len-LnA, -1
+    A(i:i) = A(i-Len+LnA:i-Len+LnA)
+  end do
+
+! FillChar(A^, Len-LnA, '0');
+  do i=1, Len-LnA
+    A(i:i)='0'
+  end do
+
+  PsnA = Len 
+  PsnB = LnB
+
+! subtract digits fram right to left 
+  do while (PsnB >= 0.or.PsnA > 0) 
+    PsnA = PsnA-1; PsnB = PsnB-1 
+
+    if (PsnA >= 0) then
+	  ChA = A(PsnA+1:PsnA+1)
+    else 
+	  ChA = '0'
+    end if
+
+    if (PsnB >= 0) then
+	  ChB = TB(PsnB+1:PsnB+1)
+    else 
+	  ChB = '0'
+    end if
+    if (borrow) then 
+      A(PsnA+1:PsnA+1) = SubChar(ACHAR(IACHAR(ChA)-1), ChB, borrow)
+    else
+      A(PsnA+1:PsnA+1) = SubChar(ChA, ChB, borrow)
+    end if
+  end do 
+  PsnA = 0
+
+  if (minus==.TRUE.) then
+    A(1:1)='-'
+  else
+    A(1:1)=' '
+  end if
+  if (A=='')  A = '0' 
+  
+  call TrimLead0(A)
+  return
+  
+end subroutine sub 
+
+subroutine prod(A, B, MaxLen, Status)
+  character*(*) A, B
+  integer MaxLen, Status
+  character*SIZE TB, TA
+  integer i, PsnB, N, times, LnA, LnB, Len 
+
+  if (Status.ne.cer_Ok) return 
+  
+  LnA = Len_Trim(A) 
+  LnB = Len_Trim(B) 
+ 
+  if (LnA + LnB >= MaxLen.or.LnA==0.or.LnB==0) return 
+! multiply larger by smaller 
+  if (Compare(A, B) < 0) then 
+    TB=A; A=B 
+    Len = LnA 
+    LnA = LnB 
+    LnB = Len 
+  else
+    TB=B
+  end if	 
+  TA=A
+  Len = LnA + LnB 
+! FillChar(A^, Len, '0');
+  do i=1, Len
+    A(i:i)='0'
+  end do	  
+  
+! for each digit of multiplier, right to left, 
+! add together an appropriate number of copies 
+! of multiplicand, tack the right number of 
+
+! zeros on the end, and add the result to the 
+! running total in T2.
+  PsnB = LnB 
+  do while (PsnB > 0.and.Status==cer_Ok)
+    PsnB = PsnB - 1 
+    times = IACHAR(TB(PsnB+1:PsnB+1))-48
+	do N=1, times 
+      call addWTrail(A, TA, LnB-1-PsnB, MaxLen, Status)
+    end do
+  end do 
+
+  call TrimLead0(A) 
+  return
+end subroutine prod
+
+Subroutine divide(A, B, remainder, MaxLen, Status)
+  character*(*) A, B, remainder
+  integer MaxLen, Status
+  character*SIZE T1, T2 
+  integer psn1 , psn2, LnTl, LT1, LT2 
+ 
+  Status = cer_Overflow 
+
+  if (A == ''.or.B == '')  return 
+  Status = cer_DivideBy0 
+  if (Compare(B, '0') == 0)  return 
+  Status = cer_Ok 
+
+  if (Compare(A, B) == 0) then 
+    A = '1' 
+    remainder = '0' 
+  else if (Compare(A, B) < 0) then 
+    remainder = A 
+    A = '0' 
+  else 
+!   A is larger than B 
+    LnTl = Len_Trim(A) + 3 
+    T1 = B
+	T2 = '1' 
+    remainder = A 
+    Status = cer_Ok 
+!   While dividend is > Tl. add 0s to Tl and to T2 
+    do while (Compare(A, T1) > 0) 
+	  LT1=Len_Trim(T1)
+      T1(LT1+1:LT1+1) = '0' 
+	  LT2=Len_Trim(T2)
+      T2(LT2+1:LT2+1) = '0'       
+    end do 
+    A = '0' 
+    psn1 = Len_Trim(T1); psn2 = Len_Trim(T2) 
+
+!   get individual digits of quotient by repeated 
+!   subtraction of T1. T1 is the divisor with a 
+!   steadily decreasing number of zeros after it. 
+    do while (Compare(T1, B).ne.0.and.psn1>0.and.psn2>0) 
+      psn1=psn1-1; psn2=psn2-1 
+	  T1=T1(1:psn1); T2=T2(1:psn2)
+      do while (Compare(remainder, T1) >= 0)
+		call sub(remainder, T1, MaxLen, Status) 
+		call TrimLead0(remainder)
+        if (remainder=='')  remainder='0'
+        if (Status.ne.cer_Ok)  return 
+        call add(A, T2, MaxLen, Status) 
+        if (Status.ne.cer_Ok)  return 
+      end do 
+    end do 
+  end if
+  return	
+end subroutine divide
+
+Subroutine fact(A, MaxLen, Status)
+  character*(*) A
+  integer MaxLen, Status
+  character*SIZE TA 
+  integer LnA, i, N
+ 
+  Status = cer_Overflow 
+  if (A == '')  return 
+ 
+  LnA = Len_Trim(A) + 3 
+
+  Status = cer_Ok 
+
+  TA = A
+  A = '1' 
+
+  if (Compare(TA,'0').ne.0) then
+    do While (Compare(TA,'1').ne.0.and.Status==cer_Ok)
+      call prod(A, TA, MaxLen, Status)
+      call sub(TA, '1', LnA-1, Status)
+      call TrimLead0(TA)
+    end do
+  end if
+
+  return
+
+end subroutine fact 
+
+subroutine power(B, E, MaxLen, Status)
+  character*(*) B, E
+  integer MaxLen, Status
+  character*SIZE TH, TR, TS 
+  integer LnT, Ex, i
+
+  Status = cer_Overflow 
+  if (B == ''.or.E == '') return 
+
+  Status = cer_Ok 
+  if (B(1:1)=='0'.or.E(1:1)=='0') then
+    B='1' 
+    return 
+  end if 
+  LnT = Len_Trim(E) + 3 
+
+  TH=E; TS=B; TR='';B='1' 
+
+! calculate power by halving and squaring
+  do While (Compare(TH, '0') > 0.and.Status == cer_Ok)
+    !halve the exponent
+    call divide(TH, '2', TR, LnT-1, Status)
+    !if it was odd, multiply T3 by current value of T1
+    if (Compare(TR,'1') == 0) then
+	  call prod(B, TS, MaxLen, Status)
+    end if
+    !square T1
+    call prod(TS,TS,MaxLen,Status)
+  end do
+
+  return
+
+end subroutine power
+
+
+subroutine AddComma(WW)
+  character*(*) WW 
+  integer i, posn, MinLoc, newLen 
+  newLen = Len_Trim(WW) 
+  posn = newLen + 1
+  MinLoc = 3 
+  if (WW(1:1) == '-')  MinLoc=MinLoc+1 
+  do while (posn > MinLoc.and.newLen<SIZE) 
+    posn=posn-3
+! StrMove(WW+succ(posn), WW+posn, succ(NewLen-posn))	
+	do i=newLen+1, posn+1, -1
+	  WW(i:i)=WW(i-1:i-1)
+    end do
+	WW(posn:posn) = ',' 
+    newLen = newLen + 1; 
+  end do
+  if (WW(1:1)==',') WW(1:1)=' '
+  return
+end subroutine AddComma
+
+Logical Function AllNums(P)
+  character*(*) P 
+  integer N, LP
+  LP=Len_Trim(P) 
+  AllNums = .TRUE.
+  do N=1, LP
+    if (P(N:N) < '0'.or.P(N:N) > '9')  AllNums = .FALSE.
+  end do
+  return
+end function AllNums
+
+
+End Module PCalcFun
+
+! end of file pcalcfun.f90

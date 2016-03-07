@@ -1,0 +1,244 @@
+!**************************************************************
+!*   Solve banded linear system AX = B By LU decomposition    *
+!* ---------------------------------------------------------- *
+!* SAMPLE RUN:                                                *
+!* (Solve banded linear system AX = B, where:                 *
+!*           1 10  0  0  0             1                      *
+!*           9  2 20  0  0             1                      *
+!*       A = 0 19  3 30  0         B = 1                      *
+!*           0  0 29  4 40             1                      *
+!*           0  0  0 39  5             1  )                   *
+!*                                                            *
+!* Note: A is given as follows:                               *
+!*           0  0  0  0  0                                    *
+!*           0 10 20 30 40                                    *
+!*           1  2  3  4  5                                    *
+!*           9 19 29 39  0                                    *
+!*           0  0  0  0  0                                    *
+!*                                                            *
+!*  SOLUTION:                                                 *
+!*                                                            *
+!*  0.40664649E+00                                            *
+!*  0.59335351E-01                                            *
+!* -0.13892446E+00                                            *
+!*  0.96467233E-02                                            *
+!*  0.12475556E+00                                            *
+!*                                                            *
+!*  Error code:  0                                            *
+!*                                                            *
+!* ---------------------------------------------------------- *
+!* Ref.: From Numath Library By Tuan Dang Trong in Fortran 77 *
+!*       [BIBLI 18].                                          *
+!*                                                            *
+!*                   F90 Release 1.0 By J-P Moreau, Paris.    *
+!*                            (www.jpmoreau.fr)               *
+!**************************************************************
+PROGRAM TEST_NSBSLV
+
+parameter(N=5)
+
+real*8  A(N,N)    !banded matrix
+real*8  B(N)      !second member vector
+real*8  X(N)      !solution vector
+integer IPVT(N)   !auxiliary integer vector
+
+  A = 0.d0
+
+  MU=1            !one upper subdiagonal
+  ML=1            !one lower subdiagonal
+
+! Define banded A matrix
+  A(2,2)=10.d0; A(2,3)=20.d0; A(2,4)=30.d0; A(2,5)=40.d0
+  A(3,1)= 1.d0; A(3,2)= 2.d0; A(3,3)= 3.d0; A(3,4)= 4.d0; A(3,5)=5.d0
+  A(4,1)= 9.d0; A(4,2)=19.d0; A(4,3)=29.d0; A(4,4)=39.d0
+
+! Example #1 (B(1)..B(5) = ONE).
+  B = 1.d0
+
+! Example #2 (results are X1..X5 = ONE). 
+! B(1)=11.d0; B(2)=31.d0; B(3)=52.d0; B(4)=73.d0; B(5)=44.d0
+
+! call LU factorization  
+  CALL NSBFAC(A,N,N,ML,MU,IPVT,IND)
+! call appropriate solver
+  CALL NSBSLV(A,N,N,ML,MU,IPVT,B,X)
+
+! print solution and error code (must be zero).
+  print *,' '
+  print *,' SOLUTION:'
+  print *,' '
+  write(*,10) (X(I),I=1,N)
+  print *,' '
+  write(*,20)  IND
+  print *,' '
+  
+10 format(E16.8)
+20 format('  Error code: ',I2)
+
+END
+
+
+      SUBROUTINE NSBFAC(B,LDB,N,ML,MU,IPVT,IND)
+!-------------------------------------------------------------------
+!     LU factorization of a band matrix (non symmetric) with partial
+!     pivoting.
+!     INPUTS:
+!     B  : banded matrix. The correspondance between full matrix
+!     A(i,j) and band matrix B(k,l) is given by following sequence:
+!     m=ml+mu+1
+!     do j=1,n
+!       i1=max(1,j-mu)
+!       i2=min(n,j+ml)
+!       do i=i1,i2
+!         k=i-j+m
+!         b(k,j)=a(i,j)
+!       enddo
+!     enddo
+!     LDB : 1st dimension of B in calling program (ldb.ge.2ml+mu+1)
+!     N   : size of B                             -----------------
+!     ML  : number of lower diagonals
+!     MU  : number of upper diagonals
+!     OUTPUTS:
+!     B   : banded matrix storing the LU elements, the ML first lines
+!           of which are used for pivoting.
+!     IPVT: integer vector of size N storing the pivoting indices.
+!     IND : flag = 0,  B is non singular
+!                = k,  B may be singular
+!-------------------------------------------------------------------
+      REAL*8 B(LDB,N),T
+      INTEGER IPVT(*)
+      M=ML+MU+1
+      IND=0
+
+      J0=MU+2
+      J1=MIN(N,M)-1
+      IF(J1.GE.J0) THEN
+        DO JZ=J0,J1
+          I0=M+1-JZ
+          DO I=I0,ML
+            B(I,JZ)=0.D0
+          ENDDO
+        ENDDO
+      ENDIF
+      JZ=J1
+      JU=0
+
+      NM1=N-1
+      IF(NM1.GE.1) THEN
+        DO K=1,NM1
+          KP1=K+1
+          JZ=JZ+1
+          IF(JZ.LE.N.AND.ML.GE.1) THEN
+            DO I=1,ML
+              B(I,JZ)=0.D0
+            ENDDO
+          ENDIF
+
+          LM=MIN(ML,N-K)
+          L=IAMAX(B(M,K),LM+1)+M-1
+          IPVT(K)=L+K-M
+          IF(B(L,K).EQ.0.D0) GO TO 10
+          IF(L.NE.M) THEN
+            T=B(L,K)
+            B(L,K)=B(M,K)
+            B(M,K)=T
+          ENDIF
+          T=-1.D0/B(M,K)
+          CALL SCALE(LM,T,B(M+1,K))
+
+          JU=MIN(MAX(JU,MU+IPVT(K)),N)
+          MM=M
+          IF(JU.GE.KP1) THEN
+            DO J=KP1,JU
+              L=L-1
+              MM=MM-1
+              T=B(L,J)
+              IF(L.NE.MM) THEN
+                B(L,J)=B(MM,J)
+                B(MM,J)=T
+              ENDIF
+              CALL DAXPY(LM,T,B(M+1,K),B(MM+1,J))
+            ENDDO
+          ENDIF
+          GO TO 20
+   10     ind=k
+   20     CONTINUE
+        ENDDO
+      ENDIF
+      IPVT(N)=N
+      IF(B(M,N).EQ.0.D0) IND=N
+      END
+
+      SUBROUTINE DAXPY(N,A,X,Y)
+      REAL*8 X(*),Y(*),A
+      DO I=1,N
+        Y(I)=Y(I)+A*X(I)
+      ENDDO
+      END
+
+      FUNCTION IAMAX(A,N)
+      REAL*8 A(*),T
+      T=0.d0
+	  DO I=1,N
+      IF(ABS(A(I)).GT.T) THEN
+        t=abs(A(I))
+        IAMAX=I
+      ENDIF
+      enddo
+      END
+
+      SUBROUTINE SCALE(N,T,A)
+      REAL*8 A(*),T
+      DO I=1,N
+        A(I)=T*A(I)
+      ENDDO
+      END
+
+      SUBROUTINE NSBSLV(A,LDA,N,ML,MU,IPVT,b,x)
+!--------------------------------------------------------------------
+!     Solve banded linear system Ax = b
+!     INPUTS:
+!     A   : banded matrix as output of LU factorization by NSBFAC
+!           (see storing mode in NSBFAC subroutine).
+!     LDA : 1st dimension of A in calling program (lda.ge.2ml+mu+1)
+!     N   : order of A                             -----------------
+!     ML  : number of lower diagonals
+!     MU  : number of upper diagonals
+!     IPVT: integer vector of size N storing the pivoting indices
+!           as output of NSBFAC.
+!     b   : second member vector
+!     OUTPUT:
+!     x   : solution vector
+!---------------------------------------------------------------------
+      REAL*8 A(LDA,*),B(*),X(*),T
+      INTEGER IPVT(*)
+      DO I=1,N
+        X(I)=B(I)
+      ENDDO
+      M=ML+MU+1
+      NM1=N-1
+!     solve L*y = b
+      IF(ML.NE.0.AND.NM1.GE.1) THEN
+        DO K=1,NM1
+          LM=MIN(ML,N-K)
+          L=IPVT(K)
+          T=X(L)
+          IF(L.NE.K) THEN
+            X(L)=X(K)
+            X(K)=T
+          ENDIF
+          CALL DAXPY(LM,T,A(M+1,K),X(K+1))
+        ENDDO
+      ENDIF
+!     solve U*y = x
+      DO K=N,1,-1
+        X(K)=X(K)/A(M,K)
+        LM=MIN(K,M)-1
+        LA=M-LM
+        LB=K-LM
+        T=-X(K)
+        CALL DAXPY(LM,T,A(LA,K),X(LB))
+      ENDDO
+      END
+
+! end of file nsbslv.f90

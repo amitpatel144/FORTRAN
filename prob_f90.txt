@@ -1,0 +1,124 @@
+!*************************************************************
+!* Evaluate probabilities by parsing a string expression     *
+!*        and performing the implied calculations            *
+!* --------------------------------------------------------- *
+!* SAMPLE RUN:                                               *
+!*                                                           *
+!* Type expression to be evaluated (no syntax checking).     *
+!* Example: '1-c(10,0,.2)-c(10,1,.2)'                        *
+!*                                                           *
+!* 'c(10,0,.1)+c(10,1,.1)+c(10,2,.1)'                        *
+!*                                                           *
+!* C(10,0) =        1                                        *
+!* C(10,1) =       10                                        *
+!* C(10,2) =       45                                        *
+!* probability =       0.9298                                *
+!*                                                           *
+!* --------------------------------------------------------- *
+!* Ref.: "Problem Solving with Fortran 90 By David R.Brooks, *
+!*        Springer-Verlag New York, 1997".                   *
+!*************************************************************
+!Explanations:
+!------------
+!   A manufacturer's experience has shown that 10% of all integrated
+! circuits (ICs) will be defective. Because of this high failure rate,
+! a quality control engineer monitors the manufacturing process by
+! testing random samples every day. What is the probability that:
+!   (a) exactly two ICs in a sample of 10 will be defective?
+!   (b) at least two will be defective?
+!   (c) no more than two will be defective?
+! Answers:
+! (a) the probability that a particular sample of 10 will contain
+!                                     2     8
+! exactly two defective ICs is:  (0.1) (0.9) = 0.004305. However,
+! there are C(10,2)=45 possible combinations of two defective and eight
+! good ICs. From probability theory, the number of combinations of n
+! things taken k at a time is:  C(n,k) = n!/[k!(n-k)!]  where
+! ! indicates the factorial function (n! = 1 x 2 x3 x ....n). Therefore,
+! the probability that a sample of 10 will contain exactly two defects
+! is:                          2     8
+!          P(=2) = C(10,2)(0.1) (0.9)  = 45 x 0.004305 = 0.1937 
+!
+! (b) the probability of finding at least two defective ICs is equal to
+!  1 minus the probability of 0 defective IC minus the probability of
+!  1 defective IC:              0     10              1     9
+!      P(>=2) = 1 - C(10,0)(0.1) (0.9)  - C(10,0)(0.1) (0.9) = 0.2639
+!
+! (Reemeber that 0! = 1 by definition.)
+!
+! (c) the probability of finding no more than two defective ICs is:
+!                           0     10              1     9
+!      P(<=2) = C(10,0)(0.1) (0.9)  + C(10,1)(0.1) (0.9)
+!                             2     8
+!               + C(10,2)(0.1) (0.9) = 0.9298   
+!
+! For example, for part (b) of the problem, the user will type the
+! string:  '1-c(10,0,.1)-c(10,1,.1)'.
+!-----------------------------------------------------------------------
+Program Prob
+  Implicit None
+  Character*80 a   !string to be calculated
+  Integer i,n,k,length,sign,left, C
+  Real probability,prob_a
+
+  print *,' '
+  print *,' Type expression to be evaluated (no syntax checking).'
+  print *,' Example: ''1-c(10,0,.2)-c(10,1,.2)'''
+  print *,' '
+  read (*,*) a 
+
+  print *,' '
+
+  length = LEN_TRIM(a)
+  probability = 0.
+  if (a(1:1)=='1') probability = 1.
+  sign=1  !a leading + sign is optional
+  Do i=1, length
+    if (a(i:i)=='+') sign=1
+    if (a(i:i)=='-') sign=-1
+    if (a(i:i)=='(') left=i
+    if (a(i:i)==')') then
+      Read(a(left+1:i-1),*) n, k, prob_a
+	  probability=probability + &
+	    sign*C(n,k)*prob_a**k*(1.-prob_a)**(n-k)
+      write(*,20)  n, k, C(n,k)
+    end if
+  End Do
+  write(*,30)  probability	  
+
+10 format(a80)
+20 format(1x,' C(',i2,',',i2,') = ',i5)
+30 format(1x,' probability = ',f10.4/)
+
+   stop
+
+End
+
+Integer Function Fact(x)
+! Calculate x! as long as x!  not too large for
+! integer type.
+  Implicit None
+  Integer, Intent(IN) :: x
+  Integer prod, i
+  
+  prod = 1
+  Do i=2, x
+    prod = prod * i
+  End Do
+  
+  Fact = prod
+  Return
+End !Fact
+
+Integer Function C(n,k)
+! Calculate combinations of n things taken k at a time
+  Implicit None
+  Integer, Intent(IN) :: n, k
+  Integer Fact
+
+  C = Fact(n)/Fact(k)/Fact(n-k)
+
+  Return
+End !C
+
+!end of file prob.f90

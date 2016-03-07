@@ -1,0 +1,162 @@
+!*******************************************************
+!*       Program to demonstrate two dimensional        *
+!*               Mueller's method                      *
+!* --------------------------------------------------- *
+!*  Reference: BASIC Scientific Subroutines, Vol. II   *
+!*  By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].  *
+!*                                                     *
+!*              F90 version by J-P Moreau, Paris.      *
+!*                      (www.jpmoreau.fr)              *
+!* --------------------------------------------------- *
+!* Example: Find a real root of f(x,y)=(x+1)^5*(y-1)^5 *
+!*                                                     *
+!* Sample run:                                         *
+!*                                                     *
+!* Input the initial guesses and their bonds:          *
+!*    X0 = 0                                           *
+!*    Bond on X0 = 3                                   *
+!*    Y0 = 0                                           *
+!*    Bond on Y0 = 3                                   *
+!* Error criterion: 1e-6                               *
+!* Maximum number of iterations: 100                   *
+!*                                                     *
+!* The calculated zero is X= -0.999998  Y= 0.999998    *
+!* The associated W value is W = 0.000000              *
+!* The number of steps was: 43                         *
+!*                                                     *
+!*******************************************************
+PROGRAM DEMO_MUELLER2D
+
+! global variables
+integer k,n
+real*8  b1,b2,e,x,y,x0,y0,W
+
+  print *,' '
+  print *,'Input the initial guess:'
+  print *,' '
+  write(*,"('    X0 = ')",advance='no')
+  read *, x0
+  write(*,"('    Bond on X0 = ')",advance='no')
+  read *, b1
+  print *,' '
+  write(*,"('    Y0 = ')",advance='no')
+  read *, y0
+  write(*,"('    Bond on Y0 = ')",advance='no')
+  read *, b2
+  print *,' '
+  write(*,"(' Error criterion: ')",advance='no') 
+  read *, e
+  write(*,"(' Maximum number of iterations: ')",advance='no')
+  read *, n
+
+  call Mueller2D(x0,y0,b1,b2,e,n,x,y,k)    ! Call 2D Mueller's routine
+
+  write(*,50) x, y
+  write(*,60) W(x,y)
+  write(*,70) k
+
+  stop
+
+50 format(//' The calculated zero is (X,Y) = ',F9.6,' ',F9.6)
+60 format(' The associated Y value is Y = ',F9.6)
+70 format(' The number of steps was: ',i4//)
+
+end
+
+!**********************************************
+!  Function subroutine                          
+real*8 Function W(x, y)
+  real*8 temp,x,y
+  temp = (x+1)*(x+1)*(x+1)*(x+1)*(x+1)
+  W = temp * (y-1)*(y-1)*(y-1)*(y-1)*(y-1)
+end
+!**********************************************
+
+  ! Utility function used by Mueller2D()
+  Subroutine Utility(a1,b,c1,d1,e1,e2,e3,xl,xl1)
+    real*8 a1,b,c1,d1,e1,e2,e3,xl,xl1 
+    a1=xl1*xl1*e1-d1*d1*e2+(xl1+d1)*e3
+    c1=xl1*(xl1*e1-d1*e2+e3)
+    b=a1*a1-4.d0*d1*c1*e3
+    ! Test for complex root, meaning the parabola is inverted
+    if (b<0) b=0
+    ! Choose closest root
+    if (a1<0) a1=a1-dsqrt(b)
+    if (a1>0) a1=a1+dsqrt(b)
+    ! Guard against a divide by zero
+    if (dabs(a1)+dabs(b).eq.0) a1=4.d0*d1*e3
+    ! Calculate a relative distance of next gues
+    ! and guard against a divide by zero
+    if (a1.eq.0) a1=1.d-7
+    xl=-2.d0*d1*e3/a1
+    return
+  end
+
+!*************************************************
+!*  Two Dimensional Mueller's method subroutine  *
+!* --------------------------------------------- *
+!* This routine iteratively seeks the root of a  *
+!* function W(x,y) by fitting a parabola to      *
+!* three points and calculating the nearest root *
+!* as described in Becket and Hurt, numerical    *
+!* calculations and algorithms.                  *
+!* INPUTS:                                       *
+!*   x0, y0 - The initial guess                  *
+!*   b1, b2 - A bound on the error in this guess *
+!*   e - The convergence criteria                *
+!*   n - The maximum number of iterations        *
+!* OUTPUTS:                                      *
+!*   x,y - The value of the root found           *
+!*   k - The number of iterations performed,     *
+!*************************************************
+Subroutine Mueller2D(x0,y0,b1,b2,e,n,x,y,k) 
+  !Label: 100
+  integer k, n
+  real*8  b1,b2,e,x,y,x0,y0,W
+  real*8  a1,b,c1,d1,e1,e2,e3,xl,xl1
+  real*8  x1,x2,x3,y1,y2,y3
+  ! Set up the three evaluation points
+  k=1
+100 x3=x0; x1=x3-b1; x2=x3+b1
+  ! Calculate Mueller parameters and guard against divide by zero
+  if (x2-x1.eq.0) x2=x2*1.0000001d0
+  if (x2-x1.eq.0) x2=x2+0.0000001d0
+  xl1=(x3-x2)/(x2-x1)
+  d1=(x3-x1)/(x2-x1)
+  ! Get values of function
+  e1=W(x1,y0)
+  e2=W(x2,y0)
+  e3=W(x3,y0)
+  call Utility(a1,b,c1,d1,e1,e2,e3,xl,xl1)
+  ! Calculate new x estimate
+  b1=xl*(x3-x2)
+  x=x3+b1
+  ! Test for convergence
+  if (dabs(b1)+dabs(b2)<e) return
+  x0=x
+  ! Repeat for the y direction
+  y3=y0; y1=y3-b2; y2=y3+b2
+  ! Calculate Mueller parameters and guard against divide by zero
+  if (y2-y1.eq.0) y2=y2*1.0000001d0
+  if (y2-y1.eq.0) y2=y2+0.0000001d0
+  xl1=(y3-y2)/(y2-y1)
+  d1=(y3-y1)/(y2-y1)
+  ! Get values of function
+  e1=W(x0,y1)
+  e2=W(x0,y2)
+  e3=W(x0,y3)
+  call Utility(a1,b,c1,d1,e1,e2,e3,xl,xl1)
+  ! Calculate new y estimate
+  b2=xl*(y3-y2)
+  y=y3+b2
+  ! Test for convergence
+  if (dabs(b1)+dabs(b2)<e) return
+  ! Test for number of iterations
+  if (k>=n) return
+  y0=y; k=k+1
+  ! Start another pass
+  goto 100
+end !of subroutine Mueller2D()
+
+
+! End of file Mueller2.f90

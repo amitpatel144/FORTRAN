@@ -1,0 +1,158 @@
+!*************************************************************
+!* Calculate the acceleration shock spectrum of a speed V(t) *
+!* --------------------------------------------------------- *
+!* SAMPLE RUN:                                               *
+!* Input speed: in file speed.dat                            *
+!* Output shock spectrum in file shocksp1.txt                *
+!*                                                           *
+!*                         F90 Version By J-P Moreau, Paris  *
+!*                              (in simple precision).       *
+!*                                (www.jpmoreau.fr)          *
+!*************************************************************
+                                                                                
+      PARAMETER(NMAX=2048,NFREQ=2048)
+      DIMENSION ACC(NMAX),VIT(NMAX)          
+      DIMENSION S(NFREQ)                                                          
+
+      OPEN(UNIT=2,FILE='shocksp1.txt',STATUS='UNKNOWN')	                              
+      OPEN(UNIT=1,FILE='speed.dat',STATUS='OLD')
+
+      WRITE(2,*) ' '
+	  WRITE(2,*) ' Acceleration Shock Spectrum of a speed(T) at Basis'
+      WRITE(2,*) ' '
+
+!  oscillator damping  
+      DZETA=0.05                                               
+      WRITE(2,14) DZETA                                                         
+   14 FORMAT(7X,'DAMPING OF OSCILLATOR: ',F4.2/)                       
+                                                                                
+!  Number of frequencies for the shock spectrum (maxi NFREQ)                       
+      NSPEC=991
+	  IF(NSPEC>NFREQ/2) NSPEC=NFREQ/2
+      WRITE(2,18) NSPEC                                                         
+   18 FORMAT(7X,'NUMBER OF FREQUENCIES FOR SPECTRUM: ',I4/)                       
+                                                                                
+!  FREQUENCIES MINI & MAXI OF SPECTRUM                                   
+      FINF=10.0; FSUP=1000.0                                                              
+      WRITE(2,20) FINF                                                          
+   20 FORMAT(7X,'BEGIN FREQUENCY OF SPECTRUM: ',F6.1/)                                      
+      WRITE(2,21) FSUP                                                          
+   21 FORMAT(7X,'END FREQUENCY OF SPECTRUM: ',F6.1/)                                      
+                                                                                
+! READ MEASUREMENTS                                                          
+      CALL READATA(VIT,TS,NDATA)
+      CLOSE(1)                                                  
+      FMAX=0.5/TS                                                               
+      WRITE(2,110) FMAX 
+  110 FORMAT(7X,'NYQUIST FREQUENCY: ',F6.1/)
+                                          
+! Compute shock spectrum                                              
+      CALL SPEC(VIT,DZETA,FINF,FSUP,NDATA,TS,NSPEC,S)   
+   
+      DF=(FSUP-FINF)/FLOAT(NSPEC-1)                                                
+ 
+! Print shock spectrum to output file      
+	  WRITE(2,*) ' '
+      WRITE(2,*) ' '
+      WRITE(2,*) ' THE ACCELERATION SHOCK SPECTRUM  IS COMPUTED FROM'
+      WRITE(2,*) ' THE FILTERED ACCELERATION IF IT EXISTS, ELSE FROM'
+      WRITE(2,*) ' THE UNFILTERED ACCELERATION.'
+      WRITE(2,*) ' '
+      WRITE(2,*) ' FREQUENCY STEP OF SHOCK SPECTRUM:'
+      WRITE(2,255) DF                                                          
+  255 FORMAT(/'   DF = ',F6.2)                                                 
+      WRITE(2,260)                                                              
+  260 FORMAT(/'   FREQUENCY HZ  SPECTRUM +     SPECTRUM -  IN M/S2')              
+      WRITE(2,261)                                                              
+  261 FORMAT('   ------------  -----------    -----------')                         
+      DO 275 I=1,NSPEC                                                          
+        FR=FINF+(I-1)*DF                                                          
+  275 WRITE(2,305) FR,S(2*I-1),S(2*I)
+      WRITE(2,310)
+      CLOSE(2)
+	                                             
+  300 FORMAT(2E13.5,'   ',E13.5)                                                            
+  305 FORMAT(' ',E13.5,' ',E13.5,'  ',E13.5)
+  310 FORMAT(/' End of file shocksp1.txt.'/)
+      PRINT *,' '
+      STOP '  Results in file shocksp1.txt...'
+      END                                                                       
+                                                                                
+      SUBROUTINE READATA(A,T,N)                                                 
+      DIMENSION A(N)                                                         
+      READ (1,*) N                                                             
+      WRITE(2,10) N                                                             
+   10 FORMAT(/7X,I4,' POINTS READ.')                                         
+      READ (1,*) T                                                              
+      WRITE(2,16) T                                                             
+   16 FORMAT(/7X,'SAMPLING DURATION: ',F17.10,' S'/)                      
+      DO I=1,N                                                               
+        READ(1,*) TEMP,A(I)                                                          
+      ENDDO  
+      RETURN                                                                    
+      END                                                                       
+                                                                                
+      SUBROUTINE SPEC(VIT,DZETA,FMIN,FMAX,NDATA,T,NFREQ,S)                      
+      PARAMETER(NMAX=2048)
+      DIMENSION ACC(NMAX),VIT(NDATA),S(NFREQ)                                      
+      N=NDATA                                                                   
+      DELTAF=(FMAX-FMIN)/DFLOAT(NFREQ-1)                                        
+!  The algorithm fails if FMIN=0      
+      IF(FMIN.LT.DELTAF) FMIN=DELTAF
+      DO I=1,NFREQ                                                           
+        F=FMIN+(I-1)*DELTAF                                                       
+        CALL OSCIL(F,VIT,ACC,T,DZETA,N)                                           
+        CALL EXTREM(ACC,YMIN,YMAX,N)                                              
+        S(2*I-1)=YMAX                                                             
+        S(2*I)=YMIN                                                               
+      ENDDO
+      RETURN                                                                    
+      END                                                                       
+                                                                                
+      SUBROUTINE OSCIL(FREQU,VIT,ACC,T,DZETA,NDATA)                             
+      DIMENSION ACC(NDATA),VIT(NDATA)                                           
+      PI=4.D+00*ATAN(1.D+00)                                                   
+      OMEGA=2.0*PI*FREQU                                                     
+      OMEGA2=OMEGA*OMEGA                                                        
+      DELTA=SQRT(1.0-DZETA*DZETA)                                           
+      EXPA=EXP(-OMEGA*DZETA*T)                                                 
+      GOMEGA=OMEGA*DELTA                                                        
+      ARG=GOMEGA*T                                                              
+      SINARG=SIN(ARG)                                                          
+      COSARG=COS(ARG)                                                          
+      QSI=DZETA/DELTA                                                           
+      Q0=(COSARG-QSI*SINARG)*EXPA                                               
+      Q1=OMEGA2*SINARG/GOMEGA*EXPA                                              
+      Q2=(1.D+00+(QSI*SINARG-COSARG)*EXPA)/T                                    
+      R1=SINARG/GOMEGA*EXPA                                                     
+      R0=COSARG*EXPA+DZETA*OMEGA*R1                                             
+      R2=(1.D+00-DZETA*OMEGA*T)*R1/T-COSARG*EXPA                                
+      R3=1.D+00-R1/T                                                            
+      XPNP1=VIT(1)                                                              
+      YPPNP1=0.D+00                                                             
+      YPNP1=0.D+00                                                              
+      ACC(1)=Q2*XPNP1                                                           
+                                                                                
+      DO I=2,NDATA                                                           
+        YPN=YPNP1                                                                 
+        YPPN=YPPNP1                                                               
+        XPN=XPNP1                                                                 
+        XPNP1=VIT(I)                                                              
+        YPPNP1=Q0*YPPN+Q1*(XPN-YPN)+Q2*(XPNP1-XPN)                                
+        ACC(I)=YPPNP1                                                             
+        YPNP1=R0*YPN+R1*YPPN+R2*XPN+R3*XPNP1                                      
+      ENDDO                                                                          
+      RETURN                                                                    
+      END                                                                       
+                                                                                
+      SUBROUTINE EXTREM(C,CMIN,CMAX,NDATA)                                      
+      DIMENSION C(NDATA)                                                        
+      CMIN=0.0                                                                   
+      CMAX=0.0                                                                   
+      DO 10 I=1,NDATA                                                           
+      IF (C(I).GT.CMAX) CMAX=C(I)                                               
+   10 IF (C(I).LT.CMIN) CMIN=C(I)                                               
+      RETURN                                                                    
+      END                                                                       
+                                                                                
+!End of file shocksp1.f90
