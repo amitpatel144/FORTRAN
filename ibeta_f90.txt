@@ -1,0 +1,118 @@
+!********************************************************
+!*      Calculate Incomplete Beta Function Ix(a,b)      *
+!* ---------------------------------------------------- *
+!* SAMPLE RUN:                                          *
+!*                                                      *
+!*  Incomplete Beta Function Ix(a,b)                    *
+!*                                                      *
+!*  A =   0.500000000000000                             *
+!*  B =    5.00000000000000                             *
+!*  x =   0.200000000000000                             *
+!*                                                      *
+!*  Y =   0.855072399728097                             *
+!*                                                      *
+!* ---------------------------------------------------- *
+!* Reference:                                           * 
+!* "Numerical Recipes, By W.H. Press, B.P. Flannery,    *
+!*  S.A. Teukolsky and T. Vetterling, Cambridge         *
+!*  University Press, 1986" [BIBLI 08].                 *
+!*                                                      *
+!*                    F90 Release By J-P Moreau, Paris. *
+!*                           (www.jpmoreau.fr)          *
+!********************************************************
+PROGRAM TEST_BETAI
+
+  real*8 a,b,x,y, BETAI
+
+  a=0.5d0; b=5.d0; x=2.d-01
+
+  y = BETAI(a,b,x)
+
+  print *,' '
+  print *,' Incomplete Beta Function Ix(A,B)'
+  print *,' '
+  print *,' A =', a
+  print *,' B =', b
+  print *,' x =', x
+  print *,' '
+  print *,' Y =', y
+  print *,' '
+
+END
+
+
+  Real*8 Function BETAI(A,B,X)
+! returns the incompleteBeta function Ix(a,b)
+  real*8 A,B,X, BT, BETACF, GAMMLN
+  IF(X.LT.0.d0.OR.X.GT.1.d0) Then
+    print *,' BETAI: Bad argument X (must be 0<=X<=1).'
+	RETURN
+  END IF
+  IF(X.EQ.0.d0.OR.X.EQ.1.d0) Then
+    BT=0.d0
+  ELSE
+    BT=DEXP(GAMMLN(A+B)-GAMMLN(A)-GAMMLN(B)+A*DLOG(X)+B*DLOG(1.d0-X))
+  END IF
+  IF(X.LT.(A+1.d0)/(A+B+2.d0)) THEN
+    BETAI=BT*BETACF(A,B,X)/A
+	RETURN
+  ELSE  
+	BETAI=1.d0-BT*BETACF(B,A,1.d0-X)/B
+	RETURN
+  END IF
+  END
+
+  Real*8 Function BETACF(A,B,X)
+! continued fraction for incomplete Beta function, used by BETAI
+  integer, parameter :: ITMAX=100
+  real*8, parameter :: EPS=3.d-7
+  real*8 A,B,X, AM,BM,AZ,QAB,QAP,QAM,BZ,EM,TEM,D,AP,BP,APP,BPP
+  real*8 AOLD
+  AM=1.d0
+  BM=1.d0
+  AZ=1.d0
+  QAB=A+B
+  QAP=A+1.d0
+  QAM=A-1.d0
+  BZ=1.d0-QAB*X/QAP
+  DO M=1, ITMAX
+    EM=M
+	TEM=EM+EM
+    D=EM*(B-M)*X/((QAM+TEM)*(A+TEM))
+    AP=AZ+D*AM
+	BP=BZ+D*BM
+    D=-(A+EM)*(QAB+EM)*X/((A+TEM)*(QAP+TEM))
+	APP=AP+D*AZ
+	BPP=BP+D*BZ
+    AOLD=AZ
+    AM=AP/BPP
+	BM=BP/BPP
+	AZ=APP/BPP
+	BZ=1.d0
+	IF(DABS(AZ-AOLD).LT.EPS*DABS(AZ)) GOTO 1
+  END DO
+  print *,' BETACF: A or B too big, or ITMAX too small.'
+  RETURN
+1 BETACF=AZ
+  RETURN
+  END
+  
+  Real*8 Function GAMMLN(XX)
+! returns the value Ln(Gamma(XX) for XX>0.
+  real*8 XX,COF(6),STP,HALF,ONE,FPF,X,TMP,SER
+  DATA COF,STP /76.18009173d0,-86.50532033d0,24.01409822d0, &
+       -1.231739516d0,.120858003d-2,-.536382d-5,2.50662827465d0/
+  DATA HALF,ONE,FPF /0.5d0,1.d0,5.5d0/
+  X=XX-ONE
+  TMP=X+FPF
+  TMP=(X+HALF)*DLOG(TMP)-TMP
+  SER=ONE
+  DO J=1, 6
+    X=X+ONE
+	SER=SER+COF(J)/X
+  END DO
+  GAMMLN=TMP+DLOG(STP*SER)
+  RETURN
+  END
+
+! end of file ibeta.f90

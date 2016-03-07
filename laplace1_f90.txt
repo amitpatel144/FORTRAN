@@ -1,0 +1,166 @@
+!*********************************************************************************************************
+!*                Solve Laplace Equation by relaxation Method: d2T/dx2 + d2T/dy2 = 0  (2)                *
+!* ----------------------------------------------------------------------------------------------------- *
+!* Example #2: Determine the temperatures T(x,y) in a domain [x,y] made of two concentrical rectangles   *
+!*             (see sketch below) with following limit conditions:                                       *
+!*             1) T = 0 for sides of inner rectangle.                                                    *
+!*             2) T = 1 for sides of outer rectangle.                                                    *
+!*             Main parameters:                                                                          *
+!*             IM,JM: length, width of outer rectangle.                                                  *
+!*             IB-IA,JB-JA: length, width of inner rectangle.                                            *
+!*             Number of subdivisions 16 in  ox and 8 in Oy.                                             *
+!*             integration steps dx=IM/16, dy = JM/8.                                                    *
+!*             weight coefficient w = 1.45                                                               *
+!*             Maximum residual error ER = 0.05                                                          *
+!*             Maximum number of iterations IT = 40                                                      *
+!*             (See file laplace.pas for example #1).                                                    *
+!* ----------------------------------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                                           *
+!*                                                                                                       *
+!* Output file laplace.lst contains:                                                                     *
+!*                                                                                                       *
+!* Niter  Max. Residual     W                                                                            *
+!*  10    0.0084           1.45                                                                          *
+!* Temperature                                                                                           *
+!* 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 *
+!*                                                                                                       *
+!* 1.000 0.965 0.925 0.871 0.796 0.688 0.551 0.514 0.508 0.515 0.551 0.688 0.796 0.871 0.924 0.965 1.000 *
+!*                                                                                                       *
+!* 1.000 0.936 0.862 0.764 0.624 0.404 0.000 0.000 0.000 0.000 0.000 0.405 0.625 0.765 0.862 0.936 1.000 *
+!*                                                                                                       *
+!* 1.000 0.917 0.822 0.700 0.533 0.304 0.000                   0.000 0.305 0.535 0.700 0.822 0.917 1.000 *
+!*                                                                                                       *
+!* 1.000 0.910 0.809 0.679 0.506 0.278 0.000                   0.000 0.280 0.508 0.679 0.808 0.910 1.000 *
+!*                                                                                                       *
+!* 1.000 0.919 0.823 0.700 0.534 0.304 0.000                   0.000 0.303 0.535 0.701 0.822 0.917 1.000 *
+!*                                                                                                       *
+!* 1.000 0.940 0.865 0.766 0.625 0.404 0.000 0.000 0.000 0.000 0.000 0.412 0.629 0.767 0.863 0.937 1.000 *
+!*                                                                                                       *
+!* 1.000 0.965 0.928 0.872 0.797 0.688 0.551 0.514 0.507 0.514 0.550 0.688 0.803 0.874 0.926 0.966 1.000 *
+!*                                                                                                       *
+!* 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 *
+!*                                                                                                       *
+!* ----------------------------------------------------------------------------------------------------- *
+!* REFERENCE:  "Méthode de calcul numérique- Tome 2 - Programmes en Basic et en Pascal By Claude         *
+!*              Nowakowski, Edition du P.S.I., 1984" [BIBLI 04].                                         *
+!*                                                                                                       *
+!*                                                                  F90 Release By J-P Moreau, Paris.    *
+!*                                                                          (www.jpmoreau.fr)            *
+!*********************************************************************************************************
+PROGRAM Laplace1
+   
+real*8 T(0:16,0:8)
+
+                    !   Y
+      IT=40         ! JM ---------------------------
+      ER=0.05d0     !   |                           |      
+      OM=1.45d0     ! JB|........--------           |
+      IM=16         !   |        | T=0  |           |
+      JM=8          !   |        |      |           |T=1
+      IA=6          ! JA|........--------           |            
+      IB=10         !   |        .     .            |
+      JA=2          !   |        .     .            |
+      JB=6          !    --------------------------- X
+                    !   0       IA    IB           IM
+
+    
+	open(unit=1,file='laplace.lst',status='unknown')
+
+    !Fix limit conditions
+    do i=0, IM
+      do j=0, JM
+        T(i,j)=0.d0
+      end do
+    end do
+    do i=0, IM
+      T(i,0)=1.d0
+      T(i,JM)=1.d0
+    end do
+    do j=0, JM
+      T(0,j)=1.d0
+      T(IM,j)=1.d0
+    end do
+    l=0
+    !main calculation loop
+	rm=1.d0
+    do while(rm>=ER.and.l<IT)
+      rm=0.d0; l=l+1
+      do i=1, IM-1
+        do j=1, JA-1
+          call Schema(i,j,T,r,rm,OM)
+        end do
+      end do
+      do j=JA, JB
+        do i=1, IA-1
+		  call Schema(i,j,T,r,rm,OM)
+        end do
+        do i=IB+1, IM-1
+		  call Schema(i,j,T,r,rm,OM)
+        end do
+      end do
+      do i=1, IM-1
+        do j=JB+1, JM-1
+          call Schema(i,j,T,r,rm,OM)
+        end do
+      end do
+    end do
+    !print results
+    If (l < IT) then
+      write(1,*) ' '
+      write(1,*) ' Niter  Max. Residual     W'
+      write(1,10)  l, rm, OM
+      write(1,*) ' Temperature'
+      do J=JM, JB, -1
+        do i=0, IM 
+		  call Print(i,j,T)
+        end do 
+        write(1,*) ' '
+      end do
+      do j=JB-1, JA+1, -1
+        do i=0, IA 
+		  call Print(i,j,T)
+        end do
+        do i=IA+1, IB-1 
+		  write(1,12,advance='no') '      '
+        end do
+        do i=IB, IM 
+		  call Print(i,j,T)
+        end do
+        write(1,*) ' '
+      end do
+      do J=JA, 0, -1
+        do i=0, IM 
+		  call Print(i,j,T)
+        end do
+        write(1,*) ' '
+      end do
+    else
+      write(1,15)  rm
+    end if
+    close(unit=1)
+    print *,' ';
+    print *,' See results in file laplace.lst...'
+	print *,' '
+
+10  format(' ',I4,'    ',F6.4,'         ',F6.2)
+12  format(A6)
+15  format(' No convergence, R max. =',F6.4)
+
+    END
+
+    !calculate residual error at (i,j)
+    Subroutine  Schema(i,j,T,r,rm,OM)
+      real*8 T(0:16,0:8)
+      r=T(i+1,j)+T(i-1,j)+T(i,j+1)+T(i,j-1)-4.d0*T(i,j)
+      T(i,j)=T(i,j)+0.25d0*OM*r
+      if (ABS(r) > rm)  rm=r
+    End
+
+    !print current value of temperature array T
+    Subroutine Print(i,j,T)
+	  real*8 T(0:16,0:8)
+      write(1,20,advance='no') T(i,j)
+20  format(F6.3)
+    End
+
+!end of file laplace1.f90

@@ -1,0 +1,145 @@
+!**************************************************************************
+!*  Solve a boundary value problem for a second order DE of the form:     *
+!*  y" - p(x)*y = f(x) with conditions: y(x0)=a and y(x1)=b (x0<=x<=x1)   *
+!*  using a Runge-Kutta integration method.                               *
+!* ---------------------------------------------------------------------- *
+!* Explanations: if y0(x) is a particular solution of y"-p(x)y = f(x) (1) *
+!* and y1(x), y2(x) two lineary independant solutions of y"-p(x)y = 0 (2) *
+!* (right hand side removed), then the general solution of (1) has the    *
+!* form:  y(x) = y0(x) + c1*y1(x) + c2*y2(x), the constants c1, c2 are    *
+!* obtained from boundary conditions.                                     *
+!* A more efficient way to proceed is: 1) calculate a particular solution *
+!* y1(x) of (2) such as y1(x0)=0 and 2) calculate a particular solution   *
+!* y2(x) of (1) such as y2(x0)=a, then the general solution of (1) has the*
+!* form:    y(x) = y1(x) + C * y2(x), constant C is determined by:        *
+!*          C * y2(x1) + y1(x1) = b                                       *
+!* ---------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                            *
+!* Integrate y" - (1/x)y' - (3/x²)y = 5x² from x0=1 to x1=2 with boundary *
+!* conditions: y(x0)=11 and y(x1)=36. The exact solution is:              *
+!*           y(x) = 8/x + 2x² + x4                                        *
+!* The initial 2nd order problem is replaced by the following first order *
+!* DE systems:                                                            *
+!*                 1st system                2nd system                   *
+!*                 y' = z                    y' = z                       *
+!*                 z' = z/x² + 3y/x²         z' = z/x² + 3y/x² + 5x²      *
+!*                 with z'(x0)=0             with z'(x0)=11               *
+!*                                                                        *
+!*     X     Y estimated    Y true    Absolute Error                      *
+!* --------------------------------------------------                     *
+!*   1.0000  11.0000000   11.0000000     0.00E+00                         *
+!*   1.0500  11.1498044   11.1498039     0.57E-06                         *
+!*   1.1000  11.3988283   11.3988273     0.10E-05                         *
+!*   1.1500  11.7472793   11.7472780     0.13E-05                         *
+!*   1.2000  12.1962682   12.1962667     0.15E-05                         *
+!*   1.2500  12.7476579   12.7476563     0.17E-05                         *
+!*   1.3000  13.4039479   13.4039462     0.18E-05                         *
+!*   1.3500  14.1681840   14.1681822     0.18E-05                         *
+!*   1.4000  15.0438876   15.0438857     0.18E-05                         *
+!*   1.4500  16.0349995   16.0349976     0.18E-05                         *
+!*   1.5000  17.1458351   17.1458333     0.18E-05                         *
+!*   1.5500  18.3810483   18.3810466     0.17E-05                         *
+!*   1.6000  19.7456016   19.7456000     0.16E-05                         *
+!*   1.6500  21.2447426   21.2447411     0.15E-05                         *
+!*   1.7000  22.8839837   22.8839824     0.13E-05                         *
+!*   1.7500  24.6690860   24.6690848     0.11E-05                         *
+!*   1.8000  26.6060454   26.6060444     0.96E-06                         *
+!*   1.8500  28.7010813   28.7010806     0.75E-06                         *
+!*   1.9000  30.9606268   30.9606263     0.52E-06                         *
+!*   1.9500  33.3913206   33.3913204     0.27E-06                         *
+!*   2.0000  36.0000000   36.0000000     0.50E-13                         *
+!*                                                                        *
+!* ---------------------------------------------------------------------- *
+!* REFERENCE: "Méthode de calcul numérique- Tome 2 - Programmes en Basic  *
+!*             et en Pascal By Claude Nowakowski, Edition du P.S.I., 1984"*
+!*             [BIBLI 04].                                                *
+!*                                                                        *
+!*                                    F90 Release By J-P Moreau, Paris.   *
+!*                                           (www.jpmoreau.fr)            *
+!**************************************************************************
+Program Limits
+
+integer, parameter :: SIZE = 100
+
+real*8 X(0:SIZE), Y(0:3,0:SIZE),Z(0:3,0:SIZE)
+real*8 cc,er,xl,x0,h,ya,yb,yex, FX
+integer k,kl,l
+
+  x0=1.d0         !starting x
+  xl=2.d0         !ending x
+  kl=20           !number of steps in x
+  h=(xl-x0)/kl    !integration step
+  ya=11.d0        !starting value for y
+  yb=36.d0        !final value for y''
+  X(0)=x0
+  !integration loop
+  do l=1, 2
+    Y(l,0)=(l-1)*ya; Z(l,0)=1.d0
+    do k=0, kl-1
+      call RK4(l,X(k),Y(l,k),Z(l,k),h,X(k+1),Y(l,k+1),Z(l,k+1))
+    end do
+  end do
+  !solution is y0=y2+cc*y1, cc is such as y(x1)=yb
+  cc=(yb-Y(2,kl))/Y(1,kl)
+  !write header
+  print *,' ';
+  print *,'     X     Y estimated    Y true    Absolute Error '
+  print *,' --------------------------------------------------'
+  !write kl+1 result lines
+  do k=0, kl
+    Y(0,k)=Y(2,k) + cc*Y(1,k)
+    yex=FX(X(k))          !exact value
+    er=DABS(yex-Y(0,k))   !current error
+    Write(*,10) X(k), Y(0,k), yex, er
+  end do
+  print *,' --------------------------------------------------'
+  stop
+10 format(F9.4,F12.7,F14.7,E13.2)
+  END
+
+  !y'=z
+  real*8 Function F(x,y,z)
+  real*8 x,y,z
+  F=z
+  return
+  End
+
+  !l=1: z'=z/x²+3y/x² or l=2: z'=z/x²+3y/x²+5x²
+  real*8 Function G(l,x,y,z)
+  real*8 x,y,z,gg
+  integer l
+  gg=z/x+3.0*y/(x*x)
+  if (l==2)  gg=gg+5.d0*x*x
+  G=gg
+  return
+  End
+
+  !exact solution: y=8/x + 2x3 + x4
+  real*8 Function FX(x)
+  real*8 x
+  FX=8.d0/x+x*x*x*(x+2.d0)
+  return
+  End
+
+  !Integrate sytem from x to x+h using Runge-Kutta
+  Subroutine RK4(l,x,y,z,h,x1,y1,z1)
+  real*8 x,y,z,h,x1,y1,z1
+  real*8 c1,c2,c3,c4,d1,d2,d3,d4,h2
+  real*8 F,G
+  integer l
+  c1=F(x,y,z)
+  d1=G(l,x,y,z)
+  h2=h/2.d0
+  c2=F(x+h2,y+h2*c1,z+h2*d1)
+  d2=G(l,x+h2,y+h2*c1,z+h2*d1)
+  c3=F(x+h2,y+h2*c2,z+h2*d2)
+  d3=G(l,x+h2,y+h2*c2,z+h2*d2)
+  c4=F(x+h,y+h*c3,z+h*d3)
+  d4=G(l,x+h,y+h*c3,z+h*d3)
+  x1=x+h
+  y1=y+h*(c1+2.d0*c2+2.d0*c3+c4)/6.d0
+  z1=z+h*(d1+2.d0*d2+2.d0*d3+d4)/6.d0
+  return
+  End
+
+!end of file limits.f90

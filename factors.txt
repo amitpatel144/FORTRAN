@@ -1,0 +1,71 @@
+!*********************************************
+!*    Factorization of an integer number     *
+!* ----------------------------------------- *
+!* Sample run:                               *
+!*                                           *
+!* ? 394616                                  *
+!*                                           *
+!* 2 2 2 107 461                             *
+!*                                           *
+!* ----------------------------------------- *
+!* Ref.: "Mathématiques par l'informatique   *
+!*        individuelle (1) par H. Lehning    *
+!*        et D. Jakubowicz, Masson, Paris,   *
+!*        1982".                             *
+!*                                           *
+!*        F90 Version By J-P Moreau, Paris.  *
+!*               (www.jpmoreau.fr)           *
+!*********************************************
+PROGRAM Factors
+IMPLICIT NONE
+REAL*4  D, N
+INTEGER I, IN
+!Enter integer number to be factorized
+print *,''
+write(*,10,advance='no')
+read *, N
+print *,''
+!Test if multiple of 2
+50 D=N-2*INT(N/2)
+if (D.eq.0) then 
+  write(*,300,advance='no')  2
+  N=N/2
+  goto 50
+end if
+!Test if multiple of 3
+100 D=N-3*INT(N/3)
+if (D.eq.0) then 
+  write(*,300,advance='no')  3
+  N=N/3
+  goto 100
+end if
+!Test of divisors 6i-1 and 6i+1 up to sqr(N)
+!Prime numbers are of the form 6i-1 or 6i+1
+do i=6, INT(sqrt(N))+1, 6
+150 D=N-(i-1)*INT(N/(i-1))
+  if (D.eq.0) then 
+    write(*,300,advance='no')  i-1
+	N=N/(i-1)
+	goto 150
+  end if
+200 D=N-(i+1)*INT(N/(i+1))
+  if (D.eq.0) then 
+    write(*,300,advance='no')  i+1
+	N=N/(i+1)
+	goto 200
+  end if
+end do
+if (N>1) then
+  IN=INT(N)
+  write(*,300)  IN
+else
+  print *,''
+end if
+
+print *,''
+stop
+10  format(' ? ')
+300 format(I4,' ')
+end
+
+!end of file factors.f90

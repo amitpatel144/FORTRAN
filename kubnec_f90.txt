@@ -1,0 +1,450 @@
+!* ----------------------- MODULE kubnec.f90 ------------------------- *
+!*  "Numerical Algorithms with C, By Gisela Engeln-Muellges            *
+!*   and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].               *
+!*                                                                     *
+!*                               F90 Release 1.0 By J-P Moreau, Paris. *
+!*                                        (www.jpmoreau.fr)            *
+!*---------------------------------------------------------------------*
+
+  !user defined function(x,y) to integrate
+  real*8 Function func(x,y)
+  implicit none
+  real*8 x,y
+    func = x*y
+  return
+  end
+
+integer Function Kub4NeCn(a,b,Nx,c,d,Ny,Verfahren,Wert,Schaetzen,FehlerSch)
+implicit none
+real*8 a, b, c, d, Wert 
+integer Nx, Ny, Verfahren, Schaetzen
+real*8 FehlerSch
+!************************************************************************
+!* Cubature over rectangles using Newton-Cotes formulas.                *
+!* -------------------------------------------------------------------- *
+!* Integrate the function f(x,y) over a rectangle (a,b) x (c,d) using   *
+!* the summed Newton-Cotes cubature formulas for sub-rectangles.        *
+!*                                                                      *
+!* Parameters:                                                          *
+!*   real*8 a,b        left, right x-end points                         *
+!*   integer Nx        number of x-intervals                            *
+!*   real*8 c,d        ditto for y                                      *
+!*   integer Ny                                                         *
+!*   integer Verfahren Number of method:                                *
+!*                       1: trapezoidal rule                            *
+!*                       2: Simpson's rule                              *
+!*                       3: 3/8                                         *
+!*                       4: 4/90                                        *
+!*                       5: 5/288                                       *
+!*                       6: 6/840                                       *
+!*                       7: 7/17280 formula                             *
+!*   real*8  Wert      value for integral                               *
+!*   integer Schaetzen 0: no estimation                                 *
+!*                     1: estimate error by repeating cubature for half *
+!*                        the step size                                 *
+!*   real*8  FehlerSch error estimate for Wert                          *
+!*                                                                      *
+!* Return value:                                                        *
+!*   0:              o.k.                                               *
+!*   1:              Nx improper                                        *
+!*   2:              Ny improper                                        *
+!*   3:              method number incorrect                            *
+!*   4:              Integration interval of length zero                *
+!*                                                                      *
+!* Author:           Uli Eggermann, 3.31.1996 (C version)               *
+!************************************************************************
+real*8 OSX,QSX,OHT,THT,SNT,TTNT,TWNT,NTTE,SFTE,FTTE
+real*8 FEF,TEF,TSEF,TSTEF,SHSTT,TTSTT,THSTT,TNSTT
+
+!used to initialize constants K_1 to K_7
+parameter(OSX=1.d0/6.d0,QSX=4.d0/6.d0)
+parameter(OHT=1.d0/8.d0,THT=3.d0/8.d0)
+parameter(SNT=7.d0/90.d0,TTNT=32.d0/90.d0,TWNT=12.d0/90.d0)
+parameter(NTTE=19.d0/288.d0,SFTE=75.d0/288.d0,FTTE=50.d0/288.d0)
+parameter(FEF=41.d0/840.d0,TEF=216.d0/840.d0,TSEF=27.d0/840.d0,TSTEF=272.d0/840.d0)
+parameter(SHSTT=751.d0/17280.d0,TTSTT=3577.d0/17280.d0,THSTT=1323.d0/17280.d0)
+parameter(TNSTT=2989.d0/17280.d0)
+
+  integer i,j,k,kend,Ordnung
+  real*8 Hab, Hcd, Wert1
+  real*8 K_1(0:1),K_2(0:2),K_3(0:3),K_4(0:4),K_5(0:5),K_6(0:6),K_7(0:7)
+  real*8 K4KnotGew, func
+
+  !Initialize constants K_1 to K_7
+  data K_1 /0.5d0, 0.5d0/
+  data K_2 /OSX,QSX,OSX/
+  data K_3 /OHT,THT,THT,OHT/
+  data K_4 /SNT, TTNT,TWNT,TTNT,SNT/
+  data K_5 /NTTE, SFTE, FTTE, FTTE, SFTE, NTTE/
+  data K_6 /FEF, TEF, TSEF, TSTEF, TSEF, TEF, FEF/
+  data K_7 /SHSTT, TTSTT, THSTT, TNSTT, TNSTT, THSTT, TTSTT, SHSTT/
+
+  integer KubVer                        !copy of method number
+  data KubVer /-1/
+  
+  integer KubX, KubY                    !number of x-, y-intervals
+
+  Wert1 = 0.d0
+
+  if (Nx < 1) then                      !check function parameters
+    Kub4NeCn = 1
+    return
+  end if
+  if (Ny < 1) then
+    Kub4NeCn = 2
+    return
+  end if
+  if (Verfahren < 1.or.Verfahren > 7) then
+    Kub4NeCn = 3
+    return
+  end if
+  if (a == b.or.c == d) then
+    Kub4NeCn = 4
+    return
+  end if
+                                           !method:     1,2,3,4,5,6,7
+  Ordnung = (Verfahren / 2) * 2 + 2        !order:      2,4,4,6,6,8,8
+
+  KubVer = Verfahren                       !copy method number
+
+  if (Schaetzen.ne.0) then 
+    kend = 2 
+  else 
+    kend = 1
+  end if
+
+  !main k loop
+  do k = 1, kend
+    KubX = k * Nx * KubVer
+    KubY = k * Ny * KubVer
+    Wert = 0.d0                                         !initialize
+    Hab  = (b - a) / KubX                               !step sizes
+    Hcd  = (d - c) / KubY
+
+    do i = 0, KubX                                      !Cubature
+      do j = 0, KubY
+        Wert = Wert + K4KnotGew(i,j,K_1,K_2,K_3,K_4,K_5,K_6,K_7,KubVer,KubX,KubY) &
+		       * func(a + i * Hab, c + j * Hcd)
+      end do
+    end do
+      
+    Wert = Wert * Hab * Hcd * KubVer * KubVer           !final multiplication
+    if (Schaetzen.ne.0.and.k.eq.1)  Wert1 = Wert        !store value
+  end do
+
+  if (Schaetzen.ne.0)  &                                !estimate error
+    FehlerSch = (Wert1 - Wert) / ((2**Ordnung) - 1)
+
+  Kub4NeCn = 0
+
+  Return
+End
+
+!used by K4KnotGew function
+real*8 Function Faktor(k,a,b)
+implicit none
+integer k,a,b
+  if (k==0.and.a>0.and.a<b) then
+    Faktor = 2.d0
+  else
+    Faktor = 1.d0
+  end if
+  return
+End
+
+real*8 Function K4KnotGew(i,j,K_1,K_2,K_3,K_4,K_5,K_6,K_7,KubVer,KubX,KubY)
+implicit none
+real*8 K_1(0:1),K_2(0:2),K_3(0:3),K_4(0:4),K_5(0:5),K_6(0:6),K_7(0:7)
+integer i,j,KubVer,KubX,KubY
+!************************************************************************
+!* Local function for finding node weights                              *
+!* -------------------------------------------------------------------- *
+!* Weight the functional values at the nodes depending on their location*
+!* (edge, interior, ...) in the summed cubature formulas.               *
+!************************************************************************
+real*8  f, Faktor
+integer k
+  !************************************************************
+  !* for x-direction :                                        *
+  !*   1) node at interval end  (k == 0)                      *
+  !*   2) node not at left end (a > 0) nor at right end (a<b) *
+  !* for y-direction :                                        *
+  !*   1) node at interval end  (k == 0)                      *
+  !*   2) node not at bottom (a > 0) and not at top (a < b)   *
+  !************************************************************
+  k = Mod(i,KubVer)
+  Select Case (KubVer)
+    case (1)  
+	  f = K_1(k) * Faktor(k,i,KubX)
+    case (2)  
+	  f = K_2(k) * Faktor(k,i,KubX)
+    case (3)  
+	  f = K_3(k) * Faktor(k,i,KubX)
+    case (4)  
+	  f = K_4(k) * Faktor(k,i,KubX)
+    case (5)  
+	  f = K_5(k) * Faktor(k,i,KubX)
+    case (6)  
+	  f = K_6(k) * Faktor(k,i,KubX)
+    case (7)  
+	  f = K_7(k) * Faktor(k,i,KubX)
+  End Select
+  k = Mod(j,KubVer)
+  Select Case (KubVer)
+    case (1)  
+	  f = f * K_1(k) * Faktor(k,j,KubY)
+    case (2)  
+	  f = f * K_2(k) * Faktor(k,j,KubY)
+    case (3)  
+	  f = f * K_3(k) * Faktor(k,j,KubY)
+    case (4)  
+	  f = f * K_4(k) * Faktor(k,j,KubY)
+    case (5)  
+	  f = f * K_5(k) * Faktor(k,j,KubY)
+    case (6)  
+	  f = f * K_6(k) * Faktor(k,j,KubY)
+    case (7)  
+	  f = f * K_7(k) * Faktor(k,j,KubY)
+  End Select
+
+  K4KnotGew = f
+
+  return
+End
+
+integer Function Kub3NeC3(Px, Py, Qx, Qy, Rx, Ry, n, Wert)
+implicit none
+real*8 Px, Py, Qx, Qy, Rx, Ry
+integer n
+real*8 Wert
+!************************************************************************
+!* Cubature over triangles using the  Newton-Cotes formulas             *
+!*                                                                      *
+!* This function integrates f (x,y) over the triangle PQR using the     *
+!* summed 3 point cubature formulas of Newton-Cotes on sub-triangles.   *
+!* The sub-triangles are obtained by a regular partition of the edges   *
+!* of PQR into n equal parts.                                           *
+!*                                                                      *
+!* Input parameters:                                                    *
+!*   Double   Px,Py   coordinates of P                                  *
+!*   Double   Qx,Ry   coordinates of Q                                  *
+!*   Double   Rx,Ry   coordinates of R                                  *
+!*   integer  n       partion number along edges                        *
+!*   Double   Wert    value of integral                                 *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:               o.k.                                              *
+!*   1:               n improper                                        *
+!*   2:               corners  P, Q and R are collinear                 *
+!*                                                                      *
+!* Author:            Uli Eggermann, 8.1.1990 (C version)               *
+!************************************************************************
+integer Kub3NeC3Epsilon
+parameter(Kub3NeC3Epsilon = 0.000001)              !for collinearity test
+
+!************************************************************************
+!* Cubature over triangle via summed 3-point Newton-Cotes formula       *
+!************************************************************************
+
+   real*8 hPQx, hPQy, hPRx, hPRy, Area
+   real*8 X, Y, func
+   integer i,j, wieoft
+
+   i=0
+   if (n < 1) then
+     Kub3NeC3 = 1
+     return                                             !n ok ?
+   end if
+
+   Area =  Px * (Qy - Ry)    &
+          + Qx * (Ry - Py)   &
+          + Rx * (Py - Qy)                              !P, Q and R
+   if (DABS(Area) < Kub3NeC3Epsilon) then               !collinear?
+     Kub3NeC3 = 2
+     return
+   end if          
+
+   n = n * 2                                !number of halved edges
+   hPQx = (Qx - Px) / n
+   hPQy = (Qy - Py) / n                        !halve the vector PQ
+   hPRx = (Rx - Px) / n
+   hPRy = (Ry - Py) / n                        !halve the vector PR
+
+   Wert = 0.d0                                         !integral = 0
+
+   do j = 0, n-1                                    !j moves along PR
+     do i = 0, n-j                                  !i moves along PQ
+	   if (mod(i,2).ne.0.or.mod(j,2).ne.0) then        !sum is needed
+         X = Px + hPQx*i + hPRx*j
+         Y = Py + hPQy*i + hPRy*j
+		 if (i.eq.0.or.j.eq.0.or.i.eq.n-j) then
+		   wieoft = 1
+         else 
+		   wieoft = 2
+         end if
+         Wert = Wert + wieoft * func(X,Y)
+       end if
+     end do
+   end do
+
+   X = Px + hPQx*i + hPRx*j
+   Y = Py + hPQy*i + hPRy*j
+   if (i.eq.0.or.j.eq.0.or.i.eq.n-j) then
+     wieoft = 1
+   else 
+     wieoft = 2
+   end if
+   Wert = Wert + wieoft * func(X,Y)                      !sum
+   Wert = Wert * Area / (1.5d0 * n * n)                  !last factor
+
+   Kub3NeC3 = 0
+
+   return
+End
+
+
+integer Function Kub3Nec3n(Px, Py, Qx, Qy, Rx, Ry, n, W)
+implicit none
+real*8 Px, Py, Qx, Qy, Rx, Ry
+integer n 
+real*8 W(0:n)
+!************************************************************************
+!* computing and storing the n cubature values in given array W.        *
+!************************************************************************
+  integer i,ret, Kub3NeC3
+
+  if (n < 1) then
+    Kub3Nec3n = 1
+    return
+  end if
+
+  do i = 0, n-1
+    ret=Kub3NeC3(Px,Py,Qx,Qy,Rx,Ry, 2**i, W(i))
+    if (ret.ne.0) goto 10    !break
+  end do
+10  Kub3Nec3n = ret
+  return
+end
+
+
+integer Function RoRiExtr(RoFo, nRoFo, Ordnung, Wert, FehlerSch)
+implicit none
+integer nRoFo
+real*8  RoFo(0:nRoFo)
+integer Ordnung
+real*8 Wert, FehlerSch
+!************************************************************************
+!* Richardson extrapolation for a given Romberg sequence                *
+!*                                                                      *
+!* Parameter:                                                           *
+!*   Double  RoFo []   given  Romberg sequence                          *
+!*   integer nRoFo     length of  RoFo                                  *
+!*   integer Ordnung   Order of method                                  *
+!*   Double  Wert      final value of extrapolation                     *
+!*   Double  FehlerSch error estimate of Wert                           *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:              o.k.                                               *
+!*   1:              lack of available memory (not used here)           *
+!*   2:              nRoFo too small                                    *
+!*                                                                      *
+!* Author          Uli Eggermann, 3.31.1996                             *
+!************************************************************************
+  integer j, k, p, s
+  real*8 RiEx(0:nRoFo)
+
+  if (nRoFo < 2) then
+    RoRiExtr = 2
+    return
+  end if
+
+  do k = 0, nRoFo - 1                                     ! copy
+    RiEx(k) = RoFo(k)
+  end do
+
+  s = 2**Ordnung
+  p = s
+
+  do k = nRoFo - 1, 1, -1
+    p = p * s
+    do j = 0, k-1 
+      RiEx(j) = (p * RiEx(j+1) - RiEx(j)) / (p - 1)
+    end do
+  end do
+
+  Wert      = RiEx(0)
+  FehlerSch = RiEx(0) - RiEx(1)
+
+  RoRiExtr = 0
+
+  return
+  
+End;
+
+
+integer Function Kub3RoRi(Px, Py, Qx, Qy, Rx, Ry, n, Wert, FehlerSch)
+implicit none
+real*8  Px, Py, Qx, Qy, Rx, Ry
+integer n
+real*8  Wert, FehlerSch
+!************************************************************************
+!* cubature over triangular regions using the summed 3 point formula    *
+!* and Romberg-Richardson extrapolation:                                *
+!*                                                                      *
+!* Function f (x,y) is integrated approximately over the triangle PQR   *
+!* using the summed 3 point cubature formula on similar subtriangles.   *
+!* The number of cubatures with halved subtriangle edge length each is  *
+!* defined by n.                                                        *
+!*                                                                      *
+!* Input parameters:                                                    *
+!*   Double   Px,Py   coordinaten of P                                  *
+!*   Double   Qx,Ry   coordinaten of Q                                  *
+!*   Double   Rx,Ry   coordinaten of R                                  *
+!*   integer  n       number of cubatures                               *
+!*                                                                      *
+!* Output parameters:                                                   *
+!*   Double   Wert    approximation of the double integral              *
+!*   Double   FehlSch error estimate for `Wert'                         *
+!*                                                                      *
+!* Return value:                                                        *
+!*   0:               o.k.                                              *
+!*   1:               n improper                                        *
+!*   2:               corners P, Q and R are collinear                  *
+!*   3:               no more memory for auxiliary vector               *
+!*                    (not used here).                                  *
+!*                                                                      *
+!* Subroutines used:                                                    *
+!*   RoRiExtr      Romberg-Richardson extrapolation                     *
+!*   Kub3NeC3      computation of cubature value                        *
+!*   Kub3Nec3n     computation and storing of the n cubature values     *
+!*                                                                      *
+!* author         Uli Eggermann, 07.05.1990 (C version)                 *
+!************************************************************************
+  integer i, Kub3Nec3n, RoRiExtr  
+  real*8 W(0:n)
+
+  if (n < 1) then
+    Kub3RoRi=1
+    return
+  end if
+
+  !storing Newton-Cotes values in the first column
+  i = Kub3Nec3n (Px,Py, Qx,Qy, Rx,Ry, n, W)
+
+                         !computing the resulting Richardson columns,
+  if (i == 0) then               !but only if the first column is ok.
+    if (n.eq.1) then
+      Wert = W(0)
+      FehlerSch = 0.d0
+      i = 0
+    else
+      i = RoRiExtr (W, n, 2, Wert, FehlerSch)
+    end if
+  end if
+
+  Kub3RoRi=i
+  return
+
+end
+
+! ------------------------ END kubnec.f90 -----------------------------

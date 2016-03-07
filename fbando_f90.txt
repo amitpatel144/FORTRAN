@@ -1,0 +1,253 @@
+!  ------------------------- fbando.f90 ------------------------------ 
+!       Translated from C language by J.-P. Moreau, March, 1999.     
+!  Reference: Numerical Algotithms with C, Springer, 1996 [BIBLI 11]
+!                         (www.jpmoreau.fr)
+
+  Subroutine bando(mode,n,ld,ud,pmat,b,code)
+  INTEGER code,ud
+  REAL*8 pmat(0:n-1,0:n-1),b(0:n-1)
+!*====================================================================*
+!*                                                                    *
+!*  The subroutine bando solves a linear banded system: pmat * x = b  *
+!*  Here pmat is a nonsingular n x n matrix in condensed form, i.e.   *
+!*  represented in an ld+ud+1 x n matrix for its ld lower and ud upper*
+!*  co-diagonals. b denotes the right hand side of the system, and x  *
+!*  is the solution.                                                  *
+!*                                                                    *
+!*  bando uses the Gauss algorithm without column pivot search.       *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Applications:                                                    *
+!*   =============                                                    *
+!*      Solve linear systems with nonsingular banded system matrices. *
+!*      Particularly useful for large sparse and banded and diagonally*
+!*      dominant matrices.                                            *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Control parameter:                                               *
+!*   ==================                                               *
+!*      mode     integer mode                                         *
+!*               calling modus for band:                              *
+!*       = 0     factor matrix and solve linear system                *
+!*       = 1     factor only, store factors in pmat                   *
+!*       = 2     solve linear system only; for this call, the factors *
+!*               must already be available in pmat, such as when      *
+!*               many systems are solved for differing right hand     *
+!*               sides and the same system matrix.                    *
+!*                                                                    *
+!*   Input parameters:                                                *
+!*   ================                                                 *
+!*      n        integer n;  ( n > 2 )                                *
+!*               Dimension of pmat, size of b                         *
+!*      ld       integer ld; ( ld >= 0 )                              *
+!*               number of lower co-diagonals                         *
+!*      ud       integer ud; ( ud >= 0 )                              *
+!*               number of upper co-diagonals                         *
+!*      pmat     REAL*8  pmat(0:n-1,0:n-1)                            *
+!*               mode = 0, 1:                                         *
+!*               Matrix of the system in comndensed form.             *
+!*               Each row has length at least ld + 1 + ud + min(ld,ud)*
+!*               where the columns 0, .., ld-1 denote the lower       *
+!*               co-diagonals, column ld stores the diagonal and the  *
+!*               columns ld+1, .., ld+ud contain the upper            *
+!*               co-diagonals.                                        *
+!*               If A is the original uncondensed band matrix, then : *
+!*               A(i,k) = pmat(i,ld+k-i),                             *
+!*                           for k,i inside the band                  *
+!*               mod = 2:                                             *
+!*               LU factors in condensed form.                        *
+!*      b        REAL*8  b(0:n-1)           ( for mode = 0, 2 )       *
+!*               Right hand side                                      *
+!*                                                                    *
+!*   Output parameters:                                               *
+!*   ==================                                               *
+!*      pmat     REAL*8  pmat(0:n-1,0:n-1)  ( for mode = 0, 1 )       *
+!*               LU factorization in condensed form                   *
+!*      b        REAL*8  b(0:n-1)           ( for mode = 0, 2 )       *
+!*               solution vector for the system                       *
+!*                                                                    *
+!*   Return value code:                                               *
+!*   ================                                                 *
+!*      = 0      all ok                                               *
+!*      = 1      n < 3 or other incorrect input parameter             *
+!*      = 2      not used here                                        *
+!*      = 3      Matrix is numerically singular                       *
+!*      = 4      wrong calling modus                                  *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Subroutines used :                                               *
+!*   ================                                                 *
+!*      banodec : Factor matrix                                       *
+!*      banosol : solve linear system                                 *
+!*                                                                    *
+!*====================================================================*
+  INTEGER rc
+  if(n < 3.or.ld < 0.or.ud < 0.or.n < ld + 1 + ud) then
+    code = 1
+    return
+  end if
+
+  if (mode.eq.0) then
+  ! factor and solve system
+    call banodec (n, ld, ud, pmat, rc)
+    if (rc.eq.0) then
+      call banosol (n, ld, ud, pmat, b, code)
+    else
+      code=rc
+    end if
+  else if (mode.eq.1) then
+    ! factor only
+    call banodec (n, ld, ud, pmat, code)
+  else if (mode.eq.2) then
+    ! solve only
+    call banosol (n, ld, ud, pmat, b, code)
+  else
+    code = 3
+  end if
+
+  return
+  end
+
+
+  Subroutine banodec(n,ld,ud,pmat,code)
+  PARAMETER(MACH_EPS=1.D-15)
+  INTEGER code,ud
+  REAL*8 pmat(0:n-1,0:n-1)
+!*====================================================================*
+!*                                                                    *
+!*  The subroutine banodec factors a condensed banded matrix pmat     *
+!*  banddec uses the Gauss algorithm without column pivot search.     *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Input parameters:                                                *
+!*   ================                                                 *
+!*      n        integer n   ( n > 2 )                                *
+!*               Dimension of pmat, size of b                         *
+!*      ld       integer ld  ( ld >= 0 )                              *
+!*               number of lower co-diagonals                         *
+!*      ud       integer ud  ( ud >= 0 )                              *
+!*               number of upper co-diagonals                         *
+!*      pmat     REAL*8  pmat(0:n-1,0:n-1)                            *
+!*               Matrix of the system in comndensed form.             *
+!*               Each row has length at least ld + 1 + ud + min(ld,ud)*
+!*               where the columns 0, .., ld-1 denote the lower       *
+!*               co-diagonals, column ld stores the diagonal and the  *
+!*               columns ld+1, .., ld+ud contain the upper            *
+!*               co-diagonals.                                        *
+!*                                                                    *
+!*   Output parameters:                                               *
+!*   ==================                                               *
+!*      pmat     REAL*8  pmat(0:n-1,0:n-1)                            *
+!*               LU factorization in condensed form                   *
+!*                                                                    *
+!*   Return value :                                                   *
+!*   =============                                                    *
+!*      = 0      all ok                                               *
+!*      = 1      n < 3 or other incorrect input parameter             *
+!*      = 2      Matrix is numerically singular                       *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Constants used :     MACH_EPS                                    *
+!*   ================                                                 *
+!*                                                                    *
+!*   Functions:  min()                                                *
+!*   =========                                                        *
+!*                                                                    *
+!======================================================================    
+  INTEGER kend, kjend, jm, jk, k, j, i       
+
+  if (ld.eq.0) then                           ! Matrix already in upper       
+    code = 0                                  ! triangular form               
+    return
+  end if
+
+  do i = 0, n - 2                             ! loop over all rws      
+    kend  = min (ld + 1, n - i)
+    kjend = min (ud + 1, n - i)
+
+    if (DABS(pmat(i,ld)) < MACH_EPS) then     ! LU decompsition does   
+      code = 2                                ! not exist              
+      return
+    end if
+
+    do k=1,kend-1                             ! loop over all rows     
+                                              ! below row i            
+      pmat(k+i,ld-k) = pmat(k+i,ld-k) / pmat(i,ld)
+
+      do j = 1, kjend-1
+        jk = j + ld - k
+        jm = j + ld
+        pmat(k+i,jk) = pmat(k+i,jk) - pmat(k+i,ld-k) * pmat(i,jm)
+      end do  
+    end do  ! k loop
+  end do  ! i loop 
+
+  code = 0
+  return
+  end
+
+
+  Subroutine banosol(n,ld,ud,pmat,b,code) 
+  INTEGER code,ud
+  REAL*8 pmat(0:n-1,0:n-1),b(0:n-1)
+!*====================================================================*
+!*                                                                    *
+!*  The subroutine banosol solves a factored linear banded system in  *
+!*  condensed form using banodec.                                     *
+!*                                                                    *
+!*====================================================================*
+!*                                                                    *
+!*   Input parameters:                                                *
+!*   ================                                                 *
+!*      n        integer n   ( n > 2 )                                *
+!*               Dimension of pmat, size of b                         *
+!*      ld       integer ld  ( ld >= 0 )                              *
+!*               number of lower co-diagonals                         *
+!*      ud       integer ud  ( ud >= 0 )                              *
+!*               number of upper co-diagonals                         *
+!*      pmat     REAL*8  pmat(0:n-1,0:n-1)                            *
+!*               Matrices for the factored system in comndensed form. *
+!*                                                                    *
+!*   Output parameters:                                               *
+!*   ==================                                               *
+!*      b        REAL*8  b(0:n-1)                                     *
+!*               solution vector of linear system                     *
+!*                                                                    *
+!*   Return value :                                                   *
+!*   =============                                                    *
+!*      = 0      all ok                                               *
+!*      = 1      n < 3 or other incorrect input parameter             *
+!*                                                                    *
+!*====================================================================*
+  INTEGER kend, i, k
+                             !  Invalid input parameter   
+  if (n < 3.or.ld < 0.or.ud < 0.or.ld+ud+1 > n) then
+    code = 1
+    return
+  end if
+
+  do i = 0, n - 2
+    kend = min (ld + 1, n - i)
+    do k = 1, kend-1
+      b(k+i) = b(k+i) - pmat(k+i,ld-k) * b(i)
+    end do
+  end do
+
+  do i = n - 1, 0, -1        ! back substitution        
+    kend = min (ud + 1, n - i)
+    do k = 1, kend-1
+      b(i) = b(i) - pmat(i,k+ld) * b(i+k)
+    end do
+    b(i) = b(i) / pmat(i,ld)
+  end do
+
+  code = 0
+  return
+  end
+
+! ------------------------ END fbando.f90 ---------------------------

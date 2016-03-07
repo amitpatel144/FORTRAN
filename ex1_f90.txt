@@ -1,0 +1,130 @@
+!********************************************************************************
+!*               RESOLUTION OF A SET OF NON-LINEAR EQUATIONS                    *
+!* ---------------------------------------------------------------------------- *
+!* COPYRIGHT 1991, BY R.S. BAIN                                                 *
+!* Originally wrapped by bain@luther.che.wisc.edu on Tue Mar 30 16:27:48 1993   *
+!*                                                                              *
+!* As of this writing, we do not know how to contact Rod Bain, the              * 
+!* author of NNES.                                                              *
+!*                                                                              *
+!*    F90 Release By David M. Gay (dmg@bell-labs.com)                           *
+!*    Bell Labs, Murray Hill                                                    *
+!*    8 February 1999                                                           *
+!* ---------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                  *
+!*    Solve non-linear system of size n=2:                                      *
+!*    x1^2 + x1 + x2^2 - 2           = 0                                        *
+!*    x1^2 + x2 - x2^2 - 1 + log(x1) = 0                                        *
+!*                                                                              *
+!*    with initial guess; x1=1, x2=1                                            *
+!*    (The system is described in unit fcn.pas).                                *
+!*                                                                              *
+!* With default options (output=2), the output file EX1.OUT contains:           *
+!*                                                                              *
+!*                                                                              *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *                               NNES                                  *    *
+!*   *                                                                     *    *
+!*   *       NONMONOTONIC NONLINEAR EQUATION SOLVER  VERSION 1.05          *    *
+!*   *                                                                     *    *
+!*   *                   COPYRIGHT 1991, BY R.S. BAIN                      *    *
+!*   *                                                                     *    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*  *************************************************************************   * 
+!*                                                                              *
+!*                                                                              *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *    INITIAL ESTIMATES               INITIAL FUNCTION VALUES          *    *
+!*   *                                                                     *    *
+!*   *  X(  1) =     1.00                  F(  1) =     1.00               *    *
+!*   *  X(  2) =     1.00                  F(  2) =     0.00               *    *
+!*   *                                                                     *    *
+!*   *  INITIAL OBJECTIVE FUNCTION VALUE =  0.500                          *    *
+!*   *                                                                     *    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *    CONVERGENCE REACHED; TERMINATION CODE: ...............     2     *    *
+!*   *                                                                     *    *
+!*   *                                                                     *    *
+!*   *          FINAL ESTIMATES  FINAL FUNCTION VALUES                     *    *
+!*   *                                                                     *    *
+!*   *    X(  1) =    0.915553                F(  1) =    0.462631E-05     *    *
+!*   *    X(  2) =    0.496200                F(  2) =   -0.444345E-05     *    *
+!*   *                                                                     *    *
+!*   *    FINAL OBJECTIVE FUNCTION VALUE:   0.206E-10                      *    *
+!*   *                                                                     *    *
+!*   *                                                                     *    *
+!*   *    TOTAL NUMBER OF ITERATIONS: ..........................     4     *    *
+!*   *    TOTAL NUMBER OF LINE SEARCH FUNCTION EVALUATIONS: ....     5     *    *
+!*   *    TOTAL NUMBER OF EXPLICIT JACOBIAN EVALUATIONS: .......     4     *    *
+!*   *    TOTAL NUMBER OF FUNCTION EVALUATIONS: ................     0     *    *
+!*   *                                                                     *    *
+!*  ************************************************************************    *
+!*                                                                              *
+!*                                        F90 Release 1.0 By J-P Moreau, Paris  *
+!*                                           (See help file nneshelp.txt).      *
+!*                                                (www.jpmoreau.fr)             *
+!********************************************************************************
+PROGRAM ex1      !This program uses modules FCN and NNES.
+ 
+! Code converted using TO_F90 by Alan Miller
+! Date: 2002-05-12  Time: 20:30:16
+
+!       ROSENBROCK'S BANANA
+
+USE Equation_Solver
+IMPLICIT NONE
+
+INTEGER, PARAMETER  :: mgll = 10, n = 2, nunit = 10
+REAL (dp)  :: alpha, confac, delfac, delta, epsmch, etafac, fcn1new, fdtolj, &
+              ftol, jac(n,n), lam0, mstpf, nsttol, omega, ratiof, sigma,     &
+              stptol
+INTEGER    :: acptcr, itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns,   &
+              maxqns, minqns, narmij, niejev, njacch, njetot, output,        &
+              qnupdm, stopcr, supprs, trmcod, trupdm
+REAL (dp)  :: a(n,n), boundl(n), boundu(n), delf(n), fsave(n),               &
+              ftrack(0:mgll-1), fvec(n), fvecc(n), h(n,n), hhpi(n),          &
+              plee(n,n), rdiag(n), s(n), sbar(n), scalef(n), scalex(n),      &
+              sn(n), ssdhat(n), strack(0:mgll-1), vhat(n), xc(n), xplus(n),  & 
+			  xsave(n)
+LOGICAL    :: absnew, cauchy, deuflh, geoms, linesr, newton, overch
+CHARACTER (LEN=6) :: help
+
+
+OPEN (UNIT=nunit, FILE='EX1.OUT', STATUS='UNKNOWN')
+
+
+xc(1) =  1.0D0   !Initial Guess
+xc(2) =  1.0D0
+
+CALL setup(absnew, cauchy, deuflh, geoms, linesr, newton, overch, acptcr,     &
+           itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns, maxqns,       &
+           minqns, n, narmij, niejev, njacch, output, qnupdm, stopcr, supprs, &
+           trupdm, alpha, confac, delta, delfac, epsmch, etafac, fdtolj,      &
+           ftol, lam0, mstpf, nsttol, omega, ratiof, sigma, stptol, boundl,   &
+           boundu, scalef, scalex, help)
+
+output =4  !print additional outputs
+
+CALL nnes(absnew, cauchy, deuflh, geoms, linesr, newton, overch, acptcr,      &
+          itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns, maxqns, mgll,  &
+          minqns, n, narmij, niejev, njacch, njetot, nunit, output, qnupdm,   &
+          stopcr, supprs, trmcod, trupdm, alpha, confac, delta, delfac,       &
+          epsmch, etafac, fcn1new, fdtolj, ftol, lam0, mstpf, nsttol, omega,  &
+          ratiof, sigma, stptol, a, boundl, boundu, delf, fsave, ftrack,      &
+          fvec, fvecc, h, hhpi, jac, plee, rdiag, s, sbar, scalef, scalex,    &
+          sn, ssdhat, strack, vhat, xc, xplus, xsave, help)
+
+print *,' '
+print *,' Results in file ex1.out...'
+print *,' '
+
+STOP
+END PROGRAM ex1

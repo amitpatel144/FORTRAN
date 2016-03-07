@@ -1,0 +1,222 @@
+!****************************************************
+!*  Program to demonstrate the inverse hyperbolic   *
+!*  functions subroutines                           *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*                      F90 version by J-P Moreau   *
+!*                          (www.jpmoreau.fr)       *
+!****************************************************
+PROGRAM InvHyper
+
+COMMON /C1/ E,Z,A,W
+
+real*8  E
+integer ligne,N
+real*8  A(15),W(15)
+real*8  x,y,Z
+character*1 r$
+
+real*8 XLn,ArcSinH,ArcCosH,ArcTanH
+
+  ligne=1;
+  print *,' '
+  print *,'   X       ARCSINH(X)      ARCCOSH(X)      ARCTANH(X) '
+  print *,' -----------------------------------------------------'
+  x=-3.d0
+  do while (x<=3.2d0)
+    write(*,10,advance='no')  x
+    y=arcsinh(x)
+    write(*,11,advance='no')  y
+    y=arccosh(x);
+    write(*,11,advance='no')  y
+    y=arctanh(x);
+    if (dabs(y)<1.d12) then
+      write(*,11)  y
+    else
+	  if (y>0.d0) then
+        write(*,*) '+1.E+18'
+      else
+	    write(*,*) '-1.E+18'
+      end if
+    end if
+    if (ligne==20) then
+      ligne=0
+      read *, r$
+    end if
+    ligne=ligne+1
+    x=x+0.2d0
+  end do
+  print *,' '
+  stop
+10 format(F6.1,'  ')
+11 format(F14.10,'  ')
+END
+
+
+!**********************************************************
+!*        Modified cordic logarithm subroutine
+!* -------------------------------------------------------
+!* This subroutine takes an input value and returns Y=LN(X)
+!* X may be any positive real value.
+!**********************************************************
+real*8 Function XLn(X)
+COMMON /C1/ E,Z,A,W
+!Labels: 10,20,30
+integer I,K
+real*8 X, aa,X1,Y
+real*8 E,Z,A(15),W(15)
+! Get coefficients
+  call Coeff(N)
+! If X<=0 then an error exists, return
+  if (X<=0) return
+  K=0
+! Save X
+  X1=X
+! Reduce the range of X
+10 if (X<E) goto 20
+! Divide out a power of E
+    K=K+1
+    X=X/E
+  goto 10
+! Test if X>=1, if so go to next step 
+! Otherwise, bring X to >1
+20 if (X>=1.d0) goto 30
+  K=K-1
+  X=X*E
+  goto 20
+! Determine the weighting coefficients, W(I)
+30 call WCoeff(X)
+! Calculate residual factor based on Z
+! Want LN(Z), where Z is near unity
+  Z=Z-1.d0
+  Z=Z*(1.d0-(Z/2.d0)*(1.d0+(Z/3.d0)*(1.d0-Z/4.d0)))
+! Assemble results
+  aa=0.5d0
+  do I=1, N
+    Z=Z+W(I)*aa
+    aa=aa/2.d0
+  end do
+! Z is now the mantissa, K the characteristic
+  Y=K+Z
+! Restore X
+  X=X1
+  XLn=Y
+  return
+End
+
+! Weight determination subroutine
+Subroutine WCoeff(X)
+COMMON /C1/ E,Z,A,W
+parameter(N=15)
+real*8 X
+real*8 E,Z,A(15),W(15)
+integer I
+  Z=X;
+  do I=1, N
+    W(I)=0.d0
+    if (Z>A(I))  W(I)=1.d0
+    if (W(I)==1.d0)  Z=Z/A(I)
+  end do
+  return
+End
+
+! Exponential coefficients subroutine
+Subroutine Coeff(N)
+COMMON /C1/ E,Z,A,W
+real*8 E,Z,A(15),W(15)
+  N=15
+  E=2.718281828459045d0
+  A(1)=1.648721270700128d0
+  A(2)=1.284025416687742d0
+  A(3)=1.133148453066826d0
+  A(4)=1.064494458917859d0
+  A(5)=1.031743407499103d0
+  A(6)=1.015747708586686d0
+  A(7)=1.007843097206448d0
+  A(8)=1.003913889338348d0
+  A(9)=1.001955033591003d0
+  A(10)=1.000977039492417d0
+  A(11)=1.000488400478694d0
+  A(12)=1.000244170429748d0
+  A(13)=1.000122077763384d0
+  A(14)=1.000061037018933d0
+  A(15)=1.000030518043791d0
+  return
+End
+
+!-----------------------------------------------
+!     Inverse hyperbolic sine subroutine
+!  -------------------------------------------
+!  This subroutine calculates the inverse of
+!  the hyperbolic sine using the modified cordic
+!  natural logarithm subroutine 500.
+!  Input: X - Output: Y = ARCSINH(X)
+!  Formula: ARCSINH(X]=LN(X+SQRT(X*X+1))
+!-----------------------------------------------
+real*8 Function ArcSinH(X)
+real*8 X, X2,Y
+! Test for zero argument
+  if (X.ne.0.d0) goto 10
+  ArcSinH=0.d0
+  return
+! Save X
+10 X2=X
+  X=dabs(X)
+  X=X+dsqrt(X*X+1.d0)
+! Get LN(X)
+  Y=XLn(X)
+! Insert sign
+  Y=(X2/dabs(X2))*Y
+! Restore X
+  X=X2
+  ArcSinH=Y
+  return
+End
+
+!Inverse hyperbolic cosine subroutine
+!    ARCCOSH(X]=LN(X+SQRT(X*X-1))
+real*8 Function ArcCosH(X)
+real*8 X, X2,Y
+! Test for argument less than or equal to unity
+  if (X>1.d0) goto 10
+  ArcCosH=0.d0
+  return
+! Save X
+10 X2=X
+  X=DABS(X)
+  X=X+DSQRT(X-1.d0)*DSQRT(X+1.d0)
+  Y=XLn(X)
+! Restore X
+  X=X2
+  ArcCosH=Y
+  return
+End
+
+!Inverse hyperbolic tangent subroutine
+!  ARCTANH(X]=1/2*LN(1+x/1-x)
+real*8 Function ArcTanH(X)
+! Labels: 10,20
+real*8 X, X2,Y
+! Test for X>= +/- 1
+  if (DABS(X)<=0.999999) goto 10
+! Y is BIG! (here +/- 1.D18)
+  Y=(X/DABS(X))*1.d18
+  ArcTanH=Y
+  return
+! Test for zero argument
+10 if (X.ne.0.d0) goto 20
+  ArcTanH=0.d0
+  return
+! Save X
+20 X2=X
+  X=(1.d0+X)/(1.d0-X)
+  Y=XLn(X)
+! Restore X
+  X=X2
+  ArcTanH=Y
+  return
+End
+
+! End of file invhyper.f90

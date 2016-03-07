@@ -1,0 +1,145 @@
+!*****************************************************
+!*    Program to demonstrate the LIN subroutine      *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                F90 version by J-P Moreau, Paris.  *
+!*                       (www.jpmoreau.fr)           *
+!* ------------------------------------------------- *
+!* Example: Find two complex roots of polynomial:    *
+!*            f(x) = x^5+5x^4+10x^3+10x^2+5x+1       *
+!*                                                   *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* Input order of polynomial: 5                      *
+!*                                                   *
+!* Input the polynomial coefficients:                *
+!*                                                   *
+!*    A(0) = ? 1                                     *
+!*    A(1) = ? 5                                     *
+!*    A(2) = ? 10                                    *
+!*    A(3) = ? 10                                    *
+!*    A(4) = ? 5                                     *
+!*    A(5) = ? 1                                     *
+!*                                                   *
+!* Convergence factor: 0                             *
+!* Maximum number of iterations: 1000                *
+!*                                                   *
+!* The roots found are:                              *
+!*                                                   *
+!*      X1 = -0.937617                               *
+!*      Y1 =  0.025812                               *
+!*                                                   *
+!*      X2 = -0.937617                               *
+!*      Y2 = -0.025812                               *
+!*                                                   *
+!* The number of iterations was: 1000                *
+!*                                                   *
+!*****************************************************
+PROGRAM DEMO_LIN
+
+  real*8  PI
+  real*8  A(10)
+  integer i,k,m,n
+  real*8 aa,bb,e,x1,x2,y1,y2
+
+  PI = 4.d0*datan(1.d0)
+
+  print *,' '
+  write(*,"(' Order of polynomial: ')",advance='no'); read *, m
+  print *,' '
+  print *,'Input the polynomial coefficients:'
+  print *,' '
+  do i=0, m
+    write(*,50,advance='no') i; read *, A(i)
+  enddo
+  write(*,"(/' Convergence factor: ')",advance='no'); read *, e
+  write(*,"(' Maximum number of iterations: ')",advance='no'); read *, n
+
+  aa=PI; bb=dsqrt(2.d0)
+
+  call LIN(m,A,aa,bb,e,n,x1,y1,x2,y2,k)   ! Call LIN subroutione
+
+  write(*,60)
+  write(*,70) x1
+  write(*,71) y1
+  write(*,80) x2
+  write(*,81) y2
+  write(*,90) k
+  stop
+
+50 format('     A(',i2,') = ')
+60 format(//' The roots found are:'//)
+70 format('      X1 = ',F10.6)
+71 format('      Y1 = ',F10.6/)
+80 format('      X2 = ',F10.6)
+81 format('      Y2 = ',F10.6/)
+90 format(' The number of iterations was: ',i4//)
+
+end
+
+
+!*************************************************
+!*     Polynomial complex roots subroutine       *
+!* --------------------------------------------- *
+!*     This routine uses the Lin's method        *
+!* --------------------------------------------- *
+!* Reference: A Practical Guide to Computer      *
+!*            Method for Engineers by Shoup      *
+!* --------------------------------------------- *
+!* INPUTS:                                       *
+!*  Polynomial coefficients      : A(0) to A(m)  *
+!*  Order of polynomial          : m             *
+!*  Initial guess                : a and b       *
+!*  Convergence factor           : e             *
+!*  Maximum number of iterations : n             *
+!* OUTPUTS:                                      *
+!*  Two complex roots            : x,y1  x2,y2   *
+!*  Number of iterations         : k             *
+!*************************************************
+Subroutine LIN(m,A,aa,bb,e,n,x1,y1,x2,y2,k)  
+  !Labels: 100,200,300,400,500
+  integer i,j,k,m,n
+  real*8  A(10),aa,bb,e,x1,y1,x2,y2
+  real*8  a1,b1,cc
+  real*8  B(10),C(10)
+  ! Normalize the A(i) series
+  do i=0, m
+    C(i)=A(i)/A(m)
+  enddo
+  ! Start iteration
+  ! Set initial guess for the quadratic coefficients
+  B(0)=0; B(1)=0
+100 B(m-1)=C(m-1)-aa
+  B(m-2)=C(m-2)-aa*B(m-1)-bb
+  do j=3, m
+    B(m-j)=C(m-j)-aa*B(m+1-j)-bb*B(m+2-j)
+  enddo 
+  !Guard against divide by zero
+  if (B(2).ne.0.d0) goto 200
+  aa=aa+1.d-7; bb=bb-1.d-7
+200 a1=(C(1)-bb*B(3))/B(2)
+  b1=C(0)/B(2)
+  k=k+1
+  ! Test for the number of iterations
+  if (k>=n) goto 300
+  ! Test for convergence
+  if (dabs(aa-a1)+dabs(bb-b1) < e*e) goto 300
+  aa=a1; bb=b1
+  ! Next iteration
+  goto 100
+300 aa=a1; bb=b1
+  cc=aa*aa-4.d0*bb
+  ! Is there an imaginary part?
+  if (cc>0) goto 400
+  y1=dsqrt(-cc); y2=-y1; x1=-aa; x2=x1
+  goto 500
+400 y1=0; y2=y1; x1=-aa+sqrt(cc); x2=-aa-sqrt(cc);
+500 x1=x1/2.d0
+  x2=x2/2.d0; y1=y1/2.d0; y2=y2/2.d0
+  return
+end !LIN()
+
+
+! End of file Lin.f90

@@ -1,0 +1,106 @@
+!*****************************************************
+!*     Euclidian division of two polynomials         *
+!*             R(x) = P(x) / Q(x)                    *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* EUCLIDIAN DIVISION OF TWO POLYNOMIALS:            *
+!*                                                   *
+!* P(x) = '2x5 +2x3 -x2 +2x -1'                      *
+!* Q(x) = 'x3 -1'                                    *
+!*                                                   *
+!*                                                   *
+!* Quotient:                                         *
+!*                                                   *
+!*+     2X2 +     2                                  *
+!*                                                   *
+!* Remainder:                                        *
+!*                                                   *
+!*+ X2 +     2X +     1                              *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  AddNumber(), EnterPolynom(), DivNumber(),        *
+!*  DisplayPolynom(), MultNumber() and SetNumber().  *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+PROGRAM DIVPOL
+Use Polynoms
+
+type(ar_polynom)  P,Q,H,R
+integer DivPolynom
+
+  print *,''
+  print *,' EUCLIDIAN DIVISION OF TWO POLYNOMIALS:'
+  print *,''
+  if (EnterPolynom(' P(X) = ', P).eq.0)  stop
+  if (EnterPolynom(' Q(X) = ', Q).eq.0)  stop
+  print *,''
+  print *,''
+  if (DivPolynom(P,Q,H,R).ne.0) then
+    print *,' Quotient:'
+    call DisplayPolynom(H)
+    print *,''
+    print *,' Remainder:'
+    call DisplayPolynom(R)
+  else
+    print *,' Error in Euclidian division.'
+  end if
+  print *,''
+  print *,''
+
+END
+
+
+  integer Function DivPolynom(P,Q,H,R)
+    USE POLYNOMS
+    type(ar_polynom) P,Q,H,R
+    type(ar_number)  u, v
+    !The Q polynomial must be <> zero
+    if (Q%degree.eq.0.and.(Q%coeff(0)%value.eq.0.d0.or.Q%coeff(0)%p.eq.0)) then
+      DivPolynom=0
+	  return
+	end if
+    R=P; H%degree=P%degree - Q%degree
+    if (H%degree<0) then
+      H%degree=0; 
+	  if (SetNumber(H%coeff(0),'0').eq.0) then
+        DivPolynom=0
+	    return
+	  end if
+    else
+      do i=H%degree, 0, -1
+        if (DivNumber(R%coeff(R%degree),Q%coeff(Q%degree),H%coeff(i)).eq.0) then
+          DivPolynom=0
+	      return
+		end if
+        do j=i, R%degree
+          if (MultNumber(H%coeff(i),Q%coeff(j-i), u).eq.0) then
+            DivPolynom=0
+	        return
+		  end if
+          u%p=-u%p; u%value=-u%value
+          if (AddNumber(R%coeff(j),u,v).eq.0) then
+            DivPolynom=0
+	        return
+		  end if
+		  R%coeff(j)=v
+        end do
+        if (R%degree > 0)  R%degree=R%degree-1
+      end do
+      do while (dabs(R%coeff(R%degree)%value) < AR_SMALL.and.R%degree>0)
+	    R%degree=R%degree-1
+      end do
+    end if
+    DivPolynom=1
+  End !of function DivPolynom
+
+
+!end of file divpol.f90

@@ -1,0 +1,138 @@
+! ------------------------ MODULE fpegasus.f90 -------------------------
+MODULE FPEGASUS
+
+IMPLICIT REAL*8 A-H,O-Z
+
+   INTEGER, PARAMETER :: ITERMAX = 300               ! Maximal number of iterations
+
+   REAL*8, PARAMETER ::  ABSERR = 0.D0               ! Admissable absolute error
+   REAL*8, PARAMETER ::  MACH_EPS = 1.D-15           ! Small real number
+   REAL*8, PARAMETER ::  RELERR = 4.D0 * MACH_EPS    ! Admissable relative error
+   REAL*8, PARAMETER ::  FCTERR = MACH_EPS*MACH_EPS  ! Maximal function errror
+
+
+CONTAINS
+
+
+  Function ipegasus   &   ! Pegasus Method    .........................
+            (         &
+             x1,      &             ! Starting value 1 ................
+             x2,      &             ! Starting value 2 / solution .....
+             f2,      &             ! Function value at x2 ............
+             iter     &             ! Number of iterations ............
+            )
+ !*====================================================================*
+ !*                                                                    *
+ !*  pegasus computes one zero of the continuous function fct,         *
+ !*  provided that the two starting values x1 and x2 satisfy:          *
+ !*                fct(x1) * fct(x2) <= 0  .                           *
+ !*                                                                    *
+ !*====================================================================*
+ !*                                                                    *
+ !*   Applications:                                                    *
+ !*   ============                                                     *
+ !*      Determine one root of the continuous function fct, if an      *
+ !*      inclusion interval [x1, x2] is known for the root.            *
+ !*      fct is defined in unit Fonction.pas [See BIBLI 11].           *
+ !*                                                                    *
+ !*====================================================================*
+ !*                                                                    *
+ !*   Input parameters:                                                *
+ !*   ================                                                 *
+ !*      x1,x2    Double;                                              *
+ !*               Starting values with fct(x1) * fct(x2) <= 0.         *
+ !*                                                                    *
+ !*   Output parameters:                                               *
+ !*   =================                                                *
+ !*      x2       Double;                                              *
+ !*               Computed approximation for the root of fct           *
+ !*                                                                    *
+ !*      f2       Double;                                              *
+ !*               Functional value at the approximate root, this       *
+ !*               must be nearly zero.                                 *
+ !*      iter     integer;                                             *
+ !*               Number of iterations that were performed.            *
+ !*                                                                    *
+ !*   Return values:                                                   *
+ !*   =============                                                    *
+ !*      = -1     No inclusion: fct(x2) * fct(x1) > 0                  *
+ !*      =  0     Root has been found with ABS(f2) < FCTERR            *
+ !*      =  1     Break-off with                                       *
+ !*                   ABS(xnew-xold) < ABSERR + xnew * RELERR,         *
+ !*               check functional value                               *
+ !*      =  2     Iteration limit reached                              *
+ !*                                                                    *
+ !*====================================================================*
+ !*                                                                    *
+ !*   Constants used:   ABSERR, RELERR, MACH_EPS, EPSROOT, ITERMAX     *
+ !*   ==============                                                   *
+ !*                                                                    *
+ !*====================================================================*
+Use Fonction
+
+  integer rc
+
+  rc = 2
+  iter = 0                              ! Initialize iteration counter
+
+  f1 = fct(x1)                          ! Function values at x1, x2
+  f2 = fct(x2)
+
+  if (f1 * f2 > 0.d0) then
+    ipegasus = -1                       ! No inclusion -> Error
+    return
+  end if
+
+  if (f1 * f2 == 0.d0) then             ! One starting value is a root
+    if (f1 == 0.d0)  then
+      x2 = x1
+      f2 = 0.d0
+    end if
+    ipegasus=0
+    return
+  end if
+
+  do while (iter <= ITERMAX)                ! Pegasus iteration
+
+    iter = iter + 1
+
+    s12 = (f2 - f1) / (x2 - x1)             ! Secant slope
+
+    x3  = x2 - f2 / s12                     ! new approximation
+    f3  = fct(x3)
+
+    if (f2 * f3 <= 0.d0) then               ! new inclusion interval
+      x1 = x2
+      f1 = f2
+    else
+      f1 = f1 * f2 / (f2 + f3)
+    end if
+
+    x2 = x3
+    f2 = f3
+
+    if (DABS(f2) < FCTERR) then             ! Root found
+      rc = 0
+      goto 10
+    end if
+    
+	! Break-off with small step size
+    if (DABS(x2 - x1) <= DABS(x2) * RELERR + ABSERR) then
+      rc = 1
+      goto 10
+    end if
+  end do
+
+10 if (DABS(f1) < DABS(f2)) then     ! Choose approximate root with
+                                     ! least magnitude function value
+    x2 = x1
+    f2 = f1
+  end if
+
+  ipegasus = rc
+  return
+End Function
+
+END MODULE
+
+! ---------------------- END fpegasus.f90 --------------------------

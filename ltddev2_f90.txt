@@ -1,0 +1,152 @@
+!*********************************************************
+!*  Calculate a limited development of a real function   *
+!*  f(x)/g(x) at x=0 up to order 25, knowing the limited *
+!*  developments of f(x) and g(x).                       *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* Limited development of a real function f(x)/g(x):     *
+!*                                                       *
+!* Function to develop: exp(x)/1+x                       *
+!*                                                       *
+!* Limited development of f(x)=exp(x) is:                *
+!*   1 + x + x^2/2! + x^3/3! + ... + x^n/n! + ...        *
+!*                                                       *
+!* Limited development of g(x)=1+x is:                   *
+!*   1 + x                                               *
+!*                                                       *
+!* Order of development (max=25): 6                      *
+!*                                                       *
+!* Input coefficients of limited dev. of f(x):           *
+!*  a0 = 1                                               * 
+!*  a1 = 1                                               *
+!*  a2 = 0.5                                             *
+!*  a3 = 0.1666667                                       *
+!*  a4 = 0.0416667                                       *
+!*  a5 = 0.0083333                                       *
+!*  a6 = 0.0013889                                       *
+!*                                                       *
+!* Input coefficients of limited dev. of g(x):           *
+!*  b0 = 1                                               * 
+!*  b1 = 1                                               *
+!*  b2 = 0                                               *
+!*  b3 = 0                                               *
+!*  b4 = 0                                               *
+!*  b5 = 0                                               *
+!*  b6 = 0                                               *
+!*                                                       *
+!* The coefficients of limited dev. of f(x)/g(x) are:    *
+!*  c0 =  1.0000000                                      *
+!*  c1 =  0.0000000                                      *
+!*  c2 =  0.5000000                                      *
+!*  c3 = -0.3333333                                      *
+!*  c4 =  0.3750000                                      *
+!*  c5 = -0.3666667                                      *
+!*  c6 =  0.3680556                                      *
+!*                                                       *
+!* Function to develop: 1/1+sh(x)                        *
+!*                                                       *
+!* Limited development of g(x)=1+sh(x) is:               *
+!*  1 + x + x^3/3! + x^5/5! + ... + x^2n+1/(2n+1)! + ... *
+!*                                                       *
+!* Order of development (max=25): 6                      *
+!*                                                       *
+!* Input coefficients of limited dev. of f(x):           *
+!*  a0 = 1                                               * 
+!*  a1 = 0                                               *
+!*  a2 = 0                                               *
+!*  a3 = 0                                               *
+!*  a4 = 0                                               *
+!*  a5 = 0                                               *
+!*  a6 = 0                                               *
+!*                                                       *
+!* Input coefficients of limited dev. of g(x):           *
+!*  b0 = 1                                               * 
+!*  b1 = 1                                               *
+!*  b2 = 0                                               *
+!*  b3 = 0.1666667                                       *
+!*  b4 = 0                                               *
+!*  b5 = 0.0083333                                       *
+!*  b6 = 0                                               *
+!*                                                       *
+!* The coefficients of limited dev. of f(x)/g(x) are:    *
+!*  c0 =  1.0000000                                      *
+!*  c1 = -1.0000000                                      *
+!*  c2 =  1.0000000                                      *
+!*  c3 = -1.1666667                                      *
+!*  c4 =  1.3333334                                      *
+!*  c5 = -1.5083334                                      *
+!*  c6 =  1.7111112                                      *
+!*                                                       *
+!* ----------------------------------------------------- *
+!* Ref.: "Mathematiques en Turbo Pascal by Alain         *
+!*        Reverchon and Marc Ducamp, Editions Eyrolles,  *
+!*        Paris, 1991" [BIBLI 03].                       *
+!*                                                       *
+!*                            F90 version by J-P Moreau. *
+!*                                (www.jpmoreau.fr)      *
+!*********************************************************
+Program LTDDEV2
+
+parameter(NSIZE=25)
+
+integer i,m
+real*8  T1(0:NSIZE),T2(0:NSIZE),R(0:NSIZE)
+
+  print *,' '
+  print *,' Limited development of a real function f(x)/g(x):'
+  print *,' '
+  print *,' Function to develop: exp(x)/1+x'
+  print *,' '
+  print *,' Limited development of f(x)=exp(x) is:'
+  print *,'  1 + x + x^2/2! + x^3/3! + ... + x^n/n! + ...'
+  print *,' '
+  print *,' Limited development of g(x)=1+x is:'
+  print *,'  1 + x'
+  print *,' '
+  write(*,10,advance='no'); read *, m
+  print *,' '
+  print *,' Input coefficients of limited dev. of f(x):'
+  do i=0, m
+    write(*,20,advance='no') i; read *, T1(i)
+  end do
+  print *,' '
+  print *,' Input coefficients of limited dev. of g(x):'
+  do i=0, m
+    write(*,21,advance='no') i; read *, T2(i)
+  end do
+  print *,' '
+
+  call ar_dldiv(m,T1,T2,R)
+
+  print *,' The coefficients of limited dev. of f(x)/g(x) are:'
+  do i=0, m 
+    write(*,30)  i, R(i)
+  end do
+  print *,' '
+
+10 format('  Order of development (max=25): ')
+20 format('   a',I1,' = ')
+21 format('   b',I1,' = ')
+
+30 format('   c',I1,' = ',F10.7)
+
+END
+
+Subroutine ar_dldiv(n, t1, t2, res)
+  parameter(NSIZE=25)
+  real*8 x,t1(0:NSIZE),t2(0:NSIZE),res(0:NSIZE)
+  if (n > NSIZE) return
+  if (dabs(t2(0)) < 1.d-16) return 
+  res(0)=t1(0)/t2(0) 
+  do i=1, n
+    x = t1(i)
+    do j=1, i
+	  x = x-t2(j)*res(i-j)
+    end do
+    res(i) = x
+  end do
+  return
+End
+
+!end of file ltddev2.f90

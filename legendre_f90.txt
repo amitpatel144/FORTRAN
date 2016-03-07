@@ -1,0 +1,173 @@
+!****************************************************
+!*   Program to demonstrate Legendre coefficients   *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*             F90 Version by J.-P. Moreau, Paris.  *
+!*                     (www.jpmoreau.fr)            *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* Legendre polynomial coefficients for order 2     *
+!*                                                  *  
+!* A( 0) =   -0.500000                              *
+!* A( 1) =    0.000000                              *
+!* A( 2) =    1.500000                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 3     *
+!*                                                  *  
+!* A( 0) =    0.000000                              *
+!* A( 1) =   -1.500000                              *
+!* A( 2) =    0.000000                              *
+!* A( 3) =    2.500000                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 4     *
+!*                                                  *  
+!* A( 0) =    0.375000                              *
+!* A( 1) =    0.000000                              *
+!* A( 2) =   -3.750000                              *
+!* A( 3) =    0.000000                              *
+!* A( 4) =    4.375000                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 5     *
+!*                                                  *  
+!* A( 0) =    0.000000                              *
+!* A( 1) =    1.875000                              *
+!* A( 2) =    0.000000                              *
+!* A( 3) =   -8.750000                              *
+!* A( 4) =    0.000000                              *
+!* A( 5) =    7.875000                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 6     *
+!*                                                  *  
+!* A( 0) =   -0.312500                              *
+!* A( 1) =    0.000000                              *
+!* A( 2) =    6.562500                              *
+!* A( 3) =    0.000000                              *
+!* A( 4) =  -19.687500                              *
+!* A( 5) =    0.000000                              *
+!* A( 6) =   14.437500                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 7     *
+!*                                                  *  
+!* A( 0) =    0.000000                              *
+!* A( 1) =   -2.187500                              *
+!* A( 2) =    0.000000                              *
+!* A( 3) =   19.687500                              *
+!* A( 4) =    0.000000                              *
+!* A( 5) =  -43.312500                              *
+!* A( 6) =    0.000000                              *
+!* A( 7) =   26.812500                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 8     *
+!*                                                  *  
+!* A( 0) =    0.273438                              *
+!* A( 1) =    0.000000                              *
+!* A( 2) =   -9.843750                              *
+!* A( 3) =    0.000000                              *
+!* A( 4) =   54.140625                              *
+!* A( 5) =    0.000000                              *
+!* A( 6) =  -93.843750                              *
+!* A( 7) =    0.000000                              *
+!* A( 8) =   50.273438                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 9     *
+!*                                                  *  
+!* A( 0) =    0.000000                              *
+!* A( 1) =    2.460938                              *
+!* A( 2) =    0.000000                              *
+!* A( 3) =  -36.093750                              *
+!* A( 4) =    0.000000                              *
+!* A( 5) =  140.765625                              *
+!* A( 6) =    0.000000                              *
+!* A( 7) = -201.093750                              *
+!* A( 8) =    0.000000                              *
+!* A( 9) =   94.960938                              *
+!*                                                  *  
+!* <Enter> to continue...                           *
+!*                                                  *  
+!* Legendre polynomial coefficients for order 10    * 
+!*                                                  *  
+!* A( 0) =   -0.246094                              *
+!* A( 1) =    0.000000                              *
+!* A( 2) =   13.535156                              *
+!* A( 3) =    0.000000                              *
+!* A( 4) = -117.304688                              *
+!* A( 5) =    0.000000                              *
+!* A( 6) =  351.914063                              *
+!* A( 7) =    0.000000                              *
+!* A( 8) = -427.324219                              *
+!* A( 9) =    0.000000                              *
+!* A(10) =  180.425781                              *
+!*                                                  *  
+!****************************************************
+PROGRAM LEGENDRE
+
+real*8  A(0:10)
+real*8  B(0:10,0:10)
+integer k, n
+
+  do n = 2, 10
+    print *,' '
+    print *,'Legendre polynomial coefficients for order',n
+    print *,' '
+	 
+    call Legendre_Coeff(n,A,B)
+
+    do k = 0, n
+      write(*,25) k, A(k)
+    end do
+    print *,' '
+    if (n.ne.10)  pause ' <Enter> to continue...'
+  end do
+  print *,' '
+  stop
+25 format('   A(',I2,') = ',F11.6)
+end
+
+
+!******************************************************
+!* Legendre series coefficients evaluation subroutine *
+!* by means of recursion relation. The order of the   *
+!* polynomial is n. The coefficients are returned in  *
+!* A(i).                                              *
+!******************************************************
+subroutine Legendre_Coeff(n,A,B)  
+  integer i,j,n
+  real*8  A(0:10), B(0:10,0:10)
+  !Establish p0 and p1 coefficients
+  B(0,0)=1.d0 ; B(1,0)=0.d0 ; B(1,1)=1.d0
+  !Return if order is less then 2
+  if (n > 1)  then
+    do i = 2, n
+      B(i,0) = -(i-1)*B(i-2,0)/i
+      do j = 1, i
+        !Basic recursion relation
+        B(i,j)=(i+i-1)*B(i-1,j-1)-(i-1)*B(i-2,j)
+        B(i,j)=B(i,j)/i
+      end do
+    end do
+    do i = 0, n
+      A(i)=B(n,i)
+    end do
+  end if
+  return
+end
+
+
+!End of file legendre.f90

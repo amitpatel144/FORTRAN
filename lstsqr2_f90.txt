@@ -1,0 +1,231 @@
+!*******************************************************
+!* Least Squares of order 1 or 2 Demonstration Program *
+!* --------------------------------------------------- *
+!*  Reference: BASIC Scientific Subroutines, Vol. II   *
+!*  By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].  *
+!*                                                     *
+!*                 F90 Version By J-P Moreau, Paris.   *
+!*                        (www.jpmoreau.fr)            *
+!* --------------------------------------------------- *
+!* FIRST SAMPLE RUN:                                   *
+!*                                                     *
+!* This program calculates a linear or parabolic least *
+!* squares fit to a given data set.                    *
+!*                                                     *
+!* INSTRUCTIONS                                        *
+!* ------------                                        *
+!*                                                     *
+!* The number of data coordinates provided must be     *
+!* greater than three. Otherwise, a divide by zero     *
+!* error may result.                                   *
+!*                                                     *
+!* Order of fit (1 or 2): 1                            *
+!* Number of data points: 4                            *
+!*                                                     *
+!* There are two input options:                        *
+!* 1. input coordinate pairs                           *
+!* 2. first input the independant variable values,     *
+!*    then input dependant ones.                       *
+!*    Your choice (1 or 2): 1                          *
+!*                                                     *
+!* ? 1 1                                               *
+!* ? 2 2                                               *
+!* ? 3 3                                               *
+!* ? 5 5.01                                            *
+!*                                                     *
+!* Fitted equation is:                                 *
+!*   Y = -4.573E-003 + 1.002571 X                      *
+!*                                                     *
+!* Standard deviation of fit: 2.9E-003                 *
+!*                                                     *
+!* SECOND SAMPLE RUN:                                  *
+!*                                                     *
+!* Order of fit (1 or 2): 2                            *
+!* Number of data points: 4                            *
+!*                                                     *
+!* There are two input options:                        *
+!* 1. input coordinate pairs                           *
+!* 2. first input the independant variable values,     *
+!*    then input dependant ones.                       *
+!*    Your choice (1 or 2): 1                          *
+!*                                                     *
+!* ? 1 1                                               *
+!* ? 2 4                                               *
+!* ? 3 9                                               *
+!* ? 5 24.95                                           *
+!*                                                     *
+!* Fitted equation is:                                 *
+!*   Y = -1.7728E-002 + 2.2045E-002 X + 0.994318 X^2   *
+!*                                                     *
+!* Standard deviation of fit: 4.7E-003                 *
+!*                                                     *
+!*******************************************************
+Program Lstsqr2
+
+integer, parameter :: SIZE = 100
+real x(0:SIZE), y(0:SIZE)
+
+PRINT *,' '
+PRINT *,' LEAST SQUARES CURVE FIT ROUTINE'
+PRINT *,' '
+PRINT *,' This program calculates a linear or parabolic least'
+PRINT *,' squares fit to a given data set.'
+PRINT *,' '
+PRINT *,' INSTRUCTIONS'
+PRINT *,' ------------'
+PRINT *,' '
+PRINT *,' The number of data coordinates provided must be greater'
+PRINT *,' than three. Otherwise, a divide by zero error may result.'
+PRINT *,' '
+Write(*,100,advance='no'); read *, iorder
+IF (iorder < 1) iorder = 1
+IF (iorder > 2) iorder = 2
+10 Write(*,200,advance='no'); read *, n
+IF (n < 4) GOTO 10
+PRINT *,' '
+PRINT *,' There are two input options:'
+PRINT *,' 1. input coordinate pairs (Example: 1,2.5)'
+PRINT *,' 2. first input the independant variable values, then input dependant ones.'
+20 Write(*,300,advance='no'); read *, iz
+PRINT *,' '
+IF (iz < 1) GOTO 20
+IF (iz > 2) GOTO 20
+IF (iz == 1) GOTO 30
+!read data from screen (option 2)
+DO m = 0, n - 1
+  Write(*,400,advance='no') m+1; read *, x(m)
+END DO
+PRINT *,' '
+DO m = 0, n - 1
+  Write(*,400,advance='no') m+1; read *, y(m)
+END DO
+GOTO 50
+!read data from screen (option 1)
+30 DO m = 0, n - 1
+  Write(*,400,advance='no') m+1; read *, x(m), y(m)
+END DO
+!Call linear or parabolic least squares subroutine
+50 IF (iorder == 1) call S1000(n,x,y,a,b,d)
+   IF (iorder == 2) call S2000(n,x,y,a,b,c,d)
+!Write results to screen taking care of zero, one or minus one values
+PRINT *,' '
+PRINT *,' FITTED EQUATION IS:'
+Write(*,500,advance='no')
+IF (a.ne.0.) Write(*,600,advance='no') a
+IF (b.ne.0.) THEN
+  IF (b > 0.AND.a.ne.0)  Write(*,700,advance='no')
+  IF (ABS(b).ne.1.) THEN
+    Write(*,800,advance='no') b
+  ELSE IF (b > 0) THEN
+	Write(*,810,advance='no')
+  ELSE
+    Write(*,811,advance='no')
+  END IF
+END IF
+IF (iorder > 1) THEN
+  IF (c.ne.0.) THEN
+    IF (c > 0..AND.a.ne.0..AND.b.ne.0.) Write(*,700,advance='no')
+    IF (ABS(c).ne.1.) THEN
+	  Write(*,900) c
+    ELSE IF (c > 0) THEN
+      PRINT *,' X^2'
+    ELSE
+      PRINT *,'- X^2'
+    END IF
+  END IF
+END IF
+PRINT *,' '
+PRINT *,' '
+PRINT *,' STANDARD DEVIATION OF FIT: ', d
+PRINT *,' '
+STOP
+
+100 Format(' Order of fit (1 or 2): ')
+200 Format(' Number of data points: ')
+300 Format(' Your choice (1 or 2) : ')
+400 Format(' ',I2,' ')
+500 Format('   Y = ')
+600 Format(E12.5,1X)
+700 Format(' +')
+800 Format(E12.5,' X')
+810 Format(' X')
+811 Format('-X')
+900 Format(E12.5,' X^2')
+
+END
+
+
+!****************************************
+!*   Linear Least Squares Subroutine    *
+!* ------------------------------------ *
+!* In:  integer n = number of points    *
+!*      n values x(i), y(i)             *
+!* Out: coefficients a,b of fit (a+b*x) *
+!*      standard deviation d            *
+!****************************************
+Subroutine S1000(n,x,y,a,b,d) 
+  integer, parameter :: SIZE = 100
+  real x(0:SIZE), y(0:SIZE)
+  a1 = 0; a2 = 0; b0 = 0; b1 = 0
+  DO m = 0, n - 1
+    a1 = a1 + x(m)
+    a2 = a2 + x(m) * x(m)
+    b0 = b0 + y(m)
+    b1 = b1 + y(m) * x(m)
+  END DO
+  a1 = a1 / n; a2 = a2 / n; b0 = b0 / n; b1 = b1 / n
+  d = a1 * a1 - a2
+  a = a1 * b1 - a2 * b0; a = a / d
+  b = a1 * b0 - b1; b = b / d
+  !Evaluation of standard deviation d (unbiased estimate)
+  d = 0
+  DO m = 0, n - 1
+    d1 = y(m) - a - b * x(m)
+    d = d + d1 * d1
+  END DO
+  d = SQRT(d / (n - 2))
+Return
+End
+
+!************************************************
+!*     Parabolic least squares subroutine       *
+!* -------------------------------------------- *
+!* In:  integer n = number of points            *
+!*      n values x(i), y(i)                     *
+!* Out: coefficients a,b,c of fit (a+b*x+c*x^2) *
+!*      standard deviation d shared with main   *
+!************************************************
+Subroutine S2000(n,x,y,a,b,c,d)
+  integer, parameter :: SIZE = 100
+  real x(0:SIZE), y(0:SIZE)
+  a0 = 1; a1 = 0; a2 = 0; a3 = 0; a4 = 0
+  b0 = 0; b1 = 0; b2 = 0
+  DO m = 0, n - 1
+    a1 = a1 + x(m)
+    a2 = a2 + x(m) * x(m)
+    a3 = a3 + x(m) * x(m) * x(m)
+    a4 = a4 + x(m) * x(m) * x(m) * x(m)
+    b0 = b0 + y(m)
+    b1 = b1 + y(m) * x(m)
+    b2 = b2 + y(m) * x(m) * x(m)
+  END DO
+  a1 = a1 / n; a2 = a2 / n; a3 = a3 / n; a4 = a4 / n
+  b0 = b0 / n; b1 = b1 / n; b2 = b2 / n
+  d = a0 * (a2 * a4 - a3 * a3) - a1 * (a1 * a4 - a2 * a3) + a2 * (a1 * a3 - a2 * a2)
+  a = b0 * (a2 * a4 - a3 * a3) + b1 * (a2 * a3 - a1 * a4) + b2 * (a1 * a3 - a2 * a2)
+  a = a / d
+  b = b0 * (a2 * a3 - a1 * a4) + b1 * (a0 * a4 - a2 * a2) + b2 * (a1 * a2 - a0 * a3)
+  b = b / d
+  c = b0 * (a1 * a3 - a2 * a2) + b1 * (a2 * a1 - a0 * a3) + b2 * (a0 * a2 - a1 * a1)
+  c = c / d
+  !Evaluation of standard deviation d
+  d = 0.
+  DO m = 0, n - 1
+    d1 = y(m) - a - b * x(m) - c * x(m) * x(m)
+    d = d + d1 * d1
+  END DO
+  d = SQRT(d / (n - 3))
+  Return
+End
+
+!End of file lstsqr2b.f90

@@ -1,0 +1,228 @@
+!******************************************************************************
+!*          This demo program encodes a text file by the letter               *
+!*          transposing method                                                *
+!* -------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                *
+!* File test.pas contains:                                                    *
+!*                                                                            *
+!* Program Relativistic_Mass;                                                 *
+!*                                                                            *
+!* Uses WinCrt1;                                                              *
+!*                                                                            *
+!* Var                                                                        *
+!*                                                                            *
+!* rest_mass, rela_mass,         { kg }                                       *
+!* voltage,                      { volt }                                     *
+!* speed,                        { m/s }                                      *
+!* e,                            { electron charge in coulomb }               *
+!* c: double;                    { speed of light in m/s }                    *
+!*                                                                            *
+!* Begin                                                                      *
+!*                                                                            *
+!* e:=1.602e-19; c:=2.9979e8; rest_mass:=9.109e-31;                           *
+!*                                                                            *
+!* writeln;                                                                   *
+!* write(' Give electron gun voltage in volts: ');                            *
+!*                                                                            *
+!* readln(voltage);                                                           *
+!*                                                                            *
+!* rela_mass := (voltage*e + rest_mass*c*c) / (c*c);                          *
+!*                                                                            *
+!* speed := c*sqrt(1.0 - Sqr(rest_mass/rela_mass));                           *
+!*                                                                            *
+!* writeln;                                                                   *
+!* writeln(' Relativistic mass (kg) and speed (m/s):');                       *
+!* writeln(' ', rela_mass, ' ', speed);                                       *
+!* writeln;                                                                   *
+!*                                                                            *
+!* ReadKey;                                                                   *
+!* DoneWinCrt                                                                 *
+!*                                                                            *
+!* End.                                                                       *
+!*                                                                            *
+!*     TRANSPOSITION CIPHER                                                   *
+!* Give name of input text file: test.pas                                     *
+!* Give name of output text file: test.txt                                    *
+!* Give flag (e) to encode (d) decode: e                                      *
+!* Give transposition distance: 40                                            *
+!*                                                                            *
+!* File test.txt now contains:                                                *
+!*                                                                            *****
+!*                                        P o r m R l t;vssMic_taisi a e   a g r  *  
+!*                                                                                *
+!*                                        U e   i C t ;              1 r n W s s  *
+!*                                                                                *
+!*                                        V r                                  a  *
+!*                                                                                *
+!*                                         }rgs _ a s   e asmas_,l r , s m{tke    *
+!*                                       } tvol a e                    , g{tvol   *
+!*                                          s/e d                        ,{emps } *
+!*o   h r e i   o l}mb o u c n   g a c n r cel                            { e,e t *
+!*o   i h   n m s }        /   i t g l f   ecp  o b e                ; l u{ds:e d *
+!*                                                                                *
+!*                                        B g n                              i e  *
+!*                                                                                *
+!*9 1 9 - 1                    ; 3 e 0 . = sea=_.s0re;1e;7c9=2.:9 998- 2e6t1m:s : *
+!*                                                                                *
+!*                                          w i e n                    ; l t r    *
+!*o t : ' ;                      )   s l v nw iget'oG vu  loctrenegeniv l(ateri   *
+!*                                                                                *
+!*                                          r a l ( o t g )    ; e a l v n d e    *
+!*                                                                                *
+!*c     c c ;                  ) * ( / ) * *rslm_taes :  *vgltaoe(e=+ rssm_aaes c *
+!*                                                                                *
+!*l _ a s )                    ; ) s m a e /ssemdt:e (*qq t 1.0(-rSsrcr=s _eaps r *
+!*                                                                                *
+!*                                          w i e n                    ; l t r    *
+!*p e   m s : )            ; ' ) / ( d e s dwai)ekn 'sRmlcttvisiia ea s((lgt rn   *
+!*                                         ;wdieesn,' '  seaa_mlsr,,' '( lpter)   *
+!*                                          w i e n                    ; l t r    *
+!*                                                                                *
+!*                                          R a K y                    ; e d e    *
+!*                                          D n W n r                t C i e o    *
+!*                                                                                *
+!*                                        E d                                . n  *
+!*                                                                            *****
+!*     TRANSPOSITION CIPHER                                                   *
+!* Give name of input text file: test.txt                                     *
+!* Give name of output text file: test1.pas                                   *
+!* Give flag (e) to encode (d) decode: d                                      *
+!* Give transposition distance: 40                                            *
+!*                                                                            *
+!* File test1.pas now contains: same text as test.pas.                        *
+!*                                                                            *
+!* -------------------------------------------------------------------------- *
+!* Reference: "Advanced Turbo C By Herbert Schildt, Borland-Osborne/          *
+!*             McGraw-Hill, 1987."                                            *
+!*                                                                            *
+!*                                        F90 Release By J-P Moreau, Paris.   *
+!*                                               (www.jpmoreau.fr)            *
+!******************************************************************************
+Program Encode
+
+Implicit None
+
+  integer dist          !user-specified transposition distance
+  character*40 input    !name of input text file (to encode/decode
+  character*40 output   !name of output text file (to encode/decode
+  character*1  flag     ! (e)ncode or (d)ecode
+
+  print *,' '
+  print *,'    TRANSPOSITION CIPHER'
+  print *,' '
+  Write(*,20,advance='no'); Read *, input
+
+  print *,' '
+  Write(*,30,advance='no'); Read *, output
+
+  print *,' '
+  Write(*,40,advance='no'); Read *, flag
+
+  if (flag.ne.'e'.and.flag.ne.'d') then
+    print *,' '
+    print *,'Usage (example): toto.in toto.out e'
+	print *,' '
+    goto 10
+  end if
+
+  print *,' '
+  Write(*,50,advance='no'); Read *, dist
+  print *,' '
+
+  if (flag=='e') then
+    call code(input,output,dist)
+  else
+    call decode(input,output,dist)
+  end if
+
+10 stop ' Program terminated.' 
+
+20 format(' Give name of input text file: ')
+30 format(' Give name of output text file: ')
+40 format(' Give flag (e) to encode (d) decode: ')
+50 format(' Give transposition distance: ')
+
+END !of main program
+
+
+Subroutine code(input, output, dist)
+  character*40 input, output
+  integer dist, l
+  logical done
+  character*1 temp
+  integer t
+  character*80 s   !one text line
+
+  open(unit=1, file=input, action='read')
+  open(unit=2, file=output, status='unknown')   
+
+  done=.FALSE.
+
+  do while (done==.FALSE.)
+    read(1,20,end=10) s
+    l=LEN_TRIM(s)
+	s=TRIM(s)
+	goto 15
+10  done=.TRUE.
+15	t=1
+    do while (t<=dist)
+      temp=s(t:t)
+      s(t:t)=s(t+dist:t+dist)
+      s(t+dist:t+dist)=temp
+      t=t+1
+      temp=s(t:t)
+      s(t:t)=s(dist*2-t:dist*2-t)
+      s(dist*2-t:dist*2-t)=temp
+	  t=t+1
+    end do
+    write(2,20) s
+  end do
+  close(unit=1)
+  close(unit=2)
+
+20 format(A80)
+
+End  !code
+
+
+Subroutine decode(input, output, dist)
+  character*40 input, output
+  integer dist, l
+  logical done
+  character*1 temp
+  integer t
+  character*80 s
+
+  open(unit=1, file=input, status='unknown')
+  open(unit=2, file=output, status='unknown')   
+
+  done=.FALSE.
+
+  do while (done==.FALSE.)
+    read(1,20,end=10) s
+    l=LEN_TRIM(s)
+	s=TRIM(s)
+	goto 15
+10  done=.TRUE.
+15  t=1
+    do while (t<=dist)
+      t=t+1
+      temp=s(t:t)
+      s(t:t)=s(dist*2-t:dist*2-t)
+      s(dist*2-t:dist*2-t)=temp
+      t=t-1
+      temp=s(t:t)
+      s(t:t)=s(t+dist:t+dist)
+      s(t+dist:t+dist)=temp
+      t=t+2
+    end do
+    write(2,20) s
+  end do
+  close(unit=1)
+  close(unit=2)
+
+20 format(A80)
+
+End  !decode
+
+!end of file encode.f90

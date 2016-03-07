@@ -1,0 +1,150 @@
+!***************************************************
+!*  Evaluate a Legendre Polynomial P(x) of Order n *
+!*  for argument x by using Horner's Rule          *
+!* ----------------------------------------------- *
+!* SAMPLE RUN:                                     *
+!*                                                 *
+!*  give order: 7                                  *
+!*                                                 *
+!*  give argument x: 0.5                           *
+!*                                                 *
+!*   P(x) =   0.2231445                            *
+!*                                                 *
+!* ----------------------------------------------- *
+!*               F90 Release By J-P Moreau, Paris. *
+!*                       (www.jpmoreau.fr)         *
+!***************************************************
+Program Eval_Leg
+
+Implicit None
+
+integer, parameter :: NMAX = 12
+
+real A(0:NMAX)
+integer n
+real x, Eval
+
+  print *,' '
+  write(*,10,advance='no'); read *, n
+  print *,' '
+  write(*,20,advance='no'); read *, x
+
+  Call Legendre_Coeff(n, A)
+
+  print *,' '
+  print *,' P(x) = ', Eval(n,A,x)
+  print *,' '
+
+10 format(' give order: ')
+20 format(' give argument x: ') 
+
+End
+
+
+!******************************************************
+!* Legendre series coefficients evaluation subroutine *
+!* by means of recursion relation. The order of the   *
+!* polynomial is n. The coefficients are returned in  *
+!* A(i) by increasing powers.                         *
+!******************************************************
+Subroutine Legendre_Coeff(n, A)
+  Implicit None
+  integer, parameter :: NMAX = 12
+  integer n, i,j
+  real A(0:NMAX)
+  real B(0:NMAX,0:NMAX)
+! Establish p0 and p1 coefficients
+  B(0,0)=1.0; B(1,0)=0.0; B(1,1)=1.0
+! Return if order is less then 2
+  if (n > 1) then
+	do i=2, n
+      B(i,0) = -Real(i-1)*B(i-2,0)/Real(i)
+      do j=1, i
+        !Basic recursion relation
+        B(i,j)=Real(i+i-1)*B(i-1,j-1)-Real(i-1)*B(i-2,j)
+        B(i,j) = B(i,j) / Real(i)
+      end do
+    end do
+    do i=0, n
+	  A(i)=B(n,i)
+    end do
+  end if
+  return
+End
+
+
+Subroutine HORNER (N, A, X0, K, B, R)
+!--------------------------------------------------------------------
+!     EVALUATE A POLYNOMIAL AND ITS DERIVATIVES BY HORNER'S METHOD
+!
+!     INPUTS:
+!     N       ORDER OF POLYNOMIAL
+!     A       VECTOR OF SIZE N+1 STORING THE COEFFICIENTS OF
+!             POLYNOMIAL IN DECREASING ORDERS OF POWERS
+!             I.E. P(X) = A(1)*X**N+A(2)*X**(N-1)+...+A(N)*X+A(N+1)
+!     X0      GIVEN ARGUMENT
+!     K       MAXIMUM ORDER OF DERIVATIVES ASKED FOR
+!     B       FLAG
+!             = .TRUE.  EVALUATION ONLY
+!             = .FALSE. DETERMINATION OF POLYNOMIAL COEFFICIENTS
+!                NEAR X0
+!     R       VECTOR OF SIZE K+1 CONTAINS:
+!             -  VALUES P(X0), P'(X0), P''(X0),..PK(X0),
+!                IF B IS TRUE AND IF K < N
+!             -  THE N+1 COEFFICIENTS OF POLYNOMIAL
+!                Q(X-X0) = R(1)+R(2)*(X-X0)+...+R(N+1)*(X-X0)**(N),
+!                IF B IS FALSE AND IF K = N.
+!
+!     REFERENCE:
+!     ALGORITHM 337, COLLECTED ALGORITHMS FROM CACM, W.PANKIEWICKZ
+!---------------------------------------------------------------------
+  Implicit None
+  integer N, K
+  real A(*), R(*), X0
+  logical B
+  real RR
+  integer I,J,L,NMJ
+
+  RR = A(1)
+  do I=1, K+1
+    R(I) = RR
+  end do
+  do J=2, N+1
+    R(1) = R(1)*X0 + A(J)
+    NMJ = N-J+1
+    if (NMJ > K) then
+      L = K
+    else
+      L = NMJ
+    end if
+    do I=2, L+1
+	  R(I) = R(I)*X0 + R(I-1)
+    end do
+  end do
+  if (B==.TRUE.) then
+    L = 1
+    do I=2, K+1
+      L = I*(I-1)
+      R(I) = R(I)*L
+    end do
+  end if
+  Return
+End
+
+! Evaluate P(x) of order n for argument x
+real Function Eval(n, A, x)
+  Implicit None
+  integer n
+  real A(0:n), x
+  integer i
+  integer, parameter :: NMAX = 12
+  real A1(1:NMAX), R(1:NMAX)
+  do i=n, 0, -1
+    A1(n-i+1) = A(i)
+  end do
+  Call HORNER(n,A1,x,0,.TRUE.,R)
+  Eval = R(1)
+  Return
+End
+
+! end of file eval_leg.f90

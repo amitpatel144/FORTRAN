@@ -1,0 +1,160 @@
+!****************************************************
+!*   Linear Least Squares Demonstration Program     *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*               F90 version by J-P Moreau, Paris   *
+!*                       (www.jpmoreau.fr)          *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* This program calculates a linear                 *
+!* least squares fit to a given data set.           *
+!*                                                  *
+!* INSTRUCTIONS                                     *
+!* ------------                                     *
+!*                                                  *
+!* The number of data coordinates provided must be  *
+!* greater than two. Otherwise, a divide by zero    *
+!* error may result.                                *
+!*                                                  *
+!* Number of data points : 4                        *
+!*                                                  *
+!* There are two input options:                     *
+!* 1. input coordinate pairs                        *
+!* 2. first input the independant variable values,  *
+!*    then input dependant ones.                    *
+!*    Your choice (1 or 2): 1                       *
+!*                                                  *
+!* ? 1 1                                            *
+!* ? 2 2                                            *
+!* ? 3 3                                            *
+!* ? 5 5.01                                         *
+!*                                                  *
+!* Fitted equation is:                              *
+!*   Y = -0.004571 + 1.002571 X                     *
+!*                                                  *
+!* Standard deviation of fit:  0.002928             *
+!*                                                  *
+!****************************************************
+PROGRAM LSTSQR1
+
+INTEGER, PARAMETER :: SIZE=100
+
+REAL*8    a,b,d 
+INTEGER*4 n,z
+REAL*8    X(0:SIZE), Y(0:SIZE)
+
+n = 0    
+do while (n < 3)
+    print *, 'This program calculates a linear'
+    print *, 'least squares fit to a given data set.'
+    print *, ' ' 
+    print *, 'INSTRUCTIONS'
+    print *, '------------'
+    print *, ' '
+    print *, 'The number of data coordinates provided'
+    print *, 'must be greater than two. Otherwise, a'
+    print *, 'divide by zero error may result.'
+    print *, ' '
+    write (*,"(' Number of data points : ')",advance='no') 
+    read  *, n
+    print *, ' '
+end do
+
+z=0
+do while (z<1.OR.z>2)
+    print *, 'There are two input options:'
+    print *, '1. input coordinate pairs'
+    print *, '2. first input the independant variable values,'
+    print *, '   then input dependant ones.'
+    write (*,"(' Your choice (1 or 2) : ')",advance='no')
+    read  *, z
+    print *, ' '
+end do
+
+if (z.eq.2) then
+    do m = 0, n-1  
+      write(*,25,advance='no') m+1
+      read *, X(m) 
+    end do
+    print *, ' '
+    do m = 0, n-1
+      write(*,25,advance='no') m+1
+      read *, Y(m) 
+    end do
+else  ! z=1
+    do m = 0, n-1
+      write(*,25,advance='no') m+1
+      read *, X(m), Y(m)
+    end do
+end if
+
+! Call linear least squares subroutine
+   CALL Least_Square(n,X,Y,a,b,d)
+
+! Print results a, b and d
+   print *, ' '
+   print *, ' Fitted equation is:'
+   if (b > 0) then
+     write(*,50) a, b
+   else
+     write(*,51) a, b
+   end if	 
+   print *, ' '
+   write(*,60) d 
+   print *, ' '
+STOP
+25 FORMAT('  ',I2,' ')
+50 FORMAT('  Y = ',F10.6,' +',F10.6,' X')
+51 FORMAT('  Y = ',F10.6,' ',F10.6,' X')
+60 FORMAT('  Standard deviation of fit: ',F10.6) 
+END
+! end of main
+
+
+!***************************************************
+!*        Linear least squares subroutine          *
+!* ----------------------------------------------- *
+!* The input data set is X(m), Y(m). The number of *
+!* data points is n (n must be > 2). The returned  *
+!* parameters are: a,b, coefficients of equation   *
+!* Y = a + b X, and d, standard deviation of fit.  *
+!***************************************************
+SUBROUTINE Least_Square(n,X,Y,a,b,d)
+  INTEGER, PARAMETER :: SIZE=100
+  INTEGER n
+  REAL*8  a,b,d,X(0:SIZE),Y(0:SIZE)  
+  REAL*8  a1,a2,b0,b1,d1
+  INTEGER*4 m
+  a1 = 0
+  a2 = 0
+  b0 = 0
+  b1 = 0
+  DO m = 0, n-1
+    a1 = a1 + X(m)
+    a2 = a2 + X(m) * X(m)
+    b0 = b0 + Y(m)
+    b1 = b1 + Y(m) * X(m)
+  END DO
+  a1 = a1 / n
+  a2 = a2 / n
+  b0 = b0 / n
+  b1 = b1 / n
+  d = a1 * a1 - a2
+  a = a1 * b1 - a2 * b0
+  a = a / d
+  b = a1 * b0 - b1
+  b = b / d
+!  Evaluation of standard deviation d (unbiased estimate) 
+  d = 0
+  DO m = 0, n-1
+    d1 = Y(m) - a - b * X(m)
+    d  = d + d1 * d1
+  END DO
+  d = SQRT(d / (n - 2))
+  RETURN
+END
+
+! End of file lstsqr1.f90

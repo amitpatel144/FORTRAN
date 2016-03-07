@@ -1,0 +1,190 @@
+!****************************************************
+!*  Calculate the eigenvalues and the eigenvectors  *
+!*      of a real symmetric tridiagonal matrix      *
+!* ------------------------------------------------ *
+!* Ref.: "NUMERICAL RECIPES, Cambridge University   *
+!*        Press, 1986" [BIBLI 08].                  *
+!*                                                  *
+!* SAMPLE RUN:                                      *
+!* (find eigenvalues and eigenvectors of matrix:    *
+!*          1  2  0  0     0                        *
+!*          2  4  7  0     0                        *
+!*     A =  0  7 10  8     0                        *
+!*          0  0  8 -0.75 -9                        *
+!*          0  0  0 -9    10  )                     *
+!*                                                  *
+!* Eigenvalues 1:   -0.78071442                     *
+!* Eigenvector:                                     *
+!* 1.000000 -0.890357  0.322363  0.344649  0.287721 *
+!*                                                  *
+!* Eigenvalues 2:    2.53046878                     *
+!* Eigenvector:                                     *
+!* 1.000000  0.765234 -0.446362 -0.252815 -0.304616 *
+!*                                                  *
+!* Eigenvalues 3:   -9.15659229                     *
+!* Eigenvector:                                     *
+!*-0.056408  0.286458 -0.522285  1.000000  0.469812 *
+!*                                                  *
+!* Eigenvalues 4:   12.53989066                     *
+!* Eigenvector:                                     *
+!* 0.097161  0.560616  0.656182 -0.282210  1.000000 *
+!*                                                  *
+!* Eigenvalues 5:   19.11694726                     *
+!* Eigenvector:                                     *
+!* 0.051876  0.469920  1.000000  0.728439 -0.719095 *
+!*                                                  *
+!*                F90 version by J-P Moreau, Paris  *
+!*                        (www.jpmoreau.fr)         *
+!****************************************************
+PROGRAM TEST_TQLI
+
+integer ialloc  !not used here, available memory is
+                !supposed adequate for a small example
+real*8, pointer :: D(:), E(:), Z(:,:)
+real*8  xmax
+
+print *,''
+write(*,10,advance='no'); read *, n
+
+allocate(D(1:n),stat=ialloc)
+allocate(E(1:n),stat=ialloc)
+allocate(Z(1:n,1:n),stat=ialloc)
+
+call read_data(n,D,E)
+
+!initialize Z to identity matrix
+do i=1, n
+  do j=1, n
+    if (i.ne.j) then
+	  Z(i,j) = 0.d0
+	else   
+      Z(i,j) = 1.d0
+    end if
+  end do
+end do
+
+call TQLI(D,E,n,Z)
+
+!print results
+do j=1, n
+  print *,' '
+  write(*,20) j, D(j)
+  xmax=Z(1,j)
+  do i=2, n
+    if (dabs(Z(i,j))>dabs(xmax))  xmax=Z(i,j)
+  end do
+  print *,'Eigenvector:'
+  write(*,30) (Z(i,j)/xmax,i=1,n)
+end do
+
+print *,' '
+print *,' '
+
+10 format(' Input size of matrix: ')
+20 format(' Eigenvalue ',I2,': ',F12.6)
+30 format(5(' ',F12.6))
+
+END
+
+!read vectors D and E from screen
+Subroutine Read_data(n,D,E)
+integer n, i
+real*8 D(1:n),E(1:n)
+  print *,' '
+  write(*,20) n-1
+  E(1)=1.d0   !arbitrary value
+  do i=1, n-1
+    write(*,30,advance='no') i; read *, E(i+1)
+  end do
+  write(*,40) n
+  do i=1, n
+    write(*,30,advance='no') i; read *, D(i)
+  end do
+  print *,' '
+  return
+
+20 format(' Input ',I2,' elements of subdiagonal:')
+30 format('   Element ',I2,': ')
+40 format(' Input ',I2,' elements of main diagonal:')
+
+End
+
+!****************************************************
+!* This subroutine implements the QL algorithm with *
+!* implicit shifts to determine the eigenvalues and *
+!* eigenvectors of a real symmetric tridiagonal     *
+!* matrix.                                          *
+!* ------------------------------------------------ *
+!* INPUTS:                                          *
+!*         D    Elements of main diagonal           *
+!*         E    Elements of subdiagonal (from E(2)  *
+!*              to E(n))                            *
+!*         n    size of matrix                      *
+!*         Z    identity matrix                     *
+!* OUTPUTS                                          *
+!*         D    vector storing the n eigenvalues    *
+!*         Z    matrix storing the n eigenvectors   *
+!*              in columns.                         *
+!*        (E is destroyed during the process).      * 
+!****************************************************   
+Subroutine TQLI(D,E,n,Z)
+integer n
+real*8  D(1:n),E(1:n),Z(1:n,1:n)
+real*8 b,c,dd,f,g,p,r,s
+if (n>1) then
+  do i=2, n
+    E(i-1)=E(i)
+  end do
+  E(n)=0.d0
+  do l=1,n
+    iter=0
+1	do m=l,n-1
+	  dd=DABS(D(m))+DABS(D(m+1))
+	  if (DABS(E(m))+dd==dd) goto 2
+	end do
+	m=n
+2   if (m.ne.l) then
+      if (iter==30) Pause ' 30 iterations.'
+	  iter=iter+1
+	  g=(D(l+1)-D(l))/(2.d0*E(l))
+	  r=DSQRT(g*g+1.d0)
+	  g=D(m)-D(l)+E(l)/(g+DSIGN(r,g))
+	  s=1.d0; c=1.d0; p=0.d0
+	  do i=m-1,l,-1
+	    f=s*E(i); b=c*E(i)
+		if (DABS(f)>=DABS(g)) then
+		  c=g/f
+		  r=DSQRT(c*c+1.d0)
+		  E(i+1)=f*r
+		  s=1.d0/r
+		  c=c*s
+		else
+		  s=f/g
+		  r=DSQRT(s*s+1.d0)
+		  E(i+1)=g*r
+		  c=1.d0/r
+		  s=s*c
+        end if
+		g=D(i+1)-p
+		r=(D(i)-g)*s+2.d0*c*b
+		p=s*r
+		D(i+1)=g+p
+		g=c*r-b
+		do k=1,n
+          f=Z(k,i+1)
+		  Z(k,i+1)=s*Z(k,i)+c*f
+		  Z(k,i)=c*Z(k,i)-s*f
+        end do
+      end do
+      D(l)=D(l)-p
+	  E(l)=g; E(m)=0.d0
+	  goto 1
+    end if
+  end do !l loop
+end if
+return
+end
+
+!end of file elprotd.f90
+
+

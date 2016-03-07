@@ -1,0 +1,98 @@
+!************************************************************************
+!*  Solve Laplace Equation by relaxation Method: d2T/dx2 + d2T/dy2 = 0  *
+!* -------------------------------------------------------------------- *
+!* Example: Determine the temperatures T(x,y) in a square plate [x,y]   *
+!*          of side length C with following limit conditions:           *
+!*          1) T = 0 for sides x = 0 and y = 0.                         *
+!*          2) T = x^3 for side y = C                                   *
+!*          3) T = 16*x for side x = C  (see sketch below).             *
+!*          Other parameters:                                           *
+!*          square length C = 4 (any unit)                              *
+!*          Number of subdivisions NM = 8 (9 knots per line from 0 to 8)*
+!*          integration steps dx or dy = C/NM                           *
+!*          weight coefficient w = 1.45                                 *
+!*          Maximum residual error ER = 0.01                            *
+!*          Maximum number of iterations IT = 40                        *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                          *
+!*                                                                      *
+!* Niter  Max. Residual     W                                           *
+!*  18      0.0031         1.45                                         *
+!* Temperature                                                          *
+!*  0.000  0.125  1.000  3.375   8.000  15.625  27.000  42.875  64.000  *
+!*  0.000  1.401  3.401  6.586  11.515  18.693  28.509  41.106  56.000  *
+!*  0.000  2.078  4.616  8.052  12.783  19.122  27.237  37.040  48.000  *
+!*  0.000  2.296  4.932  8.224  12.442  17.774  24.278  31.818  40.000  *
+!*  0.000  2.175  4.592  7.469  10.987  15.254  20.283  25.953  32.000  *
+!*  0.000  1.814  3.790  6.075   8.782  11.974  15.646  19.711  24.000  *
+!*  0.000  1.291  2.681  4.259   6.092   8.213  10.616  13.244  16.000  *
+!*  0.000  0.668  1.384  2.189   3.113   4.171   5.359   6.651   8.000  *
+!*  0.000  0.000  0.000  0.000   0.000   0.000   0.000   0.000   0.000  *
+!*                                                                      *
+!* -------------------------------------------------------------------- *
+!* REFERENCE:  "Méthode de calcul numérique- Tome 2 - Programmes en     *
+!*              Basic et en Pascal By Claude Nowakowski, Edition du     *
+!*              P.S.I., 1984" [BIBLI 04].                               *
+!*                                                                      *
+!*                                 F90 Release By J-P Moreau, Paris.    *
+!*                                        (www.jpmoreau.fr)             *
+!************************************************************************
+PROGRAM LAPLACE
+parameter(IT=40,ER=0.01,OM=1.45,NM=8, IC=4)
+
+!      y   T=x^3
+!       ------------           
+!      |     C      |
+!      |            |
+!   T=0|           C|T=16x
+!      |            |
+!      |            |
+!       ------------ x
+!           T=0
+
+real T(0:NM,0:NM)
+
+  rm=2.*ER
+  dx = (1.0*IC)/NM
+  T=0.
+  do i=0, NM
+    T(i,NM) = (dx*i)**3
+    T(NM,i) = 16.*dx*i
+  end do
+  n1=NM-1; l=0
+  do while (rm > ER.and.l<=IT)
+    rm=0.
+    l=l+1
+    do i=1, n1
+	  do j=1, n1
+        call Schema(r,i,j,T)
+        T(i,j) = T(i,j) + 0.25*OM*r
+        if (abs(r) > rm) rm=abs(r)
+      end do
+    end do
+  end do
+  if (l<IT) then
+    print *,' Niter    Max. residual    W'
+	write(*,110) l,rm,OM
+    print *,' Temperature'
+    do j=NM, 0, -1
+	  write(*,120) (T(i,j),i=0,NM)
+    end do
+  else
+    print *,' Convergence, RMAXI=', rm
+  end if
+  stop
+
+110 format(' ',I4,'      ',F8.4,'    ',F8.2)
+120 format(9F8.3)
+
+end
+
+subroutine Schema(r,i,j,T)
+parameter(NM=8)
+  real T(0:NM,0:NM)
+  r = T(i+1,j)+T(i-1,j)+T(i,j+1)+T(i,j-1)-4*T(i,j)
+  return
+end
+
+!end of file Laplace.f90

@@ -1,0 +1,166 @@
+!*****************************************************
+!* Program to demonstrate the hyperbolic subroutines *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+Program Hyper
+
+integer ligne
+real*8  XX,Y
+real*8  CosH,SinH,TanH
+
+character*1 r
+
+  ligne=1
+  print *,' '
+  print *,'  X        SINH(X)         COSH(X)         TANH(X) '
+  print *,' ---------------------------------------------------'
+  XX=-5.d0
+  do while (XX<=5.2d0)
+	write(*,10,advance='no') XX
+    Y=SinH(XX)
+    write(*,11,advance='no') Y
+    Y=CosH(XX);
+    write(*,11,advance='no') Y
+    Y=TanH(XX);
+    write(*,11,advance='no') Y
+    if (ligne==20) then
+      ligne=0
+      read *, r
+    else 
+	  print *,' '
+    end if
+    ligne=ligne+1
+    XX=XX+0.2d0
+  end do
+  print *,' '
+  print *,' '
+  stop
+10 format(F6.1,'  ')
+11 format(F14.10,'  ')
+end
+
+!------------------------------------------------------------
+!          Modified cordic exponential subroutine
+! ----------------------------------------------------------
+! This subroutine takes an input value and returns Y:=EXP(X)
+! X may be any positive or negative real value
+!------------------------------------------------------------
+real*8 Function XExp(X)
+COMMON /C1/ E,Z
+real*8 X, E,K,Y,Z, A(1:9),W(1:9)
+integer I
+! Get coefficients 
+  call Coeffs(N,A)
+! Reduce the range of X
+  K=int(X)
+  X=X-K
+! Determine the weighting coeffs, W(I)
+  call WCoeffs(N,X,W)
+! Calculate products
+  Y=1.d0
+  do I=1, N
+    if (W(I)>0.d0) Y=Y*A(I)
+  end do
+! Perform residual multiplication
+  Y=Y*(1.d0+Z*(1.d0+Z/2.d0*(1.d0+Z/3.d0*(1.d0+Z/4.d0))))
+! Account for factor EXP(K)
+  if (K<0.d0) E=1.d0/E
+  if (dabs(K)<1.d0) then
+    XExp=Y
+    return
+  end if
+  do I=1, INT(dabs(K))
+    Y=Y*E
+  end do
+! Restore X
+  X=X+K
+  XExp=Y
+  return
+end
+
+Subroutine WCoeffs(N,X,W)
+COMMON /C1/ E,Z
+real*8 X, aa,E,Z, W(1:9) 
+integer I
+  aa=0.5d0
+  Z=X
+  do I=1, N
+    W(I)=0.d0
+    if (Z>aa) W(I)=1.d0
+    Z=Z-W(I)*aa
+    aa=aa/2.d0
+  end do
+  return
+end
+
+Subroutine Coeffs(N,A)
+COMMON /C1/ E,Z
+real*8 E, A(1:9)
+  N=9
+  E=2.718281828459045
+  A(1)=1.648721270700128
+  A(2)=1.284025416687742
+  A(3)=1.133148453066826
+  A(4)=1.064494458917859
+  A(5)=1.031743407499103
+  A(6)=1.015747708586686
+  A(7)=1.007843097206448
+  A(8)=1.003913889338348
+  A(9)=1.001955033591003
+  return
+end
+
+!*---------------------------------------------*
+!*          Hyperbolic sine Function           *
+!* ------------------------------------------- *
+!* This Procedure uses the definition of the   *
+!* hyperbolic sine and the modified cordic     *
+!* exponential Function XExp(X) to approximate *
+!* SINH(X) over the entire range of real X.    *
+!*---------------------------------------------*
+real*8 Function SinH(X)
+!Label: 10
+real*8 X,Y,Z; integer I
+! Is X small enough to cause round off erroe ?
+  if (dabs(X)<0.35d0) goto 10
+! Calculate SINH(X) using exponential definition
+  Y=XExp(X)
+  Y=(Y-(1.d0/Y))/2.d0
+  SinH=Y
+  return
+! series approximation (for X small)
+10 Z=1.d0; Y=1.d0
+  do I=1, 8
+    Z=Z*X*X/((2*I)*(2*I+1))
+    Y=Y+Z
+  end do
+  Y=Y*X
+  SinH=Y
+  return
+end
+
+! hyperbolic cosine Function
+real*8 Function CosH(X)
+real*8 X,Y
+  Y=XExp(X)
+  Y=(Y+(1.d0/Y))/2.d0
+  CosH=Y
+  return
+end
+
+! hyperbolic tangent Function
+!   TANH(X]:=SINH(X)/COSH(X)
+real*8 Function TanH(X)
+real*8 X,V,Y
+  V=SinH(X)
+  Y=CosH(X)
+  TanH=V/Y
+  return
+end
+
+! End of file hyper.f90

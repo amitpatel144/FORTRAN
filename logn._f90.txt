@@ -1,0 +1,73 @@
+!****************************************************
+!*    Program to demonstrate Log(X!) Subroutine     *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*              F90 Version by J.-P. Moreau, Paris. *
+!*                      (www.jpmoreau.fr)           *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!*    X     LN(X!)        EXP(LN(X!))               *
+!*  ----------------------------------              *
+!*    1    -0.000307                1               *
+!*    2     0.693146                2               *
+!*    3     1.791759                6               *
+!*    4     3.178054               24               *
+!*    5     4.787492              120               *
+!*    6     6.579251              720               *
+!*    7     8.525161             5040               *
+!*    8    10.604603            40320               *
+!*    9    12.801827           362880               *
+!*   10    15.104413          3628800               *
+!*   11    17.502308         39916800               *
+!*   12    19.987214        479001600               *
+!*   13    22.552164       6227020800               *
+!*   14    25.191221      87178291200               *
+!*   15    27.899271    1307674368000               *
+!*                                                  *
+!****************************************************
+!See file chi-sq.txt, equation (2.3.9)
+
+PROGRAM LNFACTX
+
+integer i
+real*8  x,y
+
+  print *, ' '
+  print *,'  X     LN(X!)        EXP(LN(X!))'
+  print *,'---------------------------------'
+  do i = 1, 15
+    x = dfloat(i)
+
+    call LN_FactX(x,y)
+
+    write(*,100) i,y,dexp(y)
+  end do
+  print *,'---------------------------------'
+  print *, ' '
+  
+stop
+100 format(' ',i2,'    ',f9.6,'    ',f14.0)
+end
+
+
+!**************************************************
+!* Series approximation subroutine for LN(X!)     *
+!* Accuracy better then 6 places for x>=3         * 
+!* Accuracy better than 12 places for x>10        *
+!* Advantage is that very large values of the     *
+!* argument can be used without fear of over flow *.
+!*! Reference: CRC Math Tables.                   *
+!* x is the input, y is the output.               *
+!**************************************************
+Subroutine LN_FactX(x,y)
+  real*8 x,y,x1
+  x1 = 1.d0 / (x * x)
+  y = (x + 0.5d0) * dlog(x) - x * (1.d0 - x1 / 12.d0 + x1 * x1 / 360.d0 - x1 * x1 * x1 / 1260 + x1 * x1 * x1 * x1 / 1680.d0)
+  y = y + 0.918938533205d0
+  return
+end
+
+!End of file logn!.f90

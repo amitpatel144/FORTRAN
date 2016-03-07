@@ -1,0 +1,232 @@
+!***************************************************************
+!*  Inversion of a real square matrix by Householder's method  *
+!* ----------------------------------------------------------- *
+!* SAMPLE RUN:                                                 *
+!*                                                             *
+!* Input file householder.dat contains:                        *
+!*                                                             *
+!* 4                                                           *
+!* 1.0       0.5        0.333333  0.25                         *
+!* 0.5       0.333333   0.25      0.2                          *
+!* 0.333333  0.25       0.2       0.166667                     *
+!* 0.25      0.2        0.166667  0.142857                     *
+!*                                                             *
+!* Output file householder.txt contains:                       *
+!*                                                             *
+!* Input square matrix:                                        *
+!*  0.100000E+01   0.500000E+00   0.333333E+00   0.250000E+00  *
+!*  0.500000E+00   0.333333E+00   0.250000E+00   0.200000E+00  *
+!*  0.333333E+00   0.250000E+00   0.200000E+00   0.166667E+00  *
+!*  0.250000E+00   0.200000E+00   0.166667E+00   0.142857E+00  *
+!*                                                             *  
+!* Transformation # 1                                          *
+!* -0.119315E+01  -0.670493E+00  -0.474932E+00  -0.369836E+00  *
+!*  0.000000E+00   0.664812E-01   0.657297E-01   0.586884E-01  *
+!*  0.000000E+00   0.720990E-01   0.771533E-01   0.724594E-01  *
+!*  0.000000E+00   0.665741E-01   0.745319E-01   0.722012E-01  *
+!* Transformation # 2                                          * 
+!* -0.119315E+01  -0.670493E+00  -0.474932E+00  -0.369836E+00  *
+!*  0.000000E+00  -0.118533E+00  -0.125656E+00  -0.117542E+00  *
+!*  0.000000E+00   0.000000E+00   0.257162E-02   0.378339E-02  *
+!*  0.000000E+00   0.000000E+00   0.566533E-02   0.878781E-02  *
+!* Transformation # 3                                          *
+!* -0.119315E+01  -0.670493E+00  -0.474932E+00  -0.369836E+00  *
+!*  0.000000E+00  -0.118533E+00  -0.125656E+00  -0.117542E+00  *
+!*  0.000000E+00   0.000000E+00  -0.622167E-02  -0.956580E-02  *
+!*  0.000000E+00   0.000000E+00   0.000000E+00   0.187201E-03  *
+!*                                                             *
+!* Inverted matrix:                                            *
+!*  0.160327E+02  -0.120367E+03   0.240887E+03  -0.140579E+03  *
+!* -0.120367E+03   0.120414E+04  -0.271001E+04   0.168653E+04  *
+!*  0.240887E+03  -0.271001E+04   0.650422E+04  -0.421582E+04  *
+!* -0.140579E+03   0.168653E+04  -0.421582E+04   0.281033E+04  *
+!*                                                             *
+!* Determinant: -0.164722E-06                                  *
+!*                                                             *
+!* AP=A*A^-1 matrix:                                           *
+!*  0.100000E+01   0.341061E-12  -0.682121E-12   0.341061E-12  *
+!*  0.710543E-14   0.100000E+01   0.000000E+00   0.000000E+00  *
+!* -0.710543E-14   0.113687E-12   0.100000E+01   0.113687E-12  *
+!* -0.355271E-14   0.284217E-13   0.000000E+00   0.100000E+01  *
+!*                                                             *
+!* ----------------------------------------------------------- *
+!* Ref.: "Méthodes de calcul numérique - Tome 2 - By Claude    *
+!*        Nowakowski, PSI Editions, 1984".                     *
+!*                                                             *
+!*                  Fortran 90 Version By J-P Moreau, Paris.   *
+!*                            (www.jpmoreau.fr)                *
+!***************************************************************
+Program Householder
+    integer n   !size of matrix A
+    real*8 A(25, 50), A0(25, 25), V(25)
+    real*8 D
+    real*8 B(25), AI(25, 25), AP(25, 25), X(25)
+
+    !read matrix to be inverted
+    !Open input/output text files
+    OPEN(UNIT=2,FILE="householder.txt",STATUS='UNKNOWN')	                              
+    OPEN(UNIT=1,FILE="householder.dat",STATUS='OLD')
+    write(2,*) ' '
+    write(2,*) ' Input square matrix:'
+    read(1,*) n
+    do i=1, n
+	  read(1,*) (A(i,j),j=1,n)
+    end do
+	CLOSE(unit=1)
+	do i=1, n
+      do j=1, n
+        If (j == n) Then
+          write(2,10) A(i, j)
+        Else
+          write(2,10,advance='no') A(i, j)
+        End If
+      end do
+    end do
+    do i = 1, n
+      do j = 1, n
+        A(i, j + n) = 0.d0
+        A0(i, j) = A(i, j)
+      end do
+      A(i, i + n) = 1.d0
+    end do
+    !Transform A into triangular matrix
+    call S1000(n,A,V)
+    !N linear systems to solve
+    do k = 1, n
+      do i = 1, n
+        B(i) = A(i, K + n)
+      end do
+      !Solve triangular system
+      call S2000(n,A,B,X)
+      do i = 1, n
+        AI(i, K) = X(i)
+      end do
+    end do !k loop
+    write(2,' ')
+    write(2,*) ' Inverted matrix:'
+	do i=1, n
+      do j=1, n
+        If (j == n) Then
+          write(2,10) AI(i, j)
+        Else
+          write(2,10,advance='no') AI(i, j)
+        End If
+      end do
+    end do
+    !Calculate determinant
+    call S4000(n,A,D)
+    write(2,' ')
+    write(2,20) D
+    !Check AP=A*A^-1=Unity Matrix
+    write(2,' ')
+    write(2,*) ' AP=A*A^-1 matrix:'
+    call S3000(n,A0,AI,AP)
+	do i=1, n
+      do j=1, n
+        If (j == n) Then
+          write(2,10) AP(i, j)
+        Else
+          write(2,10,advance='no') AP(i, j)
+        End If
+      end do
+    end do
+ 
+    Close(unit=2)
+	print *,' '
+	print *,' See results in file householder.txt...'
+10  format('  ',E13.6)
+20  format(' Determinant: ',E13.6)
+    stop
+End !of main program
+
+Subroutine S1000(n,A,V)
+  integer n
+  real*8 A(25,50),V(25)
+  real*8 S,XA,XB,XG,XL
+  write(2,*) ' '
+  do k = 1, n - 1
+    S = 0.d0
+    do i = k, n
+      S = S + A(i, K) * A(i, K)
+    end do
+
+    XL = -sign(1.d0,A(K, K)) * dsqrt(S)
+    XA = XL * (XL - A(K, K))
+    V(K) = A(K, K) - XL
+    do i = k + 1, n
+      V(i) = A(i, K)
+    end do
+    do j = k + 1, 2*n
+      XB = 0
+      do i = k, n
+        XB = XB + V(i) * A(i, j)
+      end do
+      XG = XB / XA
+      do i = k, n
+        A(i, j) = A(i, j) - XG * V(i)
+      end do
+    end do
+    A(K, K) = XL
+    do i = k + 1, n
+      A(i, K) = 0.d0
+    end do
+    write(2,10)  K
+	do i=1, n
+      do j=1, n
+        If (j == n) Then
+          write(2,20) A(i, j)
+        Else
+          write(2,20,advance='no') A(i, j)
+        End If
+      end do
+    end do
+  end do !k loop
+10 format(' Transformation #', I2)
+20 format('  ',E13.6)
+  return
+End
+
+Subroutine S2000(n,A,B,X)
+   integer n
+   real*8 A(25,50),B(25),X(25)
+   integer i, j
+   real*8 S
+   do i = n, 1, -1
+     j = n
+	 S = 0.d0
+20   If (i == j) goto 40
+     S = S - A(i, j) * X(j)
+     j = j - 1
+     goto 20
+40   X(i) = (B(i) + S) / A(i, i)
+   end do
+   return
+End
+
+Subroutine S3000(n,A0,AI,AP)
+  integer n
+  real*8 A0(25,25), AI(25,25), AP(25,25)
+  real*8 S
+  do i = 1, n
+    do j = 1, n
+      S = 0.d0
+      do k = 1, n
+        S = S + A0(i, k) * AI(k, j)
+      end do
+      AP(i, j) = S
+    end do
+  end do
+  return
+End
+
+Subroutine S4000(n,A,D)
+  integer n
+  real*8 A(25,50), D
+  D = 1.d0
+  do i = 1, n
+    D = D * A(i, i)
+  end do
+  return
+End
+
+!end of file householder.f90

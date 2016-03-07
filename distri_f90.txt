@@ -1,0 +1,419 @@
+!***************************************************
+!*          Statistical distributions              *
+!* ----------------------------------------------- *
+!*   This program allows computing several distri- *
+!*   butions:                                      *
+!*     1.  binomial distribution                   *
+!*     2.  Poisson distribution                    *
+!*     3.  normal distribution                     *
+!*     4.  normal distribution (2 variables)       *
+!*     5.  chi-square distribution                 *
+!*     6.  Student T distribution                  *
+!* ----------------------------------------------- *
+!* REFERENCE: "Mathematiques et statistiques by H. *
+!*             Haut, PSI Editions, France, 1981"   *
+!*             [BIBLI 13].                         *
+!*                                                 *
+!*             F90 Version By J-P Moreau, Paris    *
+!*                     (www.jpmoreau.fr)           *
+!* ----------------------------------------------- *
+!* SAMPLE RUN:                                     *
+!*                                                 *
+!*       Statistical distributions                 *
+!*                                                 *
+!* Tutorial                                        *
+!*                                                 *
+!* 1. input distribution number:                   *
+!*                                                 *
+!*    1: binomial distribution                     *
+!*    2: Poisson distribution                      *
+!*    3: normal distribution                       *
+!*    4: normal distribution (2 variables)         *
+!*    5: chi-square distribution                   *
+!*    6: Student T distribution                    *
+!*                                                 *
+!* 2. Define the parameters of chosen distribution *
+!*                                                 *
+!* 3. input value of random variable               *
+!*                                                 *
+!*                                                 *
+!* Input distribution number (1 to 6): 3           *
+!*                                                 *
+!*   Normal distribution                           *
+!*                                                 *
+!*   MU=mean                                       *
+!*   S =standard deviation                         *
+!*   X =value of random variable                   *
+!*                                                 *
+!*   MU = 2                                        *
+!*   S  = 3                                        *
+!*   X  = 5                                        *
+!*                                                 *
+!*   Probability of random variable  = X: .0806569 *
+!*   Probability of random variable <= X: .8413447 *
+!*   Probability of random variable >= X: .1586552 *
+!*                                                 *
+!***************************************************
+PROGRAM Distributions
+
+real*8  bt,fx,fxy,mu,p,px,qx,ro,s,sx,sy,x,xm,y,ym
+character*40 as,bs,cs
+character*42 ds
+integer ch,n,nu
+
+  print *,' '
+  print *,'      Statistical distributions'
+  print *,' '
+  print *,' Tutorial'
+  print *,' '
+  print *,' 1. Input distribution number:'
+  print *,' '
+  print *,'    1: binomial distribution'
+  print *,'    2: Poisson distribution'
+  print *,'    3: normal distribution'
+  print *,'    4: normal distribution (2 variables)'
+  print *,'    5: chi-square distribution'
+  print *,'    6: Student T distribution'
+  print *,' '
+  print *,' 2. Define the parameters of chosen distribution'
+  print *,' '
+  print *,' 3. Input value of random variable'
+  print *,' '
+  print *,' '
+  write(*,"(' Input distribution number (1 to 6): ')",advance='no')
+  read  *, ch
+
+  if (ch<1.or.ch>6) then
+    print *,' Error: Invalid choice!'
+    stop
+  end if
+
+  !call appropriate input section
+  if (ch.eq.1) goto 100
+  if (ch.eq.2) goto 200
+  if (ch.eq.3) goto 300
+  if (ch.eq.4) goto 400
+  if (ch.eq.5) goto 500
+  if (ch.eq.6) goto 600
+
+100 print *,' '
+  print *,'   Binomial distribution:'
+  print *,' '
+  print *,'   P=probability of success'
+  print *,'   N=number of trials'
+  print *,'   X=value of random variable'
+  print *,' '
+  write(*,"('    P = ')",advance='no'); read *, p
+  write(*,"('    N = ')",advance='no'); read *, n
+  write(*,"('    X = ')",advance='no'); read *, x
+  goto 700
+
+200 print *,' '
+  print *,'   Poisson distribution'
+  print *,' '
+  print *,'   MU=mean'
+  print *,'   X =value of random variable'
+  print *,' '
+  write(*,"('    MU = ')",advance='no'); read *, mu
+  write(*,"('    X  = ')",advance='no'); read *, x
+  goto 700
+
+300 print *,' '
+  print *,'   Normal distribution'
+  print *,' '
+  print *,'   MU=mean'
+  print *,'   S =standard deviation'
+  print *,'   X =value of random variable'
+  print *,' '
+  write(*,"('    MU = ')",advance='no'); read *, mu
+  write(*,"('    S  = ')",advance='no'); read *, s
+  write(*,"('    X  = ')",advance='no'); read *, x
+  goto 700
+
+400 print *,' '
+  print *,'   Normal distribution (2 variables)'
+  print *,' '
+  print *,'   MX=mean of X'
+  print *,'   MY=mean of Y'
+  print *,'   SX=standard deviation of X'
+  print *,'   SY=standard deviation of Y'
+  print *,'   RO=correlation coefficient'
+  print *,'   X =value of 1st random variable'
+  print *,'   Y =value of 2nd random variable'
+  print *,' '
+  write(*,"('    MX = ')",advance='no'); read *, xm
+  write(*,"('    SX = ')",advance='no'); read *, sx
+  write(*,"('    MY = ')",advance='no'); read *, ym
+  write(*,"('    SY = ')",advance='no'); read *, sy
+  write(*,"('    RO = ')",advance='no'); read *, ro
+  write(*,"('    X  = ')",advance='no'); read *, x
+  write(*,"('    Y  = ')",advance='no'); read *, y
+  goto 700
+
+500 print *,' '
+  print *,'   Chi-square distribution'
+  print *,' '
+  print *,'   NU=number of degrees of freedom'
+  print *,'   X =value of random variable'
+  print *,' '
+  write(*,"('    NU = ')",advance='no'); read *, nu
+  write(*,"('    X  = ')",advance='no'); read *, x
+  goto 700
+
+600 print *,' '
+  print *,'   Student''s T distribution'
+  print *,' '
+  print *,'   NU=number of degrees of freedom'
+  print *,'   X =value of random variable'
+  print *,' '
+  write(*,"('    NU = ')",advance='no'); read *, nu
+  write(*,"('    X  = ')",advance='no'); read *, x
+
+700 continue      ! call appropriate subroutine
+if (ch.eq.1) call Binomial(p,n,x,fx,px,qx)
+if (ch.eq.2) call Poisson(mu,x,fx,px,qx)
+if (ch.eq.3) call Normal(mu,s,x,fx,px,qx)
+if (ch.eq.4) call Normal2(xm,ym,sx,sy,ro,x,y,fxy)
+if (ch.eq.5) call Chisqr(nu,x,fx,px,qx)
+if (ch.eq.6) call Student(nu,x,bt,px,qx)
+
+!print results
+  print *,' '
+  as='   Probability of random variable  = X: '
+  bs='   Probability of random variable <= X: '
+  cs='   Probability of random variable >= X: '
+  ds='   Probability of random variables = X,Y: '
+  if (ch.eq.4) then 
+    print *, ds, fxy
+	print *,' '
+	stop
+  end if
+  if (ch.ne.6)  goto 800
+  print *,'   Prob(-X<=random variable<=X) = ', bt
+  print *, bs, px
+  print *, cs, qx
+  print *,' '
+  stop
+800 print *, as, fx
+  print *, bs, px
+  print *, cs, qx
+  print *,' '
+  stop
+end !of main program
+
+
+!****************************************************
+!* INPUTS:                                          *
+!*          p:  probability of success              *
+!*          n:  number of trials                    *
+!*          x:  value of random variable            *
+!* OUTPUTS:                                         *
+!*          fx: probability of random variable  = X *
+!*          px: probability of random variable <= X *
+!*          qx: probability of random variable >= X *
+!****************************************************
+Subroutine Binomial(p,n,x,fx,px,qx)
+  real*8 p,x,fx,px,qx
+  q=1.d0-p; t=p/q
+  n1=n+1
+  fx=q**n  !fx=prob(0)
+  px=fx
+  if (x.eq.0.d0) goto 100
+  ix=DINT(x)
+  do i=1, ix
+    fx = (n1-i)*t*fx/i
+    px = px + fx
+  end do
+100 qx=1.d0+fx-px
+  return
+end
+
+!****************************************************
+!* INPUTS:                                          *
+!*          xm:  mean                               *
+!*           x:  value of random variable           *
+!* OUTPUTS:                                         *
+!*          fx: probability of random variable  = X *
+!*          px: probability of random variable <= X *
+!*          qx: probability of random variable >= X *
+!****************************************************
+Subroutine Poisson(xm,x,fx,px,qx)
+  real*8 xm,x,fx,px,qx
+  fx=DEXP(-xm)
+  px=fx
+  if (x.eq.0.d0) goto 100
+  ix=DINT(x)
+  do i=1, ix
+    fx=fx*xm/i
+    px=px+fx
+  end do
+100 qx=1.d0+fx-px
+  return
+end
+
+!****************************************************
+!* INPUTS:                                          *
+!*          xm: mean                                *
+!*           s: standard deviation                  *
+!*           x: value of random variable            *
+!* OUTPUTS:                                         *
+!*          fx: probability of random variable  = X *
+!*          px: probability of random variable <= X *
+!*          qx: probability of random variable >= X *
+!****************************************************
+Subroutine Normal(xm,s,x,fx,px,qx)
+  real*8 xm,s,x,fx,px,qx,B(0:4)
+  real*8 po,pp,t,y,zy
+  !define coefficients B(i)
+  B(0) =  1.330274429d0
+  B(1) = -1.821255978d0
+  B(2) =  1.781477937d0
+  B(3) = -0.356563782d0
+  B(4) =  0.319381530d0
+  pp=0.2316419d0
+  y = (x-xm)/s  !reduced variable
+  zy=DEXP(-y*y/2.d0)/2.506628275d0
+  fx=zy/s
+  !calculate qx by Horner's method
+  t=1.d0/(1.d0+pp*y)
+  po=0.d0
+  do i=0, 4
+    po=po*t + B(i)
+  end do
+  po=po*t
+  qx=zy*po
+  px=1.d0-qx
+  return
+end
+
+
+!****************************************************
+!* INPUTS:                                          *
+!*          xm: mean of x                           *
+!*          ym: mean of y                           *
+!*          sx: standard deviation of x             *
+!*          sy: standard deviation of y             *
+!*          ro: correlation coefficient             *
+!*           x: value of 1st random variable        *
+!*           y: value of 2nd random variable        *
+!* OUTPUTS:                                         *
+!*         fxy: probability of random variables     *
+!*              = (X,Y)                             *
+!****************************************************
+Subroutine Normal2(xm,ym,sx,sy,ro,x,y,fxy)
+  real*8 xm,ym,sx,sy,ro,x,y,fxy
+  real*8 r,s,t,vt
+  s=(x-xm)/sx  !1st reduced variable
+  t=(y-ym)/sy  !2nd reduced variable
+  r=2.d0*(1.d0-ro*ro)
+  vt=s*s+t*t-2.d0*ro*s*t
+  vt=DEXP(-vt/r)
+  s=sx*sy*DSQRT(2.d0*r)*3.1415926535d0
+  fxy=vt/s
+  return
+end
+
+!****************************************************
+!*             Chi-square distribution              *
+!* ------------------------------------------------ *
+!* INPUTS:                                          *
+!*          nu: number of degrees of freedom        *
+!*           x: value of random variable            *
+!* OUTPUTS:                                         *
+!*          fx: probability of random variable = X  *
+!*          px: probability of random variable <= X *
+!*          qx: probability of random variable >= X *
+!****************************************************
+Subroutine Chisqr(nu, x, fx, px, qx)
+!Labels: 100,200,300,400
+  real*8 x,fx,px,qx
+  real*8 aa,bb,fa,fm,gn,xn2; integer i,n
+  ! Calculate gn=Gamma(nu/2)
+  xn2=dfloat(nu)/2.d0
+  gn=1.d0
+  n=nu / 2
+  if (nu.eq.2*n) goto 200
+  ! Calculate gn for nu odd
+  if (nu.eq.1) goto 100
+  i=1
+  do while (i<=2*n-1)
+    gn = gn * dfloat(i) / 2.d0
+    i = i+2
+  end do
+100 gn = gn * 1.7724528509d0
+  goto 300
+  ! Calculate gn for nu even
+200 if (nu.eq.2) goto 300
+  do i=1, n-1
+    gn = gn * dfloat(i)
+  end do
+  ! Calculate fx
+300 fx = x**(xn2-1.d0)
+  aa = dexp(-x/2.d0)
+  bb = gn*2.d0**xn2
+  fx = fx * aa / bb
+  ! Calculate px
+  fa = (x/2.d0)**xn2
+  fa = fa * aa / (xn2*gn)
+  fm = 1.d0; px = 1.d0; i = 2
+400  fm = fm * x / dfloat(nu+i)
+  px = px + fm
+  if (fm*fa > 1.d-8) then
+    i=i+2
+    goto 400
+  end if
+  ! Accuracy is obtained
+  px = px * fa
+  qx = 1.d0 - px
+  return
+end
+
+!****************************************************
+!* INPUTS:                                          *
+!*          nu: number of degrees of freedom        *
+!*           x: value of random variable            *
+!* OUTPUTS:                                         *
+!*          bt: probability of random variable      *
+!*              between -X and +X                   *
+!*          px: probability of random variable <= X *
+!*          qx: probability of random variable >= X *
+!****************************************************
+Subroutine Student(nu,x,bt,px,qx)
+  real*8 x,bt,px,qx
+  real*8 c,t,tt,vt
+  c=0.6366197724d0
+  x=x/DSQRT(DFLOAT(nu))
+  t=DATAN(x)    !t=theta
+  if (nu.eq.1) then
+    bt=t*c
+    goto 500
+  end if
+  nt=2*INT(nu/2)
+  if (nt.eq.nu) goto 200
+  !calculate A(X/NU) for nu odd
+  bt=DCOS(t)
+  tt=bt*bt
+  vt=bt
+  if (nu.eq.3) goto 100
+  do i=2, nu-3, 2
+    vt=vt*i*tt/(i+1)
+    bt=bt+vt
+  end do
+100 bt=bt*DSIN(t)
+  bt=(bt+t)*c
+  goto 500
+  !calculate A(X/NU) for nu even
+200 tt=DCOS(t)**2
+  bt=1.d0; vt=1.d0
+  if (nu.eq.2) goto 300
+  do i=1, nu-3, 2
+    vt=vt*i*tt/(i+1)
+    bt=bt+vt
+  end do
+300 bt=bt*DSIN(t)
+500 px = (1.d0+bt)/2.d0
+  qx=1.d0-px
+  return
+end
+
+!End of file distri.f90

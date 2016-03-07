@@ -1,0 +1,320 @@
+ !* --------------------- Module kubgauss.f90 ------------------------- *
+ !*  "Numerical Algorithms with C, By Gisela Engeln-Muellges            *
+ !*   and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].               *
+ !*                                                                     *
+ !*                               F90 version 1.1 By J-P Moreau, Paris. *
+ !*                                        (www.jpmoreau.fr)            *
+ !* ------------------------------------------------------------------- *
+ !* Release 1.1: added function Kub4GauE (06/07/2005).                  *
+ !----------------------------------------------------------------------*
+
+integer Function Kub4GauE(a,b,Nx,c,d,Ny,Verf,Wert,Schaetzen,FehlerSch,ncalls)
+implicit none
+real*8 a,b,c,d, Wert, FehlerSch
+integer Nx, Ny, Verf, Schaetzen, ncalls
+!************************************************************************
+!* Cubature over rectangles using Newton-Cotes formulas.                *
+!*                                                                      *
+!* Integrate the function  f(x,y) using the summed cubature formula     *
+!* of Gauss for the rectangle (a,b; c,d).                               *
+!* The edges of the sub-rectangles have the lengths:  (b-a) / Nx   and  *
+!* (d-c) / Ny .                                                         *
+!*                                                                      *
+!* Input parameters:                                                    *
+!*  REAL*8 a, b, Nx   left, right x-end points, number of intervals     *
+!*  REAL*8 c, d, Ny   left, right y-end points, number of intervals     *
+!*  integer Verf      order of method  (0 <= Verf <= 7)                 *
+!*  REAL Wert         value of integral                                 *
+!*  integer Schaetzen if nonzero : find estimate                        *
+!*  REAL*8 FehlerSch  error estimate, obtained if desired by a second   *
+!*                    cubature pass using half of the step size         *
+!*  integer ncalls    number of function calls                          *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:               o.k.                                              *
+!*   1:               Nx improper                                       *
+!*   2:               Ny improper                                       *
+!*   3:               order incorrect                                   *
+!*   4:               Integration interval has length zero              *
+!*                                                                      *
+!* Author             Uli Eggermann, 03.31.1996 (C version)             *
+!************************************************************************
+  integer i, j, k, kend, u, v, Nab, Ncd
+  real*8 Hab, Hcd, Wert1, w, x, y, z, func
+
+  type kub4_ta
+    real*8 t
+	real*8 a
+  end type kub4_ta
+
+  type(kub4_ta) K_0, K_1(0:1), K_2(0:2), K_3(0:3), K_4(0:4), &
+                K_5(0:5), K_6(0:6), K_7(0:7)
+
+! Initialize K_0..K_7 constants
+  K_0%t=0.d0; K_0%a=2.d0
+  K_1(0)%t= -0.577350269189626d0; K_1(0)%a=1.d0
+  K_1(1)%t=  0.577350269189626d0; K_1(1)%a=1.d0
+  K_2(0)%t= -0.774596669241483d0; K_2(0)%a=0.5555555555555556d0
+  K_2(1)%t=  0.d0;                K_2(1)%a=0.8888888888888888d0
+  K_2(2)%t=  0.774596669241483d0; K_2(2)%a=0.5555555555555556d0
+  K_3(0)%t= -0.861136311594053d0; K_3(0)%a=0.347854845137454d0
+  K_3(1)%t= -0.339981043584856d0; K_3(1)%a=0.652145154862546d0
+  K_3(2)%t=  0.339981043584856d0; K_3(2)%a=0.652145154862546d0
+  K_3(3)%t=  0.861136311594053d0; K_3(3)%a=0.347854845137454d0
+  K_4(0)%t= -0.906179845938664d0; K_4(0)%a=0.236926885056189d0
+  K_4(1)%t= -0.538469310105683d0; K_4(1)%a=0.478628670499366d0
+  K_4(2)%t=  0.d0;                K_4(2)%a=0.5688888888888889d0
+  K_4(3)%t=  0.538469310105683d0; K_4(3)%a=0.478628670499366d0
+  K_4(4)%t=  0.906179845938664d0; K_4(4)%a=0.236926885056189d0
+  K_5(0)%t= -0.9324695142031521d0;K_5(0)%a=0.17132449237917d0
+  K_5(1)%t= -0.661209386466265d0; K_5(1)%a=0.360761573048139d0
+  K_5(2)%t= -0.238619186083197d0; K_5(2)%a=0.467913934572691d0
+  K_5(3)%t=  0.238619186083197d0; K_5(3)%a=0.467913934572691d0
+  K_5(4)%t=  0.661209386466265d0; K_5(4)%a=0.360761573048139d0
+  K_5(5)%t=  0.9324695142031521d0;K_5(5)%a=0.17132449237917d0
+  K_6(0)%t= -0.949107912342759d0; K_6(0)%a=0.12948496616887d0
+  K_6(1)%t= -0.741531185599394d0; K_6(1)%a=0.279705391489277d0
+  K_6(2)%t= -0.405845151377397d0; K_6(2)%a=0.381830050505119d0
+  K_6(3)%t=  0.d0;                K_6(3)%a=0.417959183673469d0
+  K_6(4)%t=  0.405845151377397d0; K_6(4)%a=0.381830050505119d0
+  K_6(5)%t=  0.741531185599394d0; K_6(5)%a=0.279705391489277d0
+  K_6(6)%t=  0.949107912342759d0; K_6(6)%a=0.12948496616887d0
+  K_7(0)%t= -0.960289856497536d0; K_7(0)%a=0.101228536290376d0
+  K_7(1)%t= -0.7966664774136269d0;K_7(1)%a=0.222381034453374d0
+  K_7(2)%t= -0.525532409916329d0; K_7(2)%a=0.313706645877887d0
+  K_7(3)%t= -0.18343464249565d0;  K_7(3)%a=0.362683783378362d0
+  K_7(4)%t=  0.18343464249565d0;  K_7(4)%a=0.362683783378362d0
+  K_7(5)%t=  0.525532409916329d0; K_7(5)%a=0.313706645877887d0
+  K_7(6)%t=  0.7966664774136269d0;K_7(6)%a=0.222381034453374d0
+  K_7(7)%t=  0.960289856497536d0; K_7(7)%a=0.101228536290376d0
+
+  Wert1 = 0.d0
+  if (Nx < 1) then
+    Kub4GauE = 1
+    return
+  end if
+  if (Ny < 1) then
+    Kub4GauE = 2
+    return
+  end if
+  if (Verf < 0.or.Verf > 7) then
+    Kub4GauE = 3
+    return
+  end if
+  if (a == b.or.c == d) then
+    Kub4GauE = 4
+    return
+  end if
+
+  if (Schaetzen.ne.0) then 
+    kend=2 
+  else 
+    kend=1
+  end if
+  do k = 1, kend
+    Nab = k * Nx                             !number of intervals
+    Ncd = k * Ny
+    Hab = 0.5 * (b - a) / Nab                !half of x-step size
+    Hcd = 0.5 * (d - c) / Ncd                !half of y-step size
+
+    Wert = 0.d0                              !initialize
+
+    do i = 0, Nab-1
+      do j = 0, Ncd-1
+        do u = 0, Verf
+          do v = 0, Verf
+            Select Case (Verf)
+              Case(0)
+                w = Hab * Hcd * K_0%a * K_0%a
+                x = a + Hab * (K_0%t + 2 * i + 1)
+                y = c + Hcd * (K_0%t + 2 * j + 1)
+              Case(1)
+                w = Hab * Hcd * K_1(u)%a * K_1(v)%a
+                x = a + Hab * (K_1(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_1(v)%t + 2 * j + 1)
+              Case(2)
+                w = Hab * Hcd * K_2(u)%a * K_2(v)%a
+                x = a + Hab * (K_2(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_2(v)%t + 2 * j + 1)
+              Case(3)
+                w = Hab * Hcd * K_3(u)%a * K_3(v)%a
+                x = a + Hab * (K_3(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_3(v)%t + 2 * j + 1)
+              Case(4)
+                w = Hab * Hcd * K_4(u)%a * K_4(v)%a
+                x = a + Hab * (K_4(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_4(v)%t + 2 * j + 1)
+              Case(5)
+                w = Hab * Hcd * K_5(u)%a * K_5(v)%a
+                x = a + Hab * (K_5(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_5(v)%t + 2 * j + 1)
+              Case(6)
+                w = Hab * Hcd * K_6(u)%a * K_6(v)%a
+                x = a + Hab * (K_6(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_6(v)%t + 2 * j + 1)
+              Case(7)
+                w = Hab * Hcd * K_7(u)%a * K_7(v)%a
+                x = a + Hab * (K_7(u)%t + 2 * i + 1)
+                y = c + Hcd * (K_7(v)%t + 2 * j + 1)
+            End Select
+            z = func(x, y); ncalls=ncalls+1
+            Wert = Wert + w * z
+          end do
+        end do
+      end do
+    end do
+    if (Schaetzen.ne.0.and.k == 1)  Wert1 = Wert      !store value
+  end do
+
+  if (Schaetzen.ne.0) then                            !estimate
+    FehlerSch = (Wert - Wert1) / 3.d0
+  end if
+
+  Kub4GauE = 0
+
+  Return
+End
+
+integer Function Kub3GauN (Px, Py, Qx, Qy, Rx, Ry, n, m, Wert)
+implicit none
+real*8  Px, Py, Qx, Qy, Rx, Ry, Wert
+integer n, m
+!************************************************************************
+!* Cubature over triangular regions using the n-point Gauss formula     *
+!*                                                                      *
+!* Integrate the function f (x,y) over the triangle PQR using the summed*
+!* n-point Gauss cubature formula on m x m subtriangles.                *
+!* The subtriangles have edges of length 1/m of the original edge       *
+!* lengths.                                                             *
+!*                                                                      *
+!* Input parameters:                                                    *
+!*  REAL*8 Px,Py    coordinates of  P                                   *
+!*  REAL*8 Qx,Ry    coordinates of  Q                                   *
+!*  REAL*8 Rx,Ry    coordinates of  R                                   *
+!*  integer n       order of method (= number of points in each sub-    *
+!*                  triangle)                                           *
+!*  integer m       number of subtriangles along one edge               *
+!*                                                                      *
+!* Output parameter:                                                    *
+!*  REAL*8 Wert     value of integral                                   *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:             o.k.                                                *
+!*   1:             m  improper                                         *
+!*   2:             the corners P, Q and R are collinear                *
+!*   3:             nth order method not implemented                    *
+!*                                                                      *
+!* Author:          Uli Eggermann, 8.1.1990 (C version)                 *
+!************************************************************************
+! GauNEpsilon serves as a check of collinearity; if the area of P, Q
+! and R has area less than Epsilon/2, we judge the three points to be
+! collinear.
+real*8, parameter :: GauNEpsilon = 0.0001d0
+
+  type Tripel
+    real*8 w
+	real*8 x
+	real*8 y
+  end type Tripel
+  
+  type(Tripel) Gau1Konst,Gau2Konst(0:1),Gau3Konst(0:2),Gau7Konst(0:6)
+
+  integer GauNmax 
+  integer d, i, j, k
+  real*8  Fak, Area, Dx, Dy, X, Y
+  real*8  hPQx, hPQy, hPRx, hPRy, Gw, Gx, Gy, func
+   
+! Initialize Gauss constants
+  Gau1Konst%w=0.5d0; Gau1Konst%x=1.d0/3.d0; Gau1Konst%y=1.d0/3.d0
+  Gau2Konst(0)%w=0.25d0; Gau2Konst(0)%x=1.d0/6.d0; Gau2Konst(0)%y=0.5d0
+  Gau2Konst(1)%w=0.25d0; Gau2Konst(1)%x=0.5d0; Gau2Konst(1)%y=1.d0/6.d0
+  Gau3Konst(0)%w=1.d0/6.d0; Gau3Konst(0)%x=1.d0/6.d0; Gau3Konst(0)%y=1.d0/6.d0
+  Gau3Konst(1)%w=1.d0/6.d0; Gau3Konst(1)%x=2.d0/3.d0; Gau3Konst(1)%y=1.d0/6.d0
+  Gau3Konst(2)%w=1.d0/6.d0; Gau3Konst(2)%x=1.d0/6.d0; Gau3Konst(2)%y=2.d0/3.d0
+  Gau7Konst(0)%w=0.1125d0;  Gau7Konst(0)%x=1.d0/3.d0; Gau7Konst(0)%y=1.d0/3.d0
+  Gau7Konst(1)%w=0.0661970763942531d0; Gau7Konst(1)%x=0.4701420641051151d0
+  Gau7Konst(1)%y=0.4701420641051151d0
+  Gau7Konst(2)%w=0.0661970763942531d0; Gau7Konst(2)%x=0.05971587178976981d0 
+  Gau7Konst(2)%y=0.4701420641051151d0
+  Gau7Konst(3)%w=0.0661970763942531d0; Gau7Konst(3)%x=0.4701420641051151d0 
+  Gau7Konst(3)%y=0.05971587178976981d0
+  Gau7Konst(4)%w=0.06296959027241357d0; Gau7Konst(4)%x=0.1012865073234563d0
+  Gau7Konst(4)%y=0.1012865073234563d0
+  Gau7Konst(5)%w=0.06296959027241357d0; Gau7Konst(5)%x=0.7974269853530873d0
+  Gau7Konst(5)%y=0.1012865073234563d0
+  Gau7Konst(6)%w=0.06296959027241357d0; Gau7Konst(6)%x=0.1012865073234563d0
+  Gau7Konst(6)%y=0.7974269853530873d0
+
+  GauNmax = 13
+
+  if (m < 1) then                            ! m  o.k. ?
+    Kub3GauN = 1
+    return
+  end if
+
+  Area = Px * (Qy - Ry)  &                   ! Test collinearity
+       + Qx * (Ry - Py)  &
+       + Rx * (Py - Qy)
+
+  if (DABS(Area) < GauNEpsilon) then
+    Kub3GauN = 2
+    return
+  end if
+
+  if (n.lt.1.and.n.gt.3.and.n.ne.7) then     ! desired method implemented ?
+    Kub3GauN = 3
+    return
+  end if
+
+  Wert = 0.d0                                ! initialize
+  Area = Area / (m * m)                      ! double triangle area
+  hPQx = (Qx - Px) / m
+  hPRx = (Rx - Px) / m                       ! edge vectors for the
+  hPQy = (Qy - Py) / m                       !   m * m
+  hPRy = (Ry - Py) / m                       !   subtriangles
+
+  do d = 0, 1                                ! types of triangles d
+  
+    if (d.ne.0) then 
+	  Fak = -1.d0 
+	else 
+	  Fak = 1.d0                              ! d = 1: reflected
+    end if
+    do j = d, m-1                             ! j: along   PR
+      do i = d, m-j+d-1                       ! i: along   PQ
+        Dx = Px + i * hPQx + j * hPRx         ! (Dx,Dy) ist top
+        Dy = Py + i * hPQy + j * hPRy         ! corner of subtriangle
+        do k = 0, n-1                         ! Sum of weighted
+          Select Case (n)
+            Case (1)
+              Gw = Gau1Konst%w
+              Gx = Gau1Konst%x
+              Gy = Gau1Konst%y
+            Case (2)
+              Gw = Gau2Konst(k)%w
+              Gx = Gau2Konst(k)%x
+              Gy = Gau2Konst(k)%y
+            Case (3)
+              Gw = Gau3Konst(k)%w
+              Gx = Gau3Konst(k)%x
+              Gy = Gau3Konst(k)%y
+            Case (7)
+              Gw = Gau7Konst(k)%w
+              Gx = Gau7Konst(k)%x
+              Gy = Gau7Konst(k)%y
+          End Select
+          X = Dx + Fak * (Gx * hPQx + Gy * hPRx)
+          Y = Dy + Fak * (Gx * hPQy + Gy * hPRy)
+          Wert = Wert + Gw * func(X,Y)           !func must be defined
+        end do                                   !by calling program
+      end do
+	end do
+  end do
+
+  Wert = Wert * Area                   !multiply by double the subarea
+  Kub3GauN = 0
+
+  return
+end
+
+! ------------------------ END kubgauss.f90 ---------------------------

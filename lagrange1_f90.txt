@@ -1,0 +1,79 @@
+!****************************************************
+!*    Root of a non-linear Equation By Lagrange     *
+!* ------------------------------------------------ *
+!* REF.: "Méthode de calcul numérique - Programmes  *
+!*        en Basic By Claude Nowakowski, PS1 1981". *
+!*                                                  *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!*  Find a root of equation: X - E SIN X            *
+!*                                                  *
+!*    Input Starting, Ending X: 1 10                *
+!*    Input max. error: 1E-5                        *
+!*                                                  *
+!*    Root =    2.19912286279653                    *
+!*    Iterations:           7                       *
+!*    Y =  -5.409157735059011E-007                  *
+!*                                                  *
+!*         Fortran 90 Version By J-P Moreau, Paris. *
+!*                    (www.jpmoreau.fr)             *
+!****************************************************
+Program Lagrange
+
+REAL*8 E, FUNC, XB, X1, X2, YB, Y1, Y2
+
+PRINT *,' '
+WRITE(*,10,advance='no')
+READ *, X1, X2 
+WRITE(*,20,advance='no')
+READ *, E
+
+MAXITER = 50
+
+Y1 = FUNC(X1)
+Y2 = FUNC(X2)
+
+IF (Y1 * Y2 > 0.D0) THEN
+    PRINT *, ' Bad choice for X1, X2!'
+    GOTO 200
+END IF
+
+IF (ABS(Y1 * Y2) < 1.D-10) THEN
+    PRINT *, ' X1 or X2 is a root!'
+    GOTO 200
+END IF
+
+DO K = 1, MAXITER 
+    XB = X2 - (X2 - X1) * Y2 / (Y2 - Y1)
+    IF (ABS(X1 - XB) < E)  GOTO 100 !normal exit
+    YB = FUNC(XB)
+    IF (Y1 * YB < 0.D0) THEN
+        X2 = XB; Y2 = YB
+    ELSE
+        X1 = XB; Y1 = YB
+    END IF
+END DO
+
+PRINT *,' No root found!'
+GOTO 200
+
+100 PRINT *,' ' 
+PRINT *, ' Root = ', XB
+PRINT *, ' Iterations:', K
+PRINT *, ' Y = ', FUNC(XB)
+PRINT *,' '
+
+10 format('  Input Starting, Ending X: ')
+20 format('  Input max.error: ')
+
+200 continue 
+END
+
+!User-defined non-linear function
+REAL*8 FUNCTION FUNC (X)
+  real*8 X
+  FUNC = X - 2.718281828D0 * DSIN(X)
+END FUNCTION
+
+!End of file Lagrange1.f90

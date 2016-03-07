@@ -1,0 +1,88 @@
+!*********************************************
+!*     Elementary operations on fractions    *
+!* ----------------------------------------- *
+!* This program allows user to perform       *
+!* operations on fractions such as:          *
+!*         3/4 x 8/9 - 4/5                   *
+!*                                           *
+!* Sample run:                               *
+!*                                           *
+!* 3 4                                       *
+!* '*'                                       *
+!* 8 9                                       *
+!* '+'                                       *
+!* -4 5                                      *
+!* '='                                       *
+!*  Result is    -2 /    15                  *
+!* 'q'                                       *
+!* ----------------------------------------- *
+!* Ref.: "Mathématiques par l'informatique   *
+!*        individuelle (1) par H. Lehning    *
+!*        et D. Jakubowicz, Masson, Paris,   *
+!*        1982".                             *
+!*                                           *
+!*        F90 Version By J-P Moreau, Paris.  *
+!*               (www.jpmoreau.fr)           *
+!*********************************************
+PROGRAM Fractions
+
+implicit none
+character cs
+integer b,g,h,p,q,r,s,t,u
+print *,''
+!*** enter first fraction p/q (p=0 to exit) ***
+10 read *, p,q ; if (p.eq.0.or.q.eq.0) stop
+!*** enter operator:
+!    = to view current result p/q
+!    s to save current result
+!    q exit program
+!    +,-,*,/ arithmetic operator
+!***
+20 read *, cs
+if (cs.eq.'=') then
+  print *, ' Result is ',p,'/',q; goto 20
+end if
+if (cs.eq.'s') then 
+  g=p; h=q; goto 10
+end if
+if (cs.eq.'q') stop
+!*** enter next fraction r/s (if s=0, take current stored result) ***
+read *, r,s ; if (r.eq.0) stop
+if (s.eq.0) then 
+  r=g; s=h
+end if
+!computing result
+if (cs.eq.'+') then
+  p=p*s+q*r
+  q=q*s  !common denominator for all operations
+  goto 50
+end if
+if (cs.eq.'-') then 
+  r=-r
+  p=p*s+q*r
+  q=q*s  !common denominator for all operations
+  goto 50
+end if
+if (cs.eq.'*') then 
+  p=p*r
+  q=q*s  !common denominator for all operations
+  goto 50
+end if
+if (cs.eq.'/') then
+  b=r
+  r=s; s=b
+  p=p*r
+  q=q*s  !common denominator for all operations
+end if
+!simplification section
+50 t=p
+u=q
+100 b=t-u*int(t/u)
+if (b.eq.0) goto 110
+t=u; u=b
+goto 100
+110 p=p/u; q=q/u
+goto 20
+end
+
+!end of file fraction.f90

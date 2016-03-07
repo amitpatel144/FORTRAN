@@ -1,0 +1,145 @@
+!*****************************************************
+!* Division of two polynomials by increasing powers  *
+!*                                k                  *
+!*          P(x) = Q(x) * H(x) + x * R(x)            *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* DIVISION OF TWO POLYNOMIALS BY INCREASING POWERS: *
+!*                                                   *
+!* P(x) = '2x2 +x'                                   *
+!* Q(x) = 'x3 -x2 +1'                                *
+!*                                                   *
+!* Order: 4                                          *
+!*                                                   *
+!*                                                   *
+!* Quotient:                                         *
+!*                                                   *
+!*+ X3 +     2X2 + X                                 *
+!*                                                   *
+!* Remainder:                                        *
+!*                                                   *
+!*- X2 - X +     1                                   *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  AddNumber(), EnterPolynom(), DivNumber(),        *
+!*  DisplayPolynom(), MultNumber() and SetNumber().  *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+!Explanations:
+!Given two polynomials P(x) and Q(x) and an integer k,
+!it exists a couple of polynomials H(x) and R(x), such
+!as:        Px) = Q(x).H(x) + x^k.R(x)
+!The degree of H(x) is < k.
+!Note: the constant coefficient of Q(x) must be <> 0.
+!-----------------------------------------------------
+PROGRAM DIVPOL1
+Use Polynoms
+
+type(ar_polynom)  P,Q,H,R
+integer DivPolynom1
+
+  print *,''
+  print *,' DIVISION OF TWO POLYNOMIALS BY INCREASING POWERS:'
+  print *,''
+  if (EnterPolynom(' P(X) = ', P).eq.0)  stop
+  if (EnterPolynom(' Q(X) = ', Q).eq.0)  stop
+  print *,''
+  write(*,10,advance='no'); read *, k
+  print *,''
+  print *,''
+  if (DivPolynom1(P,Q,k,H,R).ne.0) then
+    print *,' Quotient:'
+    call DisplayPolynom(H)
+    print *,''
+    print *,' Remainder:'
+    call DisplayPolynom(R)
+  else
+    print *,' Error in division by increasing powers.'
+  end if
+  print *,''
+  print *,''
+
+10 format(' Order: ')
+
+END
+
+  !Division of two polynomials by increasing powers
+  integer Function DivPolynom1(P,Q,k,H,R)
+    USE POLYNOMS
+    type(ar_polynom) P,Q,H,R
+    type(ar_number)  u
+    !The Q polynomial constant term and k must be <> zero
+    if (k<=0.or.Q%coeff(0)%value.eq.0.d0) then
+      DivPolynom1=0
+	  return
+	end if
+    mx=Q%degree+k-1
+    if (mx<P%degree)  mx=P%degree
+    if (mx>Q%degree) then
+      do i=Q%degree+1, mx
+        if (SetNumber(Q%coeff(i),'0').eq.0) then
+          DivPolynom1=0
+	      return
+		end if
+      end do
+    end if
+    
+	!set polynomial R to zero
+    R%degree=0
+	do i=0, AR_MAXPOL
+      R%coeff(i)%value=0.d0
+	  R%coeff(i)%p=0; R%coeff(i)%q=1   
+	end do
+    do i=0, P%degree
+	  R%coeff(i)=P%coeff(i)
+    end do 
+    if (k>Q%degree) then
+      do i=Q%degree+1, k
+        if (SetNumber(Q%coeff(i),'0').eq.0) then
+          DivPolynom1=0
+	      return
+		end if
+      end do
+    end if
+    do i=0, k-1
+      if (DivNumber(R%coeff(i),Q%coeff(0),H%coeff(i)).eq.0) then
+        DivPolynom1=0
+	    return
+	  end if
+      do j=1, mx
+        if (MultNumber(H%coeff(i),Q%coeff(j-i), u).eq.0) then
+          DivPolynom1=0
+	      return
+		end if
+        u%p=-u%p; u%value=-u%value
+        if (AddNumber(R%coeff(j), u, R%coeff(j)).eq.0) then
+          DivPolynom1=0
+	      return
+		end if
+      end do
+    end do
+    H%degree=k-1
+    do while (H%degree>0.and.H%coeff(H%degree)%value.eq.0.d0)
+	  H%degree = H%degree - 1
+    end do
+    R%degree=mx-k
+    do i=0, R%degree 
+	  R%coeff(i)=R%coeff(i+k)
+    end do
+    do while (R%degree>0.and.R%coeff(R%degree)%value.eq.0.d0) 
+	  R%degree = R%degree - 1
+    end do
+    DivPolynom1=1
+  End !of function DivPolynom1
+
+
+!end of file divpol1.f90

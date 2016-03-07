@@ -1,0 +1,290 @@
+!*****************************************************
+!*          GCD and SCM of two polynomials           *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* GCD AND SCM OF TWO POLYNOMIALS:                   *
+!*                                                   *
+!* P(x) = 'x5 +5x4 +7x3 +5x2 +x -1'                  *
+!* Q(x) = 'x4 +4x3 -7x +2'                           *
+!*                                                   *
+!*                                                   *
+!* Greatest common divisor:                          *
+!*                                                   *
+!*+ X2 +     3 X -     1                             *
+!*                                                   *
+!*                                                   *
+!* Smallest common multiple:                         *
+!*                                                   *
+!*+ X7 +     6 X6 +    10 X5 +     2 X4 -     8 X3   *
+!*-    10 X2 -     3 X +     2                       *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  AddNumber(), EnterPolynom(), DivNumber(),        *
+!*  DisplayPolynom(), MultNumber() and SetNumber().  *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+!Explanations:
+!The Greatest common divisor (GCD) and the Smallest Common
+!multiple (SCM) of two polynomials are defined but for a
+!coefficient. That is to say, if a polynomial R(x) is the
+!GCD of P(x) and Q(x), any polynomial µ*R(x) is also a GCD.
+!To find the GCD, after permutating P(x) and Q(x), if the
+!degree of P is lower than the degree of Q, we first perform
+!the Euclidian division  P/Q: P=Q.H1+R1 (see program Divpol.f90).
+!if R1<>0, we then divide Q by R1: Q=R1.H2+R2.
+!if R2<>0, we continue until Rn=0. Rn-1 is then the GCD of
+!P(x) and Q(x).
+!To find the SCM of P(x) and Q(x), we use the relation:
+!   P(x).Q(x)=GCD(P,Q).SCM(P,Q).  
+!---------------------------------------------------------------
+PROGRAM GCDPOL
+Use Polynoms
+
+type(ar_polynom)  P,Q,R, P1,Q1
+integer GCDPolynom, SCMPolynom
+
+  print *,''
+  print *,' GCD AND SCM OF TWO POLYNOMIALS:'
+  print *,''
+  if (EnterPolynom('  P(X) = ', P).eq.0)  stop
+  if (EnterPolynom('  Q(X) = ', Q).eq.0)  stop
+  print *,''
+  print *,''
+  P1=P; Q1=Q
+  if (GCDPolynom(P1,Q1,R).ne.0) then
+    print *,' Greatest common divisor:'
+    call DisplayPolynom(R)
+  else
+    print *,' Error in looking for GCD.'
+  end if
+  print *,''
+  print *,''
+  if (SCMPolynom(P,Q,R).ne.0) then
+    print *,' Smallest common multiple:'
+    call DisplayPolynom(R)
+  else
+    print *,' Error in looking for SCM.'
+  end if 
+  print *,''
+  print *,''
+
+END
+
+
+  ! P(X) * Q(X) = R(X)
+  integer Function MultPolynom(P,Q,R1)
+  USE POLYNOMS
+    type(ar_polynom) P,Q,R,R1
+    type(ar_number)  u
+    R%degree=0                !set R polynomial to zero
+	do i=0, AR_MAXPOL
+      R%coeff(i)%value=0
+	  R%coeff(i)%p=0
+      R%coeff(i)%q=1
+	end do
+    !verify that P and Q are not void
+    if (P%degree.eq.0.and.P%coeff(0)%value.eq.0) then 
+	  MultPolynom=0
+	  return
+    end if
+    if (Q%degree.eq.0.and.Q%coeff(0)%value.eq.0) then 
+	  MultPolynom=0
+	  return
+    end if
+    R%degree=P%degree+Q%degree
+	
+    if (R%degree>AR_MAXPOL) then     !R degree is too big
+	  MultPolynom=0
+	  return
+	end if
+    do n=0, R%degree
+      if (SetNumber(R%coeff(n),'0').eq.0) then
+	    MultPolynom=0
+	    return
+	  end if
+      do i=0, P%degree
+        j=n-i
+        if (j>=0.and.j<=Q%degree) then
+          if (MultNumber(P%coeff(i),Q%coeff(j),u).eq.0) then
+	        MultPolynom=0
+	        return
+		  end if
+          if (AddNumber(R%coeff(n),u,R%coeff(n)).eq.0) then
+	        MultPolynom=0
+	        return
+		  end if
+        end if
+      end do
+    end do
+    MultPolynom=1
+	R1=R
+  End !of function MultPolynom
+
+  integer Function DivPolynom(P,Q,H,R)
+    USE POLYNOMS
+    type(ar_polynom) P,Q,H,R
+    type(ar_number)  u, v
+    !The Q polynomial must be <> zero
+    if (Q%degree.eq.0.and.(Q%coeff(0)%value.eq.0.d0.or.Q%coeff(0)%p.eq.0)) then
+      DivPolynom=0
+	  return
+	end if
+    R=P; H%degree=P%degree - Q%degree
+    if (H%degree<0) then
+      H%degree=0; 
+	  if (SetNumber(H%coeff(0),'0').eq.0) then
+        DivPolynom=0
+	    return
+	  end if
+    else
+      do i=H%degree, 0, -1
+        if (DivNumber(R%coeff(R%degree),Q%coeff(Q%degree),H%coeff(i)).eq.0) then
+          DivPolynom=0
+	      return
+		end if
+        do j=i, R%degree
+          if (MultNumber(H%coeff(i),Q%coeff(j-i), u).eq.0) then
+            DivPolynom=0
+	        return
+		  end if
+          u%p=-u%p; u%value=-u%value
+          if (AddNumber(R%coeff(j),u,v).eq.0) then
+            DivPolynom=0
+	        return
+		  end if
+		  R%coeff(j)=v
+        end do
+        if (R%degree > 0)  R%degree=R%degree-1
+      end do
+      do while (dabs(R%coeff(R%degree)%value) < AR_SMALL.and.R%degree>0)
+	    R%degree=R%degree-1
+      end do
+    end if
+    DivPolynom=1
+  End !of function DivPolynom
+
+  ! GCD of two polynomials
+  integer Function GCDPolynom(P,Q,R)
+    USE POLYNOMS
+    type(ar_polynom) P,Q,R, V
+    type(ar_number)  z
+    integer*4 pg, pp, rr
+    integer   bb, DivPolynom
+    if (P%degree.eq.0.and.P%coeff(P%degree)%value.eq.0) then
+      GCDPolynom=0
+	  return
+	end if
+    if (Q%degree.eq.0.and.Q%coeff(Q%degree)%value.eq.0) then
+      GCDPolynom=0
+	  return
+	end if    
+    if (Q%degree>P%degree) then 
+	  R=P; P=Q; Q=R 
+	end if
+    R=Q
+    do while (R%degree>0)
+      if (DivPolynom(P,Q,V,R).eq.0) then
+        GCDPolynom=0
+	    return
+	  end if    
+	  if (R%coeff(R%degree)%is_real.ne.0) then
+      do while (R%degree>0.and.dabs(R%coeff(R%degree)%value)<AR_SMALL)
+	    R%degree=R%degree-1
+      end do
+	  else
+      do while (R%degree>0.and.R%coeff(R%degree)%p.eq.0)
+	    R%degree=R%degree-1
+      end do
+	  endif
+      if (R%degree.eq.0) then
+	    if (R%coeff(0)%is_real.ne.0) then
+          if (dabs(R%coeff(0)%value)>AR_SMALL)  Q%degree=0
+        else
+		  if (R%coeff(0)%p.ne.0)  Q%degree=0
+		end if 
+      else
+        P=Q; Q=R
+      end if
+      do i=0, Q%degree-1
+        if (DivNumber(Q%coeff(i),Q%coeff(Q%degree),Q%coeff(i)).eq.0) then
+          GCDPolynom=0
+	      return
+	    end if    
+      end do
+      if (SetNumber(Q%coeff(Q%degree), '1').eq.0) then
+        GCDPolynom=0
+	    return
+	  end if    
+    end do
+    R=Q
+    if (Q%degree.eq.0) then
+      bb=SetNumber(R%coeff(0), '1')
+    else
+      pg=0
+      do i=0, R%degree
+        if (R%coeff(i)%is_real.eq.0) then
+          if (pg.eq.0) then 
+		    pg=R%coeff(i)%p
+          else 
+		    rr=GCD(pg,R%coeff(i)%p); pg=rr 
+		  end if
+        end if
+      end do
+      pp=0
+      do i=0, R%degree
+        if (R%coeff(i)%is_real.eq.0) then
+          if (pp.eq.0) then 
+		    pp=R%coeff(i)%q
+          else
+            rr=GCD(pp,R%coeff(i)%q)
+            pp=pp*R%coeff(i)%q/rr
+          end if
+        end if
+      end do 
+      if (pg.ne.0) then
+        z%is_real=0; z%p=pp
+        z%q=pg; z%value=pp/pg
+        do i=0, R%degree
+          if (MultNumber(R%coeff(i), z, R%coeff(i)).eq.0) then
+            GCDPolynom=0
+	        return
+		  end if
+        end do
+      end if
+    end if
+    GCDPolynom=1
+  End !of function GCDPolynom
+
+  ! SCM of two polynomials
+  integer Function SCMPolynom(P,Q,R)
+    USE POLYNOMS
+	type(ar_polynom) P,Q,R, U,V,V1
+	integer GCDPolynom, DivPolynom
+	V=P; V1=Q  !to preserve P and Q after GCDPOlynom
+    if (GCDPolynom(V,V1,U).eq.0) then
+	  SCMPolynom=0
+	  return
+    end if
+    if (MultPolynom(P,Q,V).eq.0) then
+	  SCMPolynom=0
+	  return
+    end if
+    if (DivPolynom(V,U,R,V).eq.0) then
+	  SCMPolynom=0
+	  return
+    end if
+    SCMPolynom=1
+  End
+
+
+! end of file gcdpol.f90

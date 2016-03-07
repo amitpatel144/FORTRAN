@@ -1,0 +1,136 @@
+!*********************************************************
+!*  Calculate a limited development of a real function   *
+!*  f(x) at point x0 with step h (to order 5).           *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* Limited development of f(x) at x0:                    *
+!*                                                       *
+!* Function to develop: 1/(1-x)                          *
+!*                                                       *
+!* At point x0= 0                                        *
+!* Value of step h= 0.1                                  *
+!*                                                       *
+!* a1 =  1.0000416250                                    *
+!* a2 =  1.0000416250                                    *
+!* a3 =  1.0011207928                                    *
+!* a4 =  1.0011207928                                    *
+!* a5 =  1.0136468470                                    *
+!*                                                       *
+!* (The correct answer is a1=a2=a3=a4=a5=1)              *         
+!*                                                       *
+!* Function to develop: Ln(x)                            *
+!*                                                       *
+!* At point x0= 1                                        *
+!* Value of step h= 0.1                                  *
+!*                                                       *
+!* a1 =  1.0000057552                                    *
+!* a2 = -0.5000050520                                    *
+!* a3 =  0.3334508142                                    *
+!* a4 = -0.2501062334                                    *
+!* a5 =  0.2011301593                                    *
+!*                                                       *
+!* (the correct answer is a1=1, a2=-0.5, a3=1/3,         *
+!*  a4=-1/4 and a5=1/5)                                  *   
+!* ----------------------------------------------------- *
+!* Ref.: "Mathematiques en Turbo Pascal By Alain         *
+!*        Reverchon and Marc Ducamp, Editions Eyrolles,  *
+!*        Paris, 1991" [BIBLI 03].                       *
+!*                                                       *
+!*                            F90 version by J-P Moreau. *
+!*                                (www.jpmoreau.fr)      *
+!*********************************************************
+!Note: as you can see this direct method is not suitable to
+!      calculate a limited development in an accurate way.
+!      The next programs (ltddev1 to ltddev3) will allow us
+!      to calculate limited developments at x=0 up to a high
+!      order with a good accuracy for functions f*g, f/g or
+!      gof, knowing the limited developments of f(x) and g(x)
+!      at x=0.
+!-----------------------------------------------------------}
+Program LTDDEV
+
+real*8 d,h,r,s,x0;
+integer n
+
+  print *,' '
+  print *,' Limited development of a real function f(x):'
+  print *,' '
+  print *,' Function to develop: 1/(1-x)'
+  print *,' '
+  write(*,10,advance='no'); read *, x0
+  write(*,20,advance='no'); read *, h
+  print *,' '
+
+  s=1.d0
+
+  do n=1, 5
+    s = s * n
+    r = ar_nderiv(x0,n,h) / s
+    write(*,50)  n, r
+  end do
+  print *,' '
+
+10 format('  At point x0= ')
+20 format('  Value of step h= ')
+
+50 format('  a',I1,' = ',F13.10)
+
+END
+
+!sample function f(x)=1/(1-x)
+real*8 Function f(x)
+real*8 x
+  if (dabs(x-1) >1.d-16) then
+    f = 1.d0/(1.d0-x)
+  else
+    f = 1.d16
+  end if
+end
+
+!sample function f(x)=Ln(x)
+!real*8 Function f(x)
+!real*8 x
+!  if (x >1.d-16) then
+!    f = LOG(x)
+!  else
+!    f = -1.d16
+!end                      }
+
+!returns the value of nth derivative of function
+!f(x) at point x0 with increment step h (n=1 to 5).
+!Note that for polynomial functions h must not be
+!too small. Here h=1 gives best results than h=0.01}
+real*8 Function ar_nderiv(x, n, h)
+  real*8 x,h
+  integer table(1:5,0:6)
+  real*8 f,fa,fb,fc,t
+  
+  DATA table /3,3,4,4,5,45,270,-488,-1952,1938, &  
+              -9,-27,338,676,-1872,1,2,-72,-96,783, &
+			  0,0,7,7,-152,0,0,0,0,13, &
+			  60,180,240,240,288/ 
+
+  if(n>5) then
+    ar_nderiv=0.d0
+    return
+  end if
+  fa = f(x)
+  t=0.d0
+  do i=1, table(n,0)
+    fb = f(x-i*h)
+    fc = f(x+i*h)
+    if (MOD(n,2).ne.0) then
+      t = t + table(n,i)*(fc-fb)
+    else
+      t = t + table(n,i)*((fc-fa) + (fb-fa))
+    end if
+  end do
+  t = t / table(n,6)
+  do i=1, n  
+    t = t / h
+  end do
+  ar_nderiv= t
+End
+
+!end of file ltddev.f90

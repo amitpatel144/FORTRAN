@@ -1,0 +1,196 @@
+!*********************************************************
+!*         Computing the statistical functions           *
+!*              for one or two variables                 *
+!*                                                       *
+!* ----------------------------------------------------- *
+!* REFERENCE:  "Mathematiques et statistiques by H.      *
+!*              Haut, PSI Editions, France, 1981"        *
+!*              [BIBLI 13].                              * 
+!*                                                       *
+!*                    F90 version by J-P Moreau, Paris   *
+!*                           (www.jpmoreau.fr)           *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* TUTORIAL                                              *
+!*                                                       *
+!* 1. Define type of calculus:'                          *
+!*    1: Statistical functions for a set X(i)            *
+!*    2: Statistical functions for a set X(i), Y(i)      *
+!*                                                       *
+!* 2. Input number n of data                             *
+!*                                                       *
+!* 3. Input successively the n values X(i) [and Y(i)]    *
+!*                                                       *
+!* Type of calculus (1 or 2): 2                          *
+!*                                                       *
+!* Number of data: 5                                     *
+!*                                                       *
+!*   1  1 12                                             *
+!*   2  2 9                                              *
+!*   3  3 7                                              *
+!*   4  4 15                                             *
+!*   5  5 6                                              *
+!*                                                       *    
+!*                                                       *
+!* Mean of X(i)....................:    3.00000000000000 *    
+!*                                                       *
+!* (n-1) standard deviation of X(i):    1.58113883008419 *    
+!*   (n) standard deviation of X(i):    1.41421356237310 *    
+!*                                                       *
+!* (n-1) standard dev. of X mean...:   0.707106781186548 *    
+!*   (n) standard dev. of X mean...:   0.632455532033676 *    
+!*                                                       *
+!* Mean of Y(i)....................:    9.80000000000000 *    
+!*                                                       *
+!* (n-1) standard deviation of Y(i):    3.70135110466435 *    
+!*   (n) standard deviation of Y(i):    3.31058907144937 *    
+!*                                                       *
+!* (n-1) standard dev. of Y mean...:    1.65529453572468 *    
+!*   (n) standard dev. of Y mean...:    1.48054044186574 *    
+!*                                                       *  
+!*                                                       *  
+!* (n-1) covariance of X,Y.........:   -1.50000000000000 *     
+!*   (n) covariance of X,Y.........:   -1.20000000000000 *    
+!*                                                       *
+!* Correlation coefficient.........:  -0.256307297315028 *
+!*                                                       *
+!*                                                       *
+!*********************************************************
+!Description: This program computes the usual statistical functions
+!             for a set of n variables X(i) or for a set of n pairs
+!             X(i), Y(i).
+PROGRAM Test_Fstat
+
+integer n, nt
+real*8, pointer :: X(:), Y(:)
+real*8 v1,a3,a5,v3,v5,v2,a4,a6,v4,v6,v7,a7,v8
+
+print *,' '
+print *,'TUTORIAL'
+print *,' '
+print *,'1. Define type of calculus:'
+print *,'   1: Statistical functions for a set X(i)'
+print *,'   2: Statistical functions for a set X(i), Y(i)'
+print *,' '
+print *,'2. Input number n of data'
+print *,' '
+print *,'3. Input successively the n values X(i) [and Y(i)]'
+print *,' '
+write(*,"(' Type of calculus (1 or 2): ')",advance='no')
+read  *, nt
+print *,' '
+write(*,"(' Number of data: ')",advance='no')
+read  *, n
+print *,' '
+
+!dynamic allocations
+allocate(X(1:n),stat=ialloc)
+if (nt.eq.2) allocate(Y(1:n),stat=ialloc)
+
+!read n data
+do i=1, n
+  write(*,10,advance='no')  i
+  if (nt.eq.1) read *, X(i)
+  if (nt.eq.2) read *, X(i), Y(i)
+end do
+
+!call statistical functions subroutine
+call Fstat(n,nt,X,Y,v1,a3,a5,v3,v5,v2,a4,a6,v4,v6,v7,a7,v8)
+
+!print results
+print *,' '
+print *,'Mean of X(i)....................: ', v1
+print *,' '
+print *,'(n-1) standard deviation of X(i): ', a3
+print *,'  (n) standard deviation of X(i): ', a5
+print *,' '
+print *,'(n-1) standard dev. of X mean...: ', v3
+print *,'  (n) standard dev. of X mean...: ', v5
+print *,' '
+if (nt.eq.1) stop
+print *,'Mean of Y(i)....................: ', v2
+print *,' '
+print *,'(n-1) standard deviation of Y(i): ', a4
+print *,'  (n) standard deviation of Y(i): ', a6
+print *,' '
+print *,'(n-1) standard dev. of Y mean...: ', v4
+print *,'  (n) standard dev. of Y mean...: ', v6
+print *,' '
+print *,' '
+print *,'(n-1) covariance of X,Y.........: ', v7
+print *,'  (n) covariance of X,Y.........: ', a7
+print *,' '
+print *,'Correlation coefficient.........: ', v8
+print *,' '
+
+stop
+ 
+10 format('  ',i3,'  ')
+
+end
+
+!Subroutine of statistical functions for 1 or 2 variables
+!*****************************************************
+!* INPUTS:                                           *
+!*         nt: type of calculus =1 for one variable  *
+!*                              =2 for two variables *
+!*          n: number of data X(i) [and Y(i) ]       *
+!* OUTPUTS:                                          *
+!*         v1: mean of X(i)                          *
+!*         v2: mean of Y(i)                          *
+!*         v3: (n-1) standard deviation of v1        *
+!*         v4: (n-1) standard deviation of v2        *
+!*         v5:   (n) standard deviation of v1        *
+!*         v6:   (n) standard deviation of v2        *
+!*         v7: (n-1) covariance of X,Y               *
+!*         v8: correlation coefficient               *
+!*         a3: (n-1) standard deviation of X         *
+!*         a4: (n-1) standard deviation of Y         *
+!*         a5:   (n) standard deviation of X         *
+!*         a6:   (n) standard deviation of Y         *
+!*         a7:   (n) covariance of X,Y               *
+!*****************************************************
+Subroutine Fstat(n,nt,X,Y,v1,a3,a5,v3,v5,v2,a4,a6,v4,v6,v7,a7,v8)
+integer n,nt
+real*8 X(1:n),Y(1:n)
+real*8 v1,a3,a5,v3,v5,v2,a4,a6,v4,v6,v7,a7,v8
+real*8 xnr
+  v1=0.d0; v2=0.d0; v3=0.d0; v4=0.d0; v5=0.d0
+  n1=n-1; xnr=dsqrt(dfloat(n))
+  !choose type of calculus
+  if (nt.eq.2)  goto 500
+  !case of one set X(i)
+  do i=1, n
+    v1=v1+X(i)
+    v3=v3+X(i)**2
+  end do
+  v6=v3-v1*v1/n
+  v1=v1/n
+  a3=dsqrt(v6/n1); a5=dsqrt(v6/n)
+  v5=a5/xnr; v3=a3/xnr
+  return
+!case of a set X(i), Y(i)
+500 do i=1, n
+    v1=v1+X(i)
+    v2=v2+Y(i)
+    v3=v3+X(i)**2
+    v4=v4+Y(i)**2
+    v5=v5+X(i)*Y(i)
+  end do
+  v6=v3-v1*v1/n
+  v7=v4-v2*v2/n
+  v8=v5-v1*v2/n
+  v1=v1/n; v2=v2/n
+  a3=dsqrt(v6/n1); a4=dsqrt(v7/n1)
+  a5=dsqrt(v6/n); a6=dsqrt(v7/n)
+  v7=v8/n1; a7=v8/n
+  v3=a3/xnr; v4=a4/xnr
+  v5=a5/xnr; v6=a6/xnr
+
+  if (a3.eq.0.d0.or.a4.eq.0.d0) return  !correlation coefficient not defined
+  v8=v8/(n*a5*a6)
+  return
+end
+
+!end of file fstat.f90

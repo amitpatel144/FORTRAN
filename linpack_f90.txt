@@ -1,0 +1,400 @@
+!**********************************************************
+!*                   MODULE LINPACK                       *
+!* ------------------------------------------------------ *
+!* Reduced English version from linpack.pas by J-P Dumont *
+!* to be used by demonstration program Test_hqr.f90.      *
+!*                                                        *
+!*                     F90 version by J-P Moreau, Paris   *
+!*                            (www.jpmoreau.fr)           *
+!**********************************************************
+MODULE Linpack
+
+
+CONTAINS
+
+!----------------------------------------------------------------------
+  Subroutine Exc(j,k,l,m,n,f,A,D)       !called by Balanc
+  REAL*8 A(0:(n+1)*(n+1)), D(0:n+1)
+  REAL*8 f
+  n1 = n + 1
+  D(m) = 1.d0*j
+  IF (j.ne.m) THEN
+    DO i = 1, k 
+      f = A(i*n1+j)
+      A(i*n1+j) = A(i*n1+m)
+      A(i*n1+m) = f
+    END DO
+    DO i = l, n
+      f = A(j*n1+i)
+      A(j*n1+i) = A(m*n1+i)
+      A(m*n1+i) = f
+    END DO
+  END IF
+  END Subroutine Exc
+!----------------------------------------------------------------------
+
+!***********************************************************************
+!* Balanc:  From Pascal version translated from ALGOL by J-P Dumont    *
+!*          F90 version by J-P Moreau                                  *
+!* ------------------------------------------------------------------- *
+!* Ref.: "Handbook FOR automatic computation Volume II Linear Algebra  *
+!*        J.H. Wilkinson et C.Reinsch, Springer Verlag, 1971"          *
+!* ------------------------------------------------------------------- *
+!*   This procedure balances the elements of a non symmetric square    *
+!* matrix. Given a matrix n x n stored in a table of size Maxc x Maxc, *
+!* that matrix is replaced by a balanced matrix having the same eigen- *
+!* values. A symmetric matrix is not affected by this procedure.       *
+!* ------------------------------------------------------------------- *
+!* Inputs:                                                             *
+!*       n       Order of non symmetric square matrix A (n x n)        *
+!*       A       Table (0:n+1*n+1 storing the  elements of A           *
+!* ------------------------------------------------------------------- *
+!* Outputs:                                                            *
+!*       A       The original A matrix is replaced by the balanced     *
+!*               matrix. However, it is possible to recover exactly    *
+!*               the original matrix.                                  *
+!*  low,hi       Two integers such as A(i,j) = 0 if                    *
+!*               (1) i > j  AND                                        *
+!*               (2) j =1,...,Low-1 OU i = hi+1,...,n                  *
+!*       D       Vector (1..n) containing enough information to trace  *
+!*               the done permutations and the used scale factors.     *
+!***********************************************************************
+Subroutine Balanc(A, n, D, low, hi)
+
+REAL*8 A(0:(n+1)*(n+1)), D(0:n+1)
+INTEGER low, hi
+
+! LABEL Iteration,L1,L2,L3,L4
+!          50     10 20 30 40
+
+PARAMETER(b = 2.d0)   !floating point radix of CPU
+
+REAL*8  b2,c,f,g,r,s
+INTEGER noconv     ! 0=FALSE, 1=TRUE
+
+b2 = b*b
+l  = 1
+k  = n
+n1 = n+1
+
+!Search lines isolating an eigenvalue and shift downwards
+10 DO j = k, 1, -1
+     r = 0.d0
+     DO i = 1, j-1 
+       r = r + DABS(A(j*n1+i))
+     END DO
+     DO i = j+1, k 
+       r = r + DABS(A(j*n1+i))
+     END DO 
+     IF (r.eq.0.d0)  THEN
+       CALL Exc(j,k,l,k,n,f,A,D)
+       k = k - 1
+       GOTO 10
+     END IF
+   END DO
+
+!Search columns isolating an eigenvalue and shift to the left
+20 DO j = l, k
+     c = 0.d0
+     DO i = l, j-1 
+       c = c + DABS(A(i*n1+j))
+     END DO 
+     DO i = j+1, k 
+       c = c + DABS(A(i*n1+j))
+     END DO
+     IF (c.eq.0.d0) THEN
+       CALL Exc(j,k,l,l,n,f,A,D)
+       l = l + 1
+       GOTO 20
+     END IF
+   END DO
+
+!Now balance submatrix from ligne l to line k
+  low = l
+  hi  = k
+  DO i = 1, k 
+    d(i) = 1
+  END DO
+
+50 noconv = 0
+  DO i = l, k
+      c = 0.d0
+      r = c
+      DO j = l, i-1
+        c = c + DABS(A(j*n1+i))
+        r = r + DABS(A(i*n1+j))
+      END DO
+      DO j = i+1, k
+        c = c + DABS(A(j*n1+i))
+        r = r + DABS(A(i*n1+j))
+      END DO
+      g = r/b
+      f = 1
+      s = c+r
+
+30    IF (c < g) THEN
+        f = f*b
+        c = c*b2
+        GOTO 30
+      END IF
+      g = r*b
+
+40    IF (c>=g) THEN
+        f = f/b
+        c = c/b2
+        GOTO 40
+      END IF
+
+!Balancing the elements of submatrix
+      IF ( (c+r)/f < 0.95*s ) THEN
+        g = 1.d0/f
+        d(i) = d(i) * f
+        noconv = 1
+        DO j = l, n 
+		  A(i*n1+j) = A(i*n1+j) * g
+        END DO
+        DO j = 1, k 
+		  A(j*n1+i) = A(j*n1+i) * f
+        END DO
+      END IF
+
+  END DO ! boucle i
+  IF (noconv.eq.1) GOTO 50
+END Subroutine Balanc
+!----------------------------------------------------------------------
+
+!{-------------------------Documentation-------------------------------}
+!{               VAR A: Square_Matrix; n: INTEGER);                    }
+!{ Reduction of a non symmetric real matrix to Hessenberg form by the  }
+!{ elimination method. Matrix A (n x n), stored in a table of size     }
+!{ (0:n+1*n+1), is replaced by a superior Hessenberg matrix having the }
+!{ same eigenvalues. It is recommanded to call previously the Balanc   }
+!{ procedure. In output, the Hessenberg matrix has elements A[i,j] with}
+!{ i<=j+1. The elements for i>j+1, that in theory equal zero, are      }
+!{ actually filled with random (not used) values.                      } 
+!{---------------------------------------------------------------------}
+!{ From Pascal version by J.P.DUMONT - Extracted from:                 }
+!{---------------------------------------------------------------------}
+!{ Reference:                                                          }
+!{        William H.PRESS, Brian P.FLANNERY, Saul A.TEUKOLSKY AND      }
+!{        William T.VETTERLING                                         }
+!{              N U M E R I C A L  R E C I P E S                       }
+!{              The Art OF Scientific Computing                        }
+!{              CAMBRIDGE UNIVERSITY PRESS 1987                        }
+!{                                           F90 version by J-P Moreau }
+!{/////////////////////////////////////////////////////////////////////}
+Subroutine ElmHes( A, n)
+
+REAL*8 A(0:(n+1)*(n+1))
+REAL*8 y,x
+
+ n1 = n+1
+ IF ( n > 2 ) THEN
+   DO m = 2, n-1
+     x = 0.d0
+     i = m
+     DO j = m, n 
+       IF (DABS(A(j*n1+m-1)) > DABS(x)) THEN
+         x = A(j*n1+m-1)
+         i = j;
+       END IF !IF DABS
+     END DO !DO j= m, n
+     IF (i.ne.m) THEN
+       DO j = m-1, n
+         y = A(i*n1+j)
+         A(i*n1+j) = A(m*n1+j)
+         A(m*n1+j) = y
+       END DO !DO j
+       DO j = 1, n
+         y = A(j*n1+i)
+         A(j*n1+i) = A(j*n1+m)
+         A(j*n1+m) = y
+       END DO !DO j
+     END IF !IF i <> m
+     IF (x.ne.0.d0) THEN
+       DO i = m+1, n
+         y = A(i*n1+m-1)
+         IF (y <> 0.0E0) THEN
+           y = y/x
+           A(i*n1+m-1) = y
+           DO j = m, n 
+	     A(i*n1+j) = A(i*n1+j) - y*A(m*n1+j)
+           END DO
+           DO j = 1, n
+	     A(j*n1+m) = A(j*n1+m) + y*A(j*n1+i)
+           END DO
+         END IF !IF y
+       END DO !DO i
+     END IF !IF x <> 0
+   END DO !DO m
+ END IF  ! if n>2 
+END Subroutine ElmHes
+
+!{-----------------------Documentation---------------------------------}
+!{               QR algorithm for real Hessenberg matrices             }
+!{                                                                     }
+!{   This procedure finds all the eigenvalues of an upper triangle     }
+!{ Hessenberg matrix of size n x n, stored in a table of size Maxc x   }
+!{ Maxc. The input matrix A has been previously produced by the Helmes }
+!{ procedure. In output this A matrix is destroyed. Tables wr and wi   }
+!{ respectively return real parts and imaginary parts of the eigen-    }
+!{ values.                                                             }         
+!{/////////////////////////////////////////////////////////////////////}
+!{ Reference:                                                          }
+!{        William H.PRESS, Brian P.FLANNERY, Saul A.TEUKOLSKY AND      }
+!{        William T.VETTERLING                                         }
+!{              N U M E R I C A L  R E C I P E S                       }
+!{              The Art OF Scientific Computing                        }
+!{              CAMBRIDGE UNIVERSITY PRESS 1987                        }
+!{                                           F90 version by J-P Moreau }
+!{/////////////////////////////////////////////////////////////////////}
+Subroutine HQR_MR( A, n, wr, wi )
+
+! LABELS: 2,3,4
+
+REAL*8 A(0:(n+1)*(n+1)), Wr(0:n+1),Wi(0:n+1)
+
+PARAMETER(itsmx = 30)
+
+REAL*8  anorm,p,q,r,s,t,u,v,w,x,y,z
+
+ n1 = n+1
+ anorm = DABS(A(1*n1+1))
+ DO i = 2, n
+   DO j = i-1, n
+     anorm = anorm + DABS(A(i*n1+j))
+   END DO !DO j
+ END DO !DO i
+ nn = n
+ t = 0.d0
+ DO WHILE (nn >= 1)
+   its = 0
+2  DO l = nn, 2, -1
+     s = DABS(A((l-1)*n1+l-1))+DABS(A(l*n1+l))
+     IF (s.eq.0.d0) THEN 
+       s = anorm
+     END IF
+     IF ((DABS(A(l*n1+l-1))+s).eq.s) GOTO 3
+   END DO !DO l
+   l = 1
+3  x = A(nn*n1+nn)
+   IF (l.eq.nn) THEN
+     wr(nn) = x+t
+     wi(nn) = 0.d0
+     nn = nn -1
+   ELSE 
+     y = A((nn-1)*n1+nn-1)
+     w = A(nn*n1+nn-1)*A((nn-1)*n1+nn)
+     IF (l.eq.nn - 1 ) THEN
+       p = 0.5*(y-x)
+       q = p*p+w;
+       z = DSQRT(DABS(q))
+       x = x+t;
+       IF (q >= 0.0E0) THEN
+         z = p + Sign(z,p)
+         wr(nn) = x+z
+         wr(nn-1) = wr(nn)
+         IF (z.ne.0.d0)  wr(nn) = x - w/z
+         wi(nn)   = 0.d0
+         wi(nn-1) = 0.d0
+       ELSE 
+         wr(nn) = x+p
+         wr(nn-1) = wr(nn)
+         wi(nn) = z
+         wi(nn-1) = -z
+       END IF !IF q>=0
+       nn = nn - 2
+     ELSE 
+       IF (its.eq.itsmx) THEN
+         Write(*,*) ' Pause dans la procedure HQR'
+         Write(*,*) ' Trop d''iterations!'
+       END IF !IF its=itsmx
+       IF (its.eq.10.OR.its.eq.20) THEN
+         t = t + x
+         DO i = 1, nn 
+	   A(i*n1+i) = A(i*n1+i) - x
+         END DO
+         s = DABS(A(nn*n1+nn-1))+DABS(A((nn-1)*n1+nn-2))
+         x = 0.75*s;
+         y = x;
+         w = - 0.4375*s*s
+       END IF
+       its = its + 1
+       DO m = nn-2, 1, -1
+         z = A(m*n1+m)
+         r = x - z;
+         s = y - z;
+         p = (r*s-w)/A((m+1)*n1+m)+ A(m*n1+m+1)
+         q = A((m+1)*n1+m+1) - z - r - s;
+         r = A((m+2)*n1+m+1)
+         s = DABS(p)+DABS(q)+DABS(r)
+         p = p/s
+         q = q/s
+         r = r/s
+         IF ( m.eq.1 ) GOTO 4
+         u = DABS(A(m*n1+m-1))*(DABS(q)+DABS(r))
+         v = DABS(p)*(DABS(A((m-1)*n1+m-1))+DABS(z)+DABS(A((m+1)*n1+m+1)))
+         IF((u+v).eq.v) GOTO 4;
+       END DO !DO m
+4      DO i = m+2, nn
+         A(i*n1+i-2) = 0.d0
+         IF (i.ne.(m+2))  A(i*n1+i-3) = 0.d0
+       END DO ! DO i 
+       DO k = m, nn-1
+         IF (k.ne.m) THEN
+           p = A(k*n1+k-1)
+           q = A((k+1)*n1+k-1)
+           r = 0.d0
+           IF (k.ne.(nn-1)) r = A((k+2)*n1+k-1)
+           x = DABS(p)+DABS(q)+DABS(r)
+           IF (x.ne.0.d0) THEN
+             p = p/x;
+             q = q/x;
+             r = r/x;
+           END IF ! IF x
+         END IF ! IF k<>m 
+         s = SIGN(DSQRT(p*p+q*q+r*r),p)
+         IF (s.ne.0.d0) THEN
+           IF (k.eq.m) THEN
+             IF (l.ne.m) A(k*n1+k-1) = -A(k*n1+k-1)
+           ELSE 
+	     A(k*n1+k-1) = -s*x
+           END IF
+           p = p+s
+           x = p/s
+           y = q/s
+           z = r/s
+           q = q/p
+           r = r/p
+           DO j = k, nn
+             p = A(k*n1+j)+q*A((k+1)*n1+j)
+             IF (k.ne.(nn-1)) THEN
+               p = p+r*A((k+2)*n1+j)
+               A((k+2)*n1+j) = A((k+2)*n1+j) -p*z
+             END IF !IF k
+             A((k+1)*n1+j) = A((k+1)*n1+j) - p*y
+             A(k*n1+j) = A(k*n1+j) - p*x
+           END DO ! DO j 
+           mmin = min(nn,k+3)
+           DO i = 1, mmin
+             p = x*A(i*n1+k)+ y*A(i*n1+k+1)
+             IF (k.ne.(nn-1)) THEN
+               p = p+z*A(i*n1+k+2)
+               A(i*n1+k+2) = A(i*n1+k+2) -p*r
+             END IF
+             A(i*n1+k+1) = A(i*n1+k+1) -p*q
+             A(i*n1+k) = A(i*n1+k) -p
+           END DO !DO i
+         END IF !if s<>0
+       END DO !do k=
+       GOTO 2
+     END IF !if l=nn
+   END IF
+ END DO
+END Subroutine HQR_MR
+
+END MODULE 
+
+! End of file linpack.f90
+
+

@@ -1,0 +1,71 @@
+!*********************************************
+!* Program to demonstrate the Gamma Function *
+!* ----------------------------------------- *
+!* Reference:                                * 
+!* "Numerical Recipes, by W.H. Press, B.P.   *
+!*  Flannery, S.A. Teukolsky and T. Vetter-  *
+!*  ling, Cambridge University Press, 1986"  *
+!*  [BIBLI 08].                              *
+!* ----------------------------------------- *
+!* SAMPLE RUN:                               *
+!*                                           *
+!*       X        Gamma(X)                   *   
+!*  -------------------------                *
+!*    0.5000    1.772453851                  *
+!*    1.0000    1.000000000                  *
+!*    1.5000    0.886226925                  *
+!*    2.0000    1.000000000                  *
+!*    2.5000    1.329340388                  *
+!*    3.0000    2.000000000                  *
+!*    3.5000    3.323350970                  *
+!*    4.0000    5.999999999                  *
+!*    4.5000   11.631728395                  *
+!*    5.0000   23.999999996                  *
+!*                                           *
+!*********************************************               
+PROGRAM Test_Gamma
+
+  real*8 x, y
+  integer i  
+
+  print *,' '
+  print *,'      X        Gamma(X)   '
+  print *,' -------------------------'
+  x=0.d0
+  do i=1, 10
+    x=x+0.5d0
+    y = Gamma(x)
+    write(*,10)  x, y
+  end do
+  print *,' '
+
+  stop
+
+10 format(F10.4,F15.9)
+
+end
+
+!*******************************************
+!*           FUNCTION  GAMMA(X)            *
+!* --------------------------------------- *
+!* Returns the value of Gamma(x) in double *
+!* precision as EXP(LN(GAMMA(X))) for X>0. *
+!*******************************************
+real*8 Function Gamma(xx)
+  real*8 xx,cof(6),stp,half,one,fpf,x,tmp,ser
+  DATA cof,stp /76.18009173d0,-86.50532033d0,24.01409822d0,  &
+       -1.231739516d0,0.120858003d-2,-0.536382d-5,2.50662827465d0/
+  DATA half,one,fpf /0.5d0,1.0d0,5.5d0/
+  x=xx-one
+  tmp=x+fpf
+  tmp=(x+half)*DLOG(tmp)-tmp
+  ser=one
+  do j=1,6
+    x=x+one
+    ser=ser+cof(j)/x
+  end do
+  Gamma = DEXP(tmp+DLOG(stp*ser))
+  return
+end
+
+!end of file gamma.f90

@@ -1,0 +1,204 @@
+!*********************************************************
+!*  Calculate a limited development of a real function   *
+!*  f(x)og(x) at x=0 up to order 25, knowing the limited *
+!*  developments of f(x) and g(x).                       *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* Limited development of a real function f(x)og(x):     *
+!*                                                       *
+!* Function to develop: exp(sin(x))                      *
+!*                                                       *
+!* Limited development of f(x)=exp(x) is:                *
+!* 1 + x + x^2/2! + x^3/3! + ... + x^n/n! + ...          *
+!*                                                       *
+!* Limited development of g(x)=sin(x) is:                *
+!* x - x^3/3! +x^5/5! - ... + (-1)^n x^2n+1/(2n+1)! + ...*
+!*                                                       *
+!* Order of development (max=25): 10                     *
+!*                                                       *
+!* Input coefficients of limited dev. of f(x):           *
+!*  a0 = 1                                               * 
+!*  a1 = 1                                               *
+!*  a2 = 0.5                                             *
+!*  a3 = 0.16666667                                      *
+!*  a4 = 0.04166667                                      *
+!*  a5 = 0.00833333                                      *
+!*  a6 = 0.00138889                                      *
+!*  a7 = 0.00019841                                      *
+!*  a8 = 0.00002480                                      *
+!*  a9 = 0.00000276                                      *
+!*  a10 = 0.000000276                                    *
+!*                                                       *
+!* Input coefficients of limited dev. of g(x):           *
+!*  b0 = 0                                               * 
+!*  b1 = 1                                               *
+!*  b2 = 0                                               *
+!*  b3 = -0.16666667                                     *
+!*  b4 = 0                                               *
+!*  b5 = 0.00833333                                      *
+!*  b6 = 0                                               *
+!*  b7 = -0.00019841                                     *
+!*  b8 = 0                                               *
+!*  b9 = 0.00000276                                      *
+!*  b10 = 0                                              *                          
+!*                                                       *
+!* The coefficients of limited dev. of f(x)og(x) are:    *
+!*  c0 =  1.0000000                                      *
+!*  c1 =  1.0000000                                      *
+!*  c2 =  0.5000000                                      *
+!*  c3 =  0.0000000                                      *
+!*  c4 = -0.1250000                                      *
+!*  c5 = -0.0666667                                      *
+!*  c6 = -0.0041667                                      *
+!*  c7 =  0.0111111                                      *
+!*  c8 =  0.0053819                                      *
+!*  c9 =  0.0001764                                      *
+!*  c10 = -0.0008132                                     *
+!*                                                       *
+!* ----------------------------------------------------- *
+!* Ref.: "Mathematiques en Turbo Pascal By Alain         *
+!*        Reverchon and Marc Ducamp, Editions Eyrolles,  *
+!*        Paris, 1991" [BIBLI 03].                       *
+!*                                                       *
+!*                            F90 version by J-P Moreau. *
+!*                                (www.jpmoreau.fr)      *
+!*********************************************************
+PROGRAM LTDDEV3
+
+parameter(NSIZE=25)
+
+integer i,m
+real*8 T1(0:NSIZE),T2(0:NSIZE),R(0:NSIZE)
+
+  print *,' '
+  print *,' Limited development of a real function f(x)og(x):'
+  print *,' '
+  print *,' Function to develop: exp(sin(x))'
+  print *,' '
+  print *,' Limited development of f(x)=exp(x) is:'
+  print *,'  1 + x + x^2/2! + x^3/3! + ... + x^n/n! + ...'
+  print *,' '
+  print *,' Limited development of g(x)=sin(x) is:'
+  print *,'  x - x^3/3! +x^5/5! - ... + (-1)^n x^2n+1/(2n+1)! + ...'
+  print *,' '
+  write(*,10,advance='no'); read *, m
+  print *,' '
+  print *,' Input coefficients of limited dev. of f(x):'
+  do i=0, m
+    if (i<10) then
+	  write(*,20,advance='no') i
+    else
+	  write(*,21,advance='no') i
+    end if
+    read *, T1(i)
+  end do
+  print *,' '
+  print *,' Input coefficients of limited dev. of g(x):'
+  do i=0, m
+    if (i<10) then
+	  write(*,30,advance='no') i
+    else
+	  write(*,31,advance='no') i
+    end if
+    read *, T2(i)
+  end do
+  print *,' '
+
+  call ar_dlcomp(m,T1,T2,R)
+
+  print *,' The coefficients of limited dev. of f(x)og(x) are:'
+  do i=0, m
+    if (i<10) then
+	  write(*,50) i, R(i)
+    else
+	  write(*,51) i, R(i)
+    end if
+  end do
+  print *,' '
+
+10 format('  Order of development (max=25): ')
+20 format('   a',I1,' = ')
+21 format('   a',I2,' = ')
+30 format('   b',I1,' = ')
+31 format('   b',I2,' = ')
+
+50 format('   c',I1,' = ',F10.7)
+51 format('   c',I2,' = ',F10.7)
+
+END
+
+real*8 Function ProductBin(i, t2, id, binome)
+  parameter(NSIZE=25)
+  real*8 t2(0:NSIZE), binome(0:NSIZE,0:NSIZE)
+  integer id(0:NSIZE)
+  integer k,p,q; real*8 u
+  u=t2(id(1))
+  p=i; q=1
+  do k=2, i
+    u = u * t2(id(k))
+    if (id(k)==id(k-1)) then
+      q = q + 1
+    else
+      u = u * binome(p,q)
+      p = p-q
+      q = 1
+    end if
+  end do
+  ProductBin = u
+End
+
+
+Subroutine ar_dlcomp(n, t1, t2, res)
+  parameter(NSIZE=25)
+  integer i,j,m,pos; real*8 x,s
+  real*8 t1(0:NSIZE),t2(0:NSIZE),res(0:NSIZE)
+  real*8 binome(0:NSIZE,0:NSIZE)
+  integer id(0:NSIZE)
+  if (n > NSIZE) return
+  if (t2(0).ne.0.d0) return
+  res(0)=t1(0)
+  !calculate coefficients of binome
+  binome(1,0)=1.d0
+  binome(1,1)=1.d0 
+  do i=2, n
+    binome(i,0)=1.d0
+    binome(i,i)=1.d0
+    do j=1, i-1
+      binome(i,j)=binome(i-1,j-1)+binome(i-1,j)
+    end do
+  end do
+  !calculate coefficients of gof
+  do m=1, n
+    x=t1(1)*t2(m)
+    do i=2, m
+      !calculate s=gamma(i,m)
+      s=0.d0
+      do j=1, i-1
+	    id(j)=1
+      end do
+      pos=1
+      do while(pos<i)
+        do j=i-pos+1, i-1
+		  id(j)=id(i-pos)
+        end do
+        id(i)=m
+        do j=1, i-1
+		  id(i)=id(i)-id(j)
+        end do
+        do while (id(i) >= id(i-1))
+          pos=1
+          s = s + ProductBin(i,t2,id,binome)
+          id(i)=id(i)-1
+          id(i-1)=id(i-1)+1
+        end do
+        pos=pos+1
+        if (pos < i)  id(i-pos)=id(i-pos)+1
+      end do 
+      x = x + s*t1(i)
+    end do
+    res(m)=x
+  end do
+End
+
+! end of file ltddev3.f90

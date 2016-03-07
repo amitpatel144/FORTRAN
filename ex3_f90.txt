@@ -1,0 +1,151 @@
+!********************************************************************************
+!*               RESOLUTION OF A SET OF NON-LINEAR EQUATIONS                    *
+!* ---------------------------------------------------------------------------- *
+!* COPYRIGHT 1991, BY R.S. BAIN                                                 *
+!* Originally wrapped by bain@luther.che.wisc.edu on Tue Mar 30 16:27:48 1993   *
+!*                                                                              *
+!* As of this writing, we do not know how to contact Rod Bain, the              * 
+!* author of NNES.                                                              *
+!*                                                                              *
+!*    F90 Release By David M. Gay (dmg@bell-labs.com)                           *
+!*    Bell Labs, Murray Hill                                                    *
+!*    8 February 1999                                                           *
+!* ---------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                  *
+!*    Example #3                                                                *
+!*    Solve non-linear stiff system of size n=6:                                *
+!*    X1 + X2 + X4 - .001 = 0                                                   *
+!*    X5 + X6 -55         = 0                                                   *
+!*    X1 + X2 + X3 + 2X5 + X6 - 110.001 = 0                                     *
+!*    X1 - 0.1X2        = 0                                                     *
+!*    X1 - 10000 X3 X4  = 0                                                     *
+!*    X5 - 5.5e15 X3 X6 = 0                                                     *
+!*                                                                              *
+!*    with initial guess; x1=1, x2=1, ..., x6=1                                 *
+!*    (The system is described in unit fcn.pas).                                *
+!*                                                                              *
+!* With default options (output=2), the output file EX3.OUT contains:           *
+!*                                                                              *
+!*                                                                              *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *                               NNES                                  *    *
+!*   *                                                                     *    *
+!*   *       NONMONOTONIC NONLINEAR EQUATION SOLVER  VERSION 1.05          *    *
+!*   *                                                                     *    *
+!*   *                   COPYRIGHT 1991, BY R.S. BAIN                      *    *
+!*   *                                                                     *    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*  *************************************************************************   * 
+!*                                                                              *
+!*                                                                              *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *    INITIAL ESTIMATES               INITIAL FUNCTION VALUES          *    *
+!*   *                                                                     *    *
+!*   *  X(  1) =     1.00                  F(  1) =     3.00               *    *
+!*   *  X(  2) =     1.00                  F(  2) =    -53.0               *    *
+!*   *  X(  3) =     1.00                  F(  3) =    -104.               *    *
+!*   *  X(  4) =     1.00                  F(  4) =    0.900               *    *
+!*   *  X(  5) =     1.00                  F(  5) =   -0.100E+05           *    *
+!*   *  X(  6) =     1.00                  F(  6) =   -0.550E+16           *    *
+!*   *                                                                     *    *
+!*   *  INITIAL OBJECTIVE FUNCTION VALUE =  0.151E+32                      *    *
+!*   *                                                                     *    *
+!*  ************************************************************************    *
+!*  ************************************************************************    *
+!*   *                                                                     *    *
+!*   *    CONVERGENCE REACHED; TERMINATION CODE: ...............     2     *    *
+!*   *                                                                     *    *
+!*   *                                                                     *    *
+!*   *          FINAL ESTIMATES  FINAL FUNCTION VALUES                     *    *
+!*   *                                                                     *    *
+!*   *    X(  1) =    0.826446E-04            F(  1) =   -0.246331E-15     *    *
+!*   *    X(  2) =    0.826446E-03            F(  2) =   -0.710543E-14     *    *
+!*   *    X(  3) =    0.909091E-04            F(  3) =     0.00000         *    *
+!*   *    X(  4) =    0.909090E-04            F(  4) =    0.557009E-17     *    *
+!*   *    X(  5) =     55.0000                F(  5) =   -0.603087E-17     *    *
+!*   *    X(  6) =    0.110000E-09            F(  6) =   -0.454194E-07     *    *
+!*   *                                                                     *    *
+!*   *    FINAL OBJECTIVE FUNCTION VALUE:   0.103E-14                      *    *
+!*   *                                                                     *    *
+!*   *                                                                     *    *
+!*   *    TOTAL NUMBER OF ITERATIONS: ..........................    18     *    *
+!*   *    TOTAL NUMBER OF LINE SEARCH FUNCTION EVALUATIONS: ....    19     *    *
+!*   *    TOTAL NUMBER OF EXPLICIT JACOBIAN EVALUATIONS: .......    18     *    *
+!*   *    TOTAL NUMBER OF FUNCTION EVALUATIONS: ................   127     *    *
+!*   *                                                                     *    *
+!***************************************************************************    *
+!*                                                                              *
+!********************************************************************************
+PROGRAM ex3
+ 
+! Code converted using TO_F90 by Alan Miller
+! Date: 2002-05-12  Time: 20:30:20
+
+USE Equation_Solver
+IMPLICIT NONE
+
+INTEGER, PARAMETER  :: mgll = 10, n = 6, nunit = 10
+REAL (dp)  :: jac(n,n), lam0, mstpf, nsttol
+INTEGER    :: acptcr, itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns,  &
+              maxqns, minqns, narmij, niejev, njacch, njetot, output,   &
+              qnupdm, stopcr, supprs, trmcod, trupdm
+REAL (dp)  :: a(n,n), alpha, boundl(n), boundu(n), confac, delf(n), delfac, &
+              delta, epsmch, etafac, fcnnew, fdtolj, fsave(n), ftol,  &
+              ftrack(0:mgll-1), fvec(n), fvecc(n), h(n,n), hhpi(n),  &
+              omega, plee(n,n), ratiof, rdiag(n), s(n), sbar(n), scalef(n), &
+              scalex(n), sigma, sn(n), ssdhat(n), stptol, strack(0:mgll-1), &
+              vhat(n), xc(n), xplus(n), xsave(n)
+LOGICAL    :: absnew, cauchy, deuflh, geoms, linesr, newton, overch
+CHARACTER (LEN=6)  :: help
+
+
+OPEN (UNIT=nunit, FILE='EX3.OUT', STATUS='UNKNOWN')
+xc(1:n) = 1.0D0
+CALL setup(absnew, cauchy, deuflh, geoms, linesr, newton, overch, acptcr,  &
+           itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns, maxqns,   &
+           minqns, n, narmij, niejev, njacch, output, qnupdm, stopcr,  &
+           supprs, trupdm, alpha, confac, delta, delfac, epsmch, etafac,  &
+           fdtolj, ftol, lam0, mstpf, nsttol, omega, ratiof, sigma, stptol, &
+           boundl, boundu, scalef, scalex, help)
+!output = 5
+boundl(3) = 0.0D0
+boundl(4) = 0.0D0
+boundl(6) = 0.0D0
+
+!       STOPS PREMATURELY UNLESS THIS ARE SET VERY STIFF
+
+nsttol = 1.0D-16
+stptol = 1.0D-16
+
+!       THIS PARAMETER AFFECTS ILL-CONDITIONED JACOBIAN MECHANISM
+
+!       THIS WILL WORK, =.FALSE. WILL FAIL
+
+bypass = .true.
+CALL nnes(absnew, cauchy, deuflh, geoms, linesr, newton, overch, acptcr,  &
+          itsclf, itsclx, jactyp, jupdm, maxexp, maxit, maxns, maxqns, mgll, &
+          minqns, n, narmij, niejev, njacch, njetot, nunit, output, qnupdm,  &
+          stopcr, supprs, trmcod, trupdm, alpha, confac, delta, delfac,   &
+          epsmch, etafac, fcnnew, fdtolj, ftol, lam0, mstpf, nsttol, omega,  &
+          ratiof, sigma, stptol, a, boundl, boundu, delf, fsave, ftrack,   &
+          fvec, fvecc, h, hhpi, jac, plee, rdiag, s, sbar, scalef, scalex,  &
+          sn, ssdhat, strack, vhat, xc, xplus, xsave, help)
+
+print *,' '
+print *,' Results in file EX3.OUT...'
+print *,' Program terminated.'
+print *,' '
+
+STOP
+END PROGRAM ex3
+
+
+
+
+

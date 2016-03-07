@@ -1,0 +1,334 @@
+!*******************************************************
+!*   PROGRAM TO DEMONSTRATE ONE DIMENSIONAL OPERATION  *
+!*     OF THE MULTI-NONLINEAR REGRESSION SUBROUTINE    *
+!* --------------------------------------------------- *
+!* Ref.: BASIC Scientific Subroutines Vol. II,         *
+!*       By F.R. Ruckdeschel, Byte/McGRAW-HILL,1981    *
+!*       [BIBLI 01].                                   *
+!*                                                     *
+!*                  F90 version by J-P Moreau, Paris   *
+!*                         (www.jpmoreau.fr)           *
+!* --------------------------------------------------- *
+!* SAMPLE RUN:                                         *
+!*                                                     *
+!* MULTI-NON LINEAR REGRESSION                         *
+!*                                                     *
+!* Number of data points (mini 3, maxi 25)........: 11 *
+!* Degree of the polynomial to be fitted (maxi 10): 4  *
+!*                                                     *
+!* Input the data in (x,y) pairs as prompted:          *
+!*  1   X  Y = 1,1                                     *
+!*  2   X  Y = 2,2                                     *
+!*  3   X  Y = 3,3                                     *
+!*  4   X  Y = 4,4                                     *
+!*  5   X  Y = 5,5                                     *
+!*  6   X  Y = 6,6                                     *
+!*  7   X  Y = 7,7                                     *
+!*  8   X  Y = 8,8                                     *
+!*  9   X  Y = 9,9                                     *
+!* 10   X  Y = 0,0                                     *
+!* 11   X  Y = 1,1                                     *
+!*                                                     *
+!* The calculated coefficients are:                    *
+!*  0    0.0000                                        *
+!*  1    1.0000                                        *
+!*  2    0.0000                                        *
+!*  3    0.0000                                        *
+!*  4    0.0000                                        *
+!*                                                     *
+!* Standard deviation:  0.000000                       *
+!*                                                     *
+!*******************************************************
+PROGRAM LEASTSQR
+
+parameter(MMAX=25,NMAX=10)
+
+real*8  D(NMAX+1), X(MMAX), Y(MMAX) 
+integer i,m,n
+real*8  dd
+
+real*8  Z(MMAX,NMAX+1)          ! maxi m=25 data points
+real*8  A(MMAX,MMAX)            ! maxi n=10 order of regression
+real*8  B(MMAX,2*MMAX)
+real*8  C(MMAX,MMAX)
+
+  !begin main
+  print *, 'MULTI-NONLINEAR REGRESSION'
+  write(*,'(" Number of data points (mini 3, maxi 25)........: ")',advance='no') 
+  read *, m
+  if (m<3)  m=3
+  if (m>25) m=25
+  write(*,'(" Degree of the polynomial to be fitted (maxi 10): ")',advance='no')
+  read *, n
+  if (n<1)   n=1
+  if (n>10)  n=10
+  if (m<n+2) m=n+2
+  print *, ' '
+  print *, 'Input the data in (x,y) pairs as prompted'
+  do i = 1, m
+    write(*,25,advance='no') i
+    read *, X(i), Y(i)
+  end do
+  print *, ' '
+  ! Call coefficients generation subroutine
+  call Gene_Coeffs(m,n,X,Z)
+  ! Call order n regression subroutine and print result
+  n = n + 1
+  call LstSqrN(m,n,A,B,C,D,Y,Z)
+  print *,'The calculated coefficients are:'
+  do i = 1, n
+    write(*,50) i-1, D(i)
+  end do
+  n = n - 1
+  ! Call standard deviation subroutine and print result
+  call Standard_deviation(m,n,dd,D,X,Y)
+  print *,' '
+  write(*,60) dd
+  print *,' '
+  stop
+25 format('  ',I2,'  ')
+50 format('  ',I2,'  ',F10.4)
+60 format(' Standard deviation: ',F10.6)
+end !end main
+
+
+! Matrix transpose B = Tr(A)
+! A and B are n by m matrices
+Subroutine Transpose(n,m,A,B)
+  parameter(MMAX=25,NMAX=10)
+  integer n,m
+  real*8  A(MMAX,MMAX), B(MMAX,2*MMAX)
+  integer i,j
+  do i = 1, n
+    do j = 1, m
+      B(i,j) = A(j,i)
+    end do
+  end do
+  return
+end
+
+! Matrix save (A in C) 
+Subroutine A_IN_C(n1,n2,A,C) 
+  parameter(MMAX=25,NMAX=10)
+  integer n1,n2
+  real*8  A(MMAX,MMAX), C(MMAX,MMAX)
+  integer i1,i2
+  if (n1 * n2.ne.0) then  
+    do i1 = 1, n1
+      do i2 = 1, n2
+        C(i1,i2) = A(i1,i2)
+      end do
+    end do
+  end if
+  return
+end
+
+! Matrix save (B in A) 
+Subroutine B_IN_A(n1,n2,A,B) 
+  parameter(MMAX=25,NMAX=10)
+  integer n1,n2
+  real*8  A(MMAX,MMAX), B(MMAX,2*MMAX)
+  integer i1,i2
+  if (n1 * n2.ne.0) then  
+    do i1 = 1, n1
+      do i2 = 1, n2
+        A(i1,i2) = B(i1,i2)
+      end do
+    end do
+  end if
+  return
+end
+
+! Matrix save (C in B)
+Subroutine C_IN_B(n1,n2,B,C) 
+  parameter(MMAX=25,NMAX=10)
+  integer n1,n2
+  real*8  C(MMAX,MMAX), B(MMAX,2*MMAX)
+  integer i1,i2
+  if (n1 * n2.ne.0) then  
+    do i1 = 1, n1
+      do i2 = 1, n2
+        B(i1,i2) = C(i1,i2)
+      end do
+    end do
+  end if
+  return
+end 
+
+! Matrix save (C in A)
+Subroutine C_IN_A(n1,n2,A,C) 
+  parameter(MMAX=25,NMAX=10)
+  integer n1,n2
+  real*8  A(MMAX,MMAX), C(MMAX,MMAX)
+  integer i1,i2
+  if (n1 * n2.ne.0) then  
+    do i1 = 1, n1
+      do i2 = 1, n2
+        A(i1,i2) = C(i1,i2)
+      end do
+    end do
+  end if
+  return
+end 
+
+! Matrix multiplication C = A * B
+! A is m1 by n1, B is m2 by n2 ( m2 = n1 )
+! Result C is m1 by n2.
+Subroutine Matmult(m1,n1,n2,A,B,C) 
+  parameter(MMAX=25,NMAX=10)
+  integer m1,n1,n2
+  real*8  A(MMAX,MMAX), B(MMAX,2*MMAX), C(MMAX,MMAX)  
+  integer i,j,k
+  do i = 1, m1
+    do j = 1, n2	 
+      C(i,j) = 0
+      do k = 1, n1
+        C(i,j) = C(i,j) + A(i,k) * B(k,j)
+      end do
+    end do
+  end do
+  return
+end   
+
+! Matrix inversion: B = Inv(A) by Gauss-Jordan method
+! A and B are n by n matrices
+Subroutine Matinv(n,A,B)  
+  ! Labels: 10, 20, 30
+  parameter(MMAX=25,NMAX=10)
+  integer n
+  real*8  A(MMAX,MMAX), B(MMAX,2*MMAX)  
+  integer i,j,k
+  real*8 bb
+
+  do i = 1, n
+    do j = 1, n
+      B(i,j + n) = 0.d0
+      B(i,j) = A(i,j)
+    end do
+    B(i,i + n) = 1.d0
+  end do  
+
+  do k = 1, n
+    if (k.eq.n) goto 10
+    m = k
+    do i = k+1, n
+      if (abs(B(i,k)) > abs(B(m,k)))  m = i
+    end do
+    if (m == k) goto 10
+    do j = k, 2*n
+      bb = B(k,j)
+      B(k,j) = B(m,j)
+      B(m,j) = bb
+    end do
+10  do j = k+1, 2*n 
+      B(k,j) = B(k,j) / B(k,k)
+    end do
+    if (k.eq.1) goto 20
+    do i = 1, k-1
+      do j = k+1, 2*n
+        B(i,j) = B(i,j) - B(i,k) * B(k,j)
+      end do
+    end do
+    if (k.eq.n) goto 30
+20  do i = k+1, n
+      do j = k+1, 2*n
+        B(i,j) = B(i,j) - B(i,k) * B(k,j)
+      end do
+    end do
+  end do    ! k loop
+
+30  do i = 1, n
+      do j = 1, n   
+        B(i,j) = B(i,j + n)
+      end do
+    end do
+  return
+end ! Matinv()
+
+! Coefficient matrix generation
+Subroutine Gene_Coeffs(m,n,X,Z)
+  parameter(MMAX=25,NMAX=10)
+  integer m, n
+  real*8  X(MMAX), Z(MMAX,NMAX+1)   
+  integer i,j
+  real*8 b
+  do i = 1, m
+    b = 1.d0
+    do j = 1, n+1
+      Z(i,j) = b
+      b = b * X(i)
+    end do
+  end do
+  return
+end 
+
+! Least squares multidimensional fitting subroutine
+Subroutine LstSqrN(m,n,A,B,C,D,Y,Z)
+  parameter(MMAX=25,NMAX=10)
+  integer m,n
+  real*8 A(MMAX,MMAX),B(MMAX,2*MMAX),C(MMAX,MMAX)
+  real*8 D(NMAX+1), Y(MMAX), Z(MMAX,NMAX+1) 
+  integer i,j,m4,n4
+  m4 = m
+  n4 = n
+  do i = 1, m
+    do j = 1, n 
+      A(i,j) = Z(i,j)
+    end do
+  end do
+  call Transpose(n,m,A,B)                ! B=Transpose(A) 
+  call A_IN_C(m,n,A,C)                   ! move A to C
+  call B_IN_A(n,m,A,B)                   ! move B to A
+  call C_IN_B(m,n,B,C)                   ! move C to B
+  call Matmult(n,m,n,A,B,C)              ! multiply A and B, result in C
+  call C_IN_A(n,n,A,C)                   ! move C to A
+  call Matinv(n,A,B)                     ! B=Inverse(A) 
+  m = m4                                 ! restore m
+  call B_IN_A(n,n,A,B)                   ! move B to A
+  do i = 1, m
+    do j = 1, n
+      B(j,i) = Z(i,j)
+    end do
+  end do
+  call Matmult(n,n,m,A,B,C)              ! multiply A and B, result in C 
+  call C_IN_A(n,m,A,C)                   ! move C to A
+  do i = 1, m
+    B(i,1) = Y(i)
+  end do
+  call Matmult(n,m,1,A,B,C)              ! multiply A and B
+
+  ! Product C is n by 1 - Regression coefficients are in C(i,1)
+  ! and put for convenience into vector D(i).
+  do i = 1, n
+    D(i) = C(i,1)
+  end do
+  return
+end ! LstSqrN()
+
+! Standard deviation calculation for a polynomial fit
+Subroutine Standard_deviation(m,n,dd,D,X,Y) 
+  parameter(MMAX=25,NMAX=10)
+  integer m,n
+  real*8  dd,D(NMAX+1),X(MMAX),Y(MMAX) 
+  integer i, j
+  real*8 b, yy
+  dd = 0.d0
+  do i = 1, m
+    yy = 0.d0 
+    b = 1.d0
+    do j = 1, n+1
+      yy = yy + D(j) * b
+      b = b * X(i)
+    end do
+    dd = dd + (yy - Y(i)) * (yy - Y(i))
+  end do
+  if (m - n - 1 > 0) then
+    dd = dd / (m - n - 1)
+  else
+    dd = 0.d0
+  end if
+  dd = dsqrt(dd)
+  return
+end
+
+! End leastsqr.f90

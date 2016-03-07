@@ -1,0 +1,96 @@
+!****************************************************
+!* Program to demonstrate Horner_Shift() Subroutine *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*              F90 Version by J.-P. Moreau, Paris. *
+!*                       (www.jpmoreau.fr)          *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* Input the five coefficients:                     *
+!*                                                  *
+!*    A( 0) =  1                                    *
+!*    A( 1) =  4                                    *
+!*    A( 2) =  6                                    *
+!*    A( 3) =  4                                    *
+!*    A( 4) =  1                                    *
+!*                                                  *
+!* What is the expansion point: 1                   *
+!*                                                  *
+!* The shifted coefficients are:                    *
+!*                                                  *
+!*    B( 0) =  16.                                  *
+!*    B( 1) =  32.                                  *
+!*    B( 2) =  24.                                  *
+!*    B( 3) =   8.                                  *
+!*    B( 4) =   1.                                  *
+!*                                                  *
+!****************************************************
+PROGRAM DEMO_HORNER
+
+real*8, allocatable :: C(:,:), A(:), B(:)
+real*8  x0
+integer i
+
+  allocate(C(0:4,0:5),A(0:5),B(0:5)) 
+  print *,' '
+  print *,'Input the five coefficients:'
+  print *,' '
+  do i = 0, 4
+    write(*,25,advance='no')  i
+	read *, A(i)
+  end do
+  print *,' '
+  write(*,"(' What is the expansion point: ')",advance='no')
+  read *, x0
+
+  call Horner_Shift(x0,A,B,C);
+
+  print *,' '
+  print *,'The shifted coefficients are:'
+  print *,' '
+  do i = 0, 4 
+    write(*,50)  i, B(i) 
+  end do
+  print *,' '
+  
+  stop
+25 format('  A(',i2,') = ')
+50 format('  B(',i2,') = ',f6.0)
+end
+
+!***************************************************
+!*       Horner's shifting rule subroutine         *
+!* ----------------------------------------------- *
+!* This routine takes a given quartic polynomial   *
+!* and converts it to a Taylor expansion.          *
+!* The input series coefficients are A(i), the     *
+!* expansion point is x0. The shifted coefficients *
+!* are returned in B(i).                           *
+!***************************************************
+Subroutine Horner_Shift(x0,A,B,C)  
+  integer i, j
+  real*8  C(0:4,0:5), A(0:5), B(0:5)  
+  real*8 x0
+  do j = 0, 4
+    C(j,0) = A(4-j)
+  end do
+  i=0
+  do while (i<5) 
+    C(0,i+1) = C(0,i)
+    j = 1
+    do while (j <= 4-i) 
+      C(j,i+1) = x0*C(j-1,i+1) + C(j,i)
+      j = j + 1
+    end do
+    i = i + 1
+  end do
+  do i = 0, 4  
+    B(4-i) = C(i,4-i+1)
+  end do 
+  return
+end
+
+!End of file horner.f90

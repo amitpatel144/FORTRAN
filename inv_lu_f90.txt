@@ -1,0 +1,177 @@
+!***********************************************************
+!*  Inversion of a real square matrix by LU decomposition  *
+!*  with dynamic allocations                               *
+!*                                                         *
+!*                       F90 version by J-P Moreau, Paris  *
+!*                              (www.jpmoreau.fr)          *
+!* ------------------------------------------------------- *
+!* SAMPLE RUN:                                             *
+!*                                                         *
+!* Input file (inv_lu.dat):                                *
+!*                                                         *
+!*  4                                                      *
+!*  8  2    3  12                                          *
+!*  2  4    7   0.25                                       *
+!*  3  7    3   5                                          *
+!* 12  0.25 5   2                                          *
+!*                                                         *
+!* Output file (inv_lu.lst):                               *
+!*                                                         *
+!* ------------------------------------------------------- *
+!*   INVERSION OF A REAL SQUARE MATRIX:                    *
+!* ------------------------------------------------------- *
+!*                                                         *
+!* N =  4                                                  *
+!*                                                         *
+!* 0.800000E+01 0.200000E+01 0.300000E+01 0.120000E+02     *
+!* 0.200000E+01 0.400000E+01 0.700000E+01 0.250000E+00     *
+!* 0.300000E+01 0.700000E+01 0.300000E+01 0.500000E+01     *
+!* 0.120000E+02 0.250000E+00 0.500000E+01 0.200000E+01     *
+!*                                                         *
+!*   Inverted matrix Y:                                    *
+!*                                                         *
+!* -0.401550E-01 -0.857880E-01  0.565566E-01  0.110262E+00 *
+!* -0.857880E-01 -0.620185E-01  0.202201E+00  0.169782E-01 *
+!*  0.565566E-01  0.202201E+00 -0.130316E+00 -0.388256E-01 *
+!*  0.110262E+00  0.169782E-01 -0.388256E-01 -0.666314E-01 *
+!*                                                         *
+!*   Verification A*Y = I:                                 *
+!*                                                         *
+!*  0.100000E+01 -0.111022E-15  0.166533E-15  0.111022E-15 *
+!* -0.693889E-17  0.100000E+01 -0.104083E-16  0.346945E-17 *
+!*  0.111022E-15  0.832667E-16  0.100000E+01 -0.555112E-16 *
+!*  0.000000E+00  0.763278E-16  0.138778E-15  0.100000E+01 *
+!* ------------------------------------------------------- *
+!*                                                         *
+!* Uses: modules BASIS, LU.                                *
+!***********************************************************
+  Program INVERSION_LU
+
+  USE BASIS
+  USE LU
+
+  real*8, pointer ::  A(:,:)   !real matrix (n x n)
+  real*8, pointer ::  A1(:,:)  !copy of matrix A
+  real*8, pointer ::  Y(:,:)   !real matrix (n x n)
+  real*8, pointer ::  temp(:)  !real temporary vector (n)
+  integer,pointer ::  INDX(:)  !integer vector (n)
+
+  integer d, rc
+  character*12 input, output
+  character*8 s
+  
+! input data file name from screen
+  print *,' '
+  write(*,50,advance='no'); read *, s
+
+  J=0
+  DO I=1,LEN(s)
+    IF(s(I:I)<>' ') J=J+1  !J=real length of string s
+  ENDDO
+      
+  input=s(1:J)//'.dat'
+  output =s(1:J)//'.lst'
+
+! open input and output files
+  open(unit=1,file=input,status='old')
+  open(unit=2,file=output,status='unknown')
+
+  read(1,*) n     !size of given linear system
+
+  !dynamic allocations
+  allocate(A(n,n),stat=ialloc)
+  allocate(A1(n,n),stat=ialloc)
+  allocate(Y(n,n),stat=ialloc)
+  allocate(temp(n),stat=ialloc)
+  allocate(INDX(n),stat=ialloc)
+
+!Read data in file #1 and copy to file #2
+  write(2,*) ' '
+  call WriteHead(2,'  INVERSION OF A REAL SQUARE MATRIX:')
+  write(2,60) n
+
+  do i=1, n 
+    !read one line
+    call ReadVec1(1,n,temp)
+    do j=1, n
+      A(i,j) = temp(j)
+	  A1(i,j) = temp(j)
+	  Y(i,j) = 0.d0
+    end do
+    Y(i,i) = 1.d0
+    !print one line of matrix A
+    call WriteVec1(2,n,temp)
+  end do
+  close(1)
+
+!call LU decomposition routine (only once)
+  call LUDCMP(A,n,INDX,D,rc)
+
+!call solver if previous return code is ok
+!to obtain inverse of A one column at a time
+  if (rc.eq.0) then
+    do j=1, n
+      call LUBKSB(A,n,INDX,Y(1,J))
+    end do
+  endif
+!the inverse matrix is now in matrix Y
+!the original matrix A is destroyed
+
+!print results or error message
+  if (rc.eq.1) then
+    write(2,*) ' The matrix is singular, no solution !'
+  else
+    write(2,*) ' '
+    write(2,*) '  Inverted matrix Y:'
+    write(2,*)
+
+    call WriteMat1(2,n, n, Y)
+
+  end if
+
+!verify A1 x Y = I (result put in A) 
+  call MATMULT(A1,Y,A,n,n)
+!A should now contain identity matrix
+  write(2,*) ' '
+  write(2,*) '  Verification A*Y = I:'
+  write(2,*)
+
+  call WriteMat1(2,n, n, A)
+
+! section fin
+  call WriteEnd(2)
+  Close(2)
+  print *,' '
+  print *,'Results in file ',output,'.'
+  print *,' '
+  stop
+50  format(' Input data file name (without .dat): ')
+60  format(/' N = ',I2/)
+  END
+
+  SUBROUTINE MATMULT(A,B,C,N,M)                                              
+!*******************************************                                     
+!*       MULTIPLY TWO REAL MATRICES        *
+!* --------------------------------------- *                                     
+!* INPUTS:    A  MATRIX N*N                *                                     
+!*            B  MATRIX N*M                *                                     
+!*            N  INTEGER                   *                                     
+!*            M  INTEGER                   *                                     
+!* --------------------------------------- *                                     
+!* OUTPUT:    C  MATRIX N*M, PRODUCT A*B   *                                     
+!*                                         *                                     
+!******************************************* 
+  REAL*8 A(N,N),B(N,M),C(N,M),SUM                                           
+  DO I=1,N                                                                  
+    DO J=1,M                                                                
+      SUM=0.                                                                
+      DO K=1,N                                                              
+        SUM=SUM+A(I,K)*B(K,J)                                               
+      ENDDO                                                                 
+      C(I,J)=SUM                                                            
+    ENDDO                                                                   
+  ENDDO                                                                     
+  RETURN                                                                    
+  END                   
+
+! end of file inv_lu.f90

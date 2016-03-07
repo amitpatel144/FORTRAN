@@ -1,0 +1,197 @@
+!**************************************************************************
+!*   Calculate the associated Legendre Functions of the Second Kind and   *
+!*   their First Derivatives for a Complex Argument                       *
+!* ---------------------------------------------------------------------- *
+!* EXPLANATION:                                                           *
+!*                                                                        *
+!*      ============================================================      *
+!*      Purpose: This program computes the associated Legendre            * 
+!*               functions Qmn(z) and their derivatives Qmn'(z) for       *
+!*               a complex argument using subroutine CLQMN                *
+!*      Definition: Qmn(z)=(-1)**m*(1-z*z)**(m/2)*dm/dzm[Qn(z)]           *
+!*                  Q0(z)=1/2*LOG[(1+z)/(1-z)]     ( for |z|<1 )          *
+!*                  Qmn(z)=(z*z-1)**(m/2)*dm/dzm[Qn(z)]                   *
+!*                  Q0(z)=1/2*LOG[(z+1)/(z-1)]     ( for |z|>1 )          *
+!*      Input :  x --- Real part of z                                     *
+!*               y --- Imaginary part of z                                *
+!*               m --- Order of Qmn(z)  ( m = 0,1,2,תתת )                 *
+!*               n --- Degree of Qmn(z) ( n = 0,1,2,תתת )                 *
+!*      Output:  CQM(m,n) --- Qmn(z)                                      * 
+!*               CQD(m,n) --- Qmn'(z)                                     *
+!*      Examples:                                                         *
+!*               n = 5, x = 0.5, y = 0.2                                  *
+!*                                                                        *
+!*      m     Re[Qmn(z)]    Im[Qmn(z)]    Re[Qmn'(z)]   Im[Qmn'(z)]       *
+!*     -------------------------------------------------------------      *
+!*      0    .987156D+00   .354345D+00    .324023D+01  -.447297D+01       *
+!*      1   -.240328D+01   .436861D+01    .281158D+02   .171437D+02       *
+!*      2   -.245853D+02  -.138072D+02   -.106283D+03   .913792D+02       *
+!*      3    .102723D+03  -.651233D+02   -.362578D+03  -.429802D+03       *
+!*      4    .155510D+03   .357712D+03    .196975D+04  -.287414D+02       *
+!*      5   -.167357D+04  -.680954D+03   -.193093D+04  -.925757D+03       *
+!*                                                                        *
+!*               n = 5, x = 2.5, y = 1.0                                  *
+!*                                                                        *
+!*      m     Re[Qmn(z)]    Im[Qmn(z)]    Re[Qmn'(z)]   Im[Qmn'(z)]       *
+!*     -------------------------------------------------------------      *
+!*      0   -.274023D-04  -.227141D-04    .809834D-04   .210884D-04       *
+!*      1    .165620D-03   .136108D-03   -.489095D-03  -.124400D-03       *
+!*      2   -.118481D-02  -.948832D-03    .349090D-02   .825057D-03       *
+!*      3    .982179D-02   .753264D-02   -.288271D-01  -.596384D-02       *
+!*      4   -.927915D-01  -.669521D-01    .270840D+00   .451376D-01       *
+!*      5    .985601D+00   .656737D+00   -.285567D+01  -.332533D+00       *
+!*      ============================================================      *
+!*                                                                        *
+!* ---------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                            *
+!*                                                                        *
+!*  Please enter m, n, x and y: 5 5 0.5 0.2                               *
+!*  n = 5, m = 5, x = 0.5, y = 0.2                                        *
+!*                                                                        *
+!*    m   n     Re[Qmn(z)]    Im[Qmn(z)]    Re[Qmn'(z)]   Im[Qmn'(z)]     *
+!*   -----------------------------------------------------------------    *
+!*    0   5   0.987156D+00  0.354345D+00   0.324023D+01 -0.447297D+01     *
+!*    1   5  -0.240328D+01  0.436861D+01   0.281158D+02  0.171437D+02     *
+!*    2   5  -0.245853D+02 -0.138072D+02  -0.106283D+03  0.913792D+02     *
+!*    3   5   0.102723D+03 -0.651233D+02  -0.362578D+03 -0.429802D+03     *
+!*    4   5   0.155510D+03  0.357712D+03   0.196975D+04 -0.287414D+02     *
+!*    5   5  -0.167357D+04 -0.680954D+03  -0.193093D+04 -0.925757D+03     *
+!*                                                                        *
+!* ---------------------------------------------------------------------- *
+!* REFERENCE: "Fortran Routines for Computation of Special Functions,     *
+!*             jin.ece.uiuc.edu/routines/routines.html".                  *
+!*                                                                        *
+!*                                      F90 Release By J-P Moreau, Paris. *
+!*                                             (www.jpmoreau.fr)          *
+!************************************************************************** 
+
+        PROGRAM MCLQMN
+        IMPLICIT DOUBLE PRECISION (X,Y)
+        IMPLICIT COMPLEX*16 (C,Z)
+        DIMENSION CQM(0:40,0:40),CQD(0:40,0:40)
+
+	PRINT *,' '
+        WRITE(*,10,advance='no'); READ *, M, N, X, Y
+        WRITE(*,30) M, N, X, Y
+	PRINT *,' '
+
+        CALL CLQMN(40,M,N,X,Y,CQM,CQD)
+
+        WRITE(*,*)'   m   n     Re[Qmn(z)]    Im[Qmn(z)]    ', &
+                  'Re[Qmn''(z)]   Im[Qmn''(z)]'
+        WRITE(*,*)'  -----------------------------------',     &
+                  '------------------------------'
+        DO J=0,M
+          WRITE(*,20) J, N, CQM(J,N), CQD(J,N)
+        END DO
+        PRINT *,' '
+        STOP
+
+10      FORMAT('  Please enter m, n, x and y: ')
+20      FORMAT(1X,2I4,1X,2D14.6,1X,2D14.6)
+30      FORMAT(1X,' m =',I2,', ','n =',I2,', ','x =',F4.1,', ','y =',F4.1)
+        END
+
+
+        SUBROUTINE CLQMN(MM,M,N,X,Y,CQM,CQD)
+!       =======================================================
+!       Purpose: Compute the associated Legendre functions of
+!                the second kind, Qmn(z) and Qmn'(z), for a
+!                complex argument
+!       Input :  x  --- Real part of z
+!                y  --- Imaginary part of z
+!                m  --- Order of Qmn(z)  ( m = 0,1,2,תתת )
+!                n  --- Degree of Qmn(z) ( n = 0,1,2,תתת )
+!                mm --- Physical dimension of CQM and CQD
+!       Output:  CQM(m,n) --- Qmn(z)
+!                CQD(m,n) --- Qmn'(z)
+!       =======================================================
+        IMPLICIT DOUBLE PRECISION (X,Y)
+        IMPLICIT COMPLEX*16 (C,Z)
+        DIMENSION CQM(0:MM,0:N),CQD(0:MM,0:N)
+        Z=CMPLX(X,Y)
+        IF (DABS(X).EQ.1.0D0.AND.Y.EQ.0.0D0) THEN
+           DO I=0,M
+             DO J=0,N
+               CQM(I,J)=(1.0D+300,0.0D0)
+               CQD(I,J)=(1.0D+300,0.0D0)
+             END DO
+           END DO
+           RETURN
+        ENDIF
+        XC=CDABS(Z)
+        IF (DIMAG(Z).EQ.0.0D0.OR.XC.LT.1.0D0) LS=1
+        IF (XC.GT.1.0D0) LS=-1
+        ZQ=CDSQRT(LS*(1.0D0-Z*Z))
+        ZS=LS*(1.0D0-Z*Z)
+        CQ0=0.5D0*CDLOG(LS*(1.0D0+Z)/(1.0D0-Z))
+        IF (XC.LT.1.0001D0) THEN
+           CQM(0,0)=CQ0
+           CQM(0,1)=Z*CQ0-1.0D0
+           CQM(1,0)=-1.0D0/ZQ
+           CQM(1,1)=-ZQ*(CQ0+Z/(1.0D0-Z*Z))
+           DO I=0,1
+             DO J=2,N
+               CQM(I,J)=((2.0D0*J-1.0D0)*Z*CQM(I,J-1)  &
+                       -(J+I-1.0D0)*CQM(I,J-2))/(J-I)
+             END DO
+           END DO
+           DO J=0,N
+             DO I=2,M
+               CQM(I,J)=-2.0D0*(I-1.0D0)*Z/ZQ*CQM(I-1,J)-LS*  &
+                         (J+I-1.0D0)*(J-I+2.0D0)*CQM(I-2,J)
+             END DO       
+           END DO
+        ELSE
+           IF (XC.GT.1.1) THEN
+              KM=40+M+N
+           ELSE
+              KM=(40+M+N)*INT(-1.0-1.8*LOG(XC-1.0))
+           ENDIF
+           CQF2=(0.0D0,0.0D0)
+           CQF1=(1.0D0,0.0D0)
+           DO K=KM,0,-1
+              CQF0=((2*K+3.0D0)*Z*CQF1-(K+2.0D0)*CQF2)/(K+1.0D0)
+              IF (K.LE.N) CQM(0,K)=CQF0
+              CQF2=CQF1
+              CQF1=CQF0
+           END DO
+           DO K=0,N
+             CQM(0,K)=CQ0*CQM(0,K)/CQF0
+           END DO
+           CQF2=0.0D0
+           CQF1=1.0D0
+           DO K=KM,0,-1
+              CQF0=((2*K+3.0D0)*Z*CQF1-(K+1.0D0)*CQF2)/(K+2.0D0)
+              IF (K.LE.N) CQM(1,K)=CQF0
+              CQF2=CQF1
+              CQF1=CQF0
+           END DO 
+           CQ10=-1.0D0/ZQ
+           DO K=0,N
+             CQM(1,K)=CQ10*CQM(1,K)/CQF0
+           END DO
+           DO J=0,N
+              CQ0=CQM(0,J)
+              CQ1=CQM(1,J)
+              DO I=0,M-2
+                CQF=-2.0D0*(I+1)*Z/ZQ*CQ1+(J-I)*(J+I+1.0D0)*CQ0
+                CQM(I+2,J)=CQF
+                CQ0=CQ1
+                CQ1=CQF
+              END DO
+           END DO
+        ENDIF
+        CQD(0,0)=LS/ZS
+        DO J=1,N
+          CQD(0,J)=LS*J*(CQM(0,J-1)-Z*CQM(0,J))/ZS
+        END DO
+        DO J=0,N
+          DO I=1,M
+            CQD(I,J)=LS*I*Z/ZS*CQM(I,J)+(I+J)*(J-I+1.0D0)/ZQ*CQM(I-1,J)
+          END DO
+        END DO
+        RETURN
+        END
+
+!end of file mclqmn.f90
