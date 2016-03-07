@@ -1,0 +1,402 @@
+!*****************************************************************
+!* This program seeks the equation of a conical passing through  *
+!* 5 given points.                                               *
+!* ------------------------------------------------------------- *
+!* SAMPLE RUN:                                                   *
+!*                                                               *
+!*    SEEK A CONICAL PASSING THROUGH 5 POINTS                    *
+!*                                                               *
+!*        X1  Y1 = 0 2                                           *
+!*        X2  Y2 = 1 5                                           *
+!*        X3  Y3 = 5 77                                          *
+!*        X4  Y4 = -4 50                                         *
+!*        X5  Y5 = 2 14                                          *
+!*                                                               *
+!*                                                               *
+!*  The coefficients of the conical ax2+bxy+cy2+dx+ey+f = 0 are: *
+!*                                                               *
+!*   a =     1.500000                                            *
+!*   b =     0.000000                                            *
+!*   c =    -0.000000                                            *
+!*   d =    -0.000000                                            *
+!*   e =    -0.500000                                            *
+!*   f =     1.000000                                            *
+!*                                                               *
+!*                           F90 version by J-P Moreau, Paris.   *
+!*                                  (www.jpmoreau.fr)            *
+!*****************************************************************
+! Explanations:
+! ------------
+! We seek the cartesian equation ax^2+bxy+cy^2+dx+ey+f=0 of the
+! conical passing through 5 points: (x1,y1),(x2,y2)... to (x5,y5).
+
+! The unknowns are a,b,c,d,e,f. Since the equation can be multiplied
+! by any real number, the actual number of independant unknowns is 5.
+
+! That is the reason why only five different points are necassary to
+! determine the conical. The linear system to solve is a system of
+! five homogeneous equations with 6 unknowns.
+
+! The resolution of the system will be made by successive steps:
+
+!    Let us suppose that f<>0 and let us fix f=1, then the other
+!    parameters a,b,c,d,e are solutions of the linear system:
+
+!    x1^2 a + x1y1 b + y1^2 c + x1 d + y1 e = -1
+!    x2^2 a + x2y2 b + y2^2 c + x2 d + y2 e = -1
+!    -------------------------------------------
+!    x5^2 a + x5y5 b + y5^2 c + x5 d + y5 e = -1
+
+!    This linear system of size 5 is solved by a classical Gauss-Jordan
+!    method found in procedure SolveSystem (see also program MATRICES/sysmat.f90).
+
+!    if the system has a solution (det <> 0) the problem is finished, else
+!    the hypothesis f<>0 was wrong and we then try e<>0 (that is e=1).
+
+!    The linear system to solve is then:
+
+!    x1^2 a + x1y1 b + y1^2 c + x1 d + f = -y1
+!    x2^2 a + x2y2 b + y2^2 c + x2 d + f = -y2
+!    -------------------------------------------
+!    x5^2 a + x5y5 b + y5^2 c + x5 d + f = -y5
+
+!    if the system has a solution (det <> 0) the problem is finished, else
+!    the hypothesis e<>0 was again wrong and we successively explore d<>0,
+!    c<>0... to a<>0.
+
+!    So in the most unfavourable case, that is if only a degenerated conical
+!    answers the problem, we can have up to six linear systems of size 5
+!    to solve.
+
+!    Usually (f<>0 or e<>0), we only solve one or two linear systems.  
+
+!----------------------------------------------------------------------------------
+PROGRAM SEEK_CONICAL
+
+real*8   x1,y1,x2,y2,x3,y3,x4,y4,x5,y5
+real*8   a,b,c,d,e,f
+integer  SeekConical
+ 
+  print *,''
+  print *,'    SEEK A CONICAL PASSING THROUGH 5 POINTS'
+  print *,''
+  write(*,100,advance='no'); read *, x1, y1
+  write(*,101,advance='no'); read *, x2, y2
+  write(*,102,advance='no'); read *, x3, y3
+  write(*,103,advance='no'); read *, x4, y4
+  write(*,104,advance='no'); read *, x5, y5
+  print *,''
+  print *,''
+
+  if (SeekConical(x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,a,b,c,d,e,f).eq.1)  then
+    print *,'  The coefficients of the conical ax2+bxy+cy2+dx+ey+f = 0 are:'
+	print *,''
+    write(*,200)  a
+    write(*,201)  b
+    write(*,202)  c
+	write(*,203)  d
+    write(*,204)  e
+    write(*,205)  f
+  else
+    print *,'   No conical found.'
+  end if
+
+  print *,''
+  print *,''
+  stop
+
+!read formats
+100 format('        X1  Y1 = ')
+101 format('        X2  Y2 = ')
+102 format('        X3  Y3 = ')
+103 format('        X4  Y4 = ')
+104 format('        X5  Y5 = ')
+!write formats
+200 format('    a=',F14.6)
+201 format('    b=',F14.6)
+202 format('    c=',F14.6)
+203 format('    d=',F14.6)
+204 format('    e=',F14.6)
+205 format('    f=',F14.6)
+
+END
+
+
+!*******************************************
+!*  SOLVING A LINEAR MATRIX SYSTEM AX = B  *
+!*  with Gauss-Jordan method using full    *
+!*  pivoting at each step. During the pro- *
+!* cess, original AA and BB matrices are   *
+!* destroyed to spare storage location.    *
+!* --------------------------------------- *
+!* INPUTS:    AA   MATRIX N*N              *                                     
+!*            BB   MATRIX N*M              *                                     
+!* --------------------------------------- *                                     
+!* OUTPUS:    AA   INVERSE OF AA N*N       *                                     
+!*            DET  DETERMINANT OF AA       *                                     
+!*            BB   SOLUTION MATRIX N*M     *                                     
+!* --------------------------------------- *                                     
+!* NOTA - If M=0 inversion of AA matrix    *
+!*        only.                            *
+!*                                         *
+!*            C++ version by J-P Moreau    *
+!*******************************************
+Subroutine SolveSystem(N, M, AA, BB, DET)
+real*8 AA(N,N), BB(N,M), DET
+
+real*8  PC(N), PL(N), CS(N)
+real*8  PV,PAV,temp,TT
+
+parameter(EPSMACH=2.D-16)
+
+!LABELS: 100(fin), 105(fin1), 110(fin2), 150
+
+! Initializations                                                             
+      DET = 1.d0 
+      DO I=1, N
+        PC(I) = 0.d0                                                                
+        PL(I) = 0.d0                                                                
+        CS(I) = 0.d0
+      END DO              
+
+! Main loop                                                                             
+      DO K=1, N
+! Searching greatest pivot
+        PV=AA(K,K)                                                              
+        IK=K                                                                    
+        JK=K                                                                    
+        PAV=dabs(PV)                                                            
+        DO I=K, N
+          DO J=K, N
+            temp = dabs(AA(I,J))                                                        
+            if (temp > PAV) then
+              PV=AA(I,J)                                                        
+              PAV=dabs(PV)
+              IK=I                                                              
+              JK=J
+            end if                                                               
+          END DO      
+		END DO                                                             
+                                                                               
+! Search terminated, the pivot is in location I=IK, J=JK.                     
+! Memorizing pivot location:
+                                           
+        PC(K)=JK
+        PL(K)=IK
+
+! DETERMINANT DET is actualised                                              
+! If DET=0, ERROR MESSAGE and STOP                                           
+! Machine dependant EPSMACH equals here 2E-16                                         
+        if (IK.ne.K)  DET=-DET                                                   
+        if (JK.ne.K)  DET=-DET                                                   
+        DET=DET*PV;  
+        temp= dabs(DET)
+        if (temp < EPSMACH) goto 150
+
+                                                                               
+! POSITIONNING PIVOT IN K,K:
+        if (IK.ne.K) then                                                         
+          DO I=1, N
+! EXCHANGE LINES IK and K of matrix AA:
+            TT=AA(IK,I)                                                         
+            AA(IK,I)=AA(K,I)
+            AA(K,I)=TT                                                          
+          END DO
+		end if                                                                   
+                                                                           
+        if (M.ne.0) then                                                           
+          DO I=1, M
+            TT=BB(IK,I)                                                           
+            BB(IK,I)=BB(K,I)                                                      
+            BB(K,I)=TT                                                            
+          END DO             
+		end if                                                        
+
+! OT is at correct line
+        if (JK.ne.K) then                                                         
+          DO I=1, N
+! EXCHANGE COLUMNS JK and K of matrix AA:
+            TT=AA(I,JK)                                                         
+            AA(I,JK)=AA(I,K)                                                    
+            AA(I,K)=TT                                                          
+          END DO
+        end if
+                                                                           
+! The PIVOT is at correct column.                                              
+! and is located in K,K.
+                                                                               
+! Column K of matrix AA is stored in CS vector                             
+! then column K is set to zero.
+	    DO I=1, N 
+          CS(I)=AA(I,K)                                                         
+          AA(I,K)= 0.d0                                                          
+        END DO
+                                                                               
+        CS(K)= 0.d0                                                                
+        AA(K,K)= 1.d0                                                              
+! Line K of matrix AA is modified:
+        temp = dabs(PV)                                          
+        if (temp < EPSMACH)  goto 150
+        DO I=1, N
+          AA(K,I)=AA(K,I)/PV                                                    
+        END DO 
+                                                                           
+        if (M.ne.0) then                                                         
+          DO I=1, M                                                             
+            BB(K,I)=BB(K,I)/PV
+          END DO
+        end if
+                                                                           
+! Other lines of matrix AA are modified:
+		DO J=1, N
+          if (J.eq.K) goto 100                                                  
+          DO I=1, N
+! Line J of matrix AA is modified:
+            AA(J,I)=AA(J,I)-CS(J)*AA(K,I)
+          END DO 
+          if (M.ne.0) then                                                       
+            DO I=1, M                                                          
+              BB(J,I)=BB(J,I)-CS(J)*BB(K,I)
+            END DO
+          end if
+100     END DO  ! Line K is ready.
+      END DO    ! end of K loop
+
+! MATRIX AA INVERSION IS DONE - REARRANGEMENT OF MATRIX AA
+                                                                               
+! EXCHANGE LINES
+      DO I=N, 1, -1
+        IK=int(PC(I))
+        if (IK.eq.I) goto 105                                                   
+! EXCHANGE LINES I and PC(I) of matrix AA:
+        DO J=1, N
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(IK,J)                                                      
+          AA(IK,J)=TT                                                           
+        END DO
+        if (M.ne.0) then                                                         
+          DO J=1, M
+            TT=BB(I,J)                                                          
+            BB(I,J)=BB(IK,J)                                                    
+            BB(IK,J)=TT                                                         
+          END DO
+        end if
+! NO MORE EXCHANGE is NECESSARY
+! Go to next line.
+105   END DO  ! end of loop DO I=N,1,-1
+                                                                               
+! EXCHANGE COLUMNS
+      
+      DO J=N, 1, -1
+        JK=int(PL(J))                                                                
+        if (JK.eq.J) goto 110                                                   
+! EXCHANGE COLUMNS J ET PL(J) of matrix AA:
+        DO I=1, N
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(I,JK)                                                      
+          AA(I,JK)=TT                                                           
+        END DO 
+! NO MORE EXCHANGE is NECESSARY
+! Go to next column.
+                                                                  
+110   END DO  ! REARRANGEMENT TERMINATED.
+
+150 RETURN
+
+END  ! of SOLVESYSTEM
+
+
+    ! subroutine used by SeekConical()
+    Subroutine Solve(i, tm, tv, a, b, c, d, e, f,det)
+      real*8 tm(5,5), tv(5,1), a,b,c,d,e,f,det
+      call SolveSystem(5,1,tm,tv,det)
+      if (det.ne.0)  then
+        select case(i)
+          case(1)  ! case f<>0
+              a=tv(1,1); b=tv(2,1); c=tv(3,1); d=tv(4,1); e=tv(5,1); f=1.d0
+          case(2)  ! case e<>0
+              a=tv(1,1); b=tv(2,1); c=tv(3,1); d=tv(4,1); e=1.d0; f=tv(5,1)
+          case(3)  ! case d<>0
+              a=tv(1,1); b=tv(2,1); c=tv(3,1); d=1.d0; e=tv(4,1); f=tv(5,1)
+          case(4)  ! case c<>0
+              a=tv(1,1); b=tv(2,1); c=1.d0; d=tv(3,1); e=tv(4,1); f=tv(5,1)
+          case(5)  ! case b<>0
+              a=tv(1,1); b=1.d0; c=tv(2,1); d=tv(3,1); e=tv(4,1); f=tv(5,1)
+          case(6)  ! case a<>0
+              a=1.d0; b=tv(1,1); c=tv(2,1); d=tv(3,1); e=tv(4,1); f=tv(5,1)
+        end select
+      end if
+      return
+    End
+
+
+integer Function SeekConical(x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,a,b,c,d,e,f)
+!Label: 100
+  real*8 x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,a,b,c,d,e,f
+  real*8 tm(5,5), tv(5,1)
+  real*8 x(5), y(5)
+  real*8 det
+
+  SeekConical=0
+  x(1)=x1; y(1)=y1
+  x(2)=x2; y(2)=y2
+  x(3)=x3; y(3)=y3
+  x(4)=x4; y(4)=y4
+  x(5)=x5; y(5)=y5
+  ! verify that the 5 given points are different
+  do i=2, 5
+    do j=1, i-1
+      if (x(i).eq.x(j).and.y(i).eq.y(j)) return
+    end do
+  end do
+  ! try f<>0
+  do i=1, 5
+    tm(i,1)=x(i)*x(i); tm(i,2)=x(i)*y(i); tm(i,3)=y(i)*y(i)
+    tm(i,4)=x(i); tm(i,5)=y(i); tv(i,1)=-1.d0
+  end do
+  call Solve(1,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) goto 100
+  ! try e<>0
+  do i=1, 5
+    tm(i,1)=x(i)*x(i); tm(i,2)=x(i)*y(i); tm(i,3)=y(i)*y(i)
+    tm(i,4)=x(i); tm(i,5)=1; tv(i,1)=-y(i)
+  end do
+  call Solve(2,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) goto 100
+  ! try d<>0
+  do i=1, 5
+    tm(i,1)=x(i)*x(i); tm(i,2)=x(i)*y(i); tm(i,3)=y(i)*y(i)
+    tm(i,4)=y(i); tm(i,5)=1; tv(i,1)=-x(i)
+  end do
+  call Solve(3,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) goto 100
+  ! try c<>0
+  do i=1, 5
+    tm(i,1)=x(i)*x(i); tm(i,2)=x(i)*y(i); tm(i,3)=x(i)
+    tm(i,4)=y(i); tm(i,5)=1; tv(i,1)=-y(i)*y(i)
+  end do
+  call Solve(4,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) goto 100
+  ! try b<>0
+  do i=1, 5
+    tm(i,1)=x(i)*x(i); tm(i,2)=y(i)*y(i); tm(i,3)=x(i)
+    tm(i,4)=y(i); tm(i,5)=1; tv(i,1)=-x(i)*y(i)
+  end do
+  call Solve(5,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) goto 100
+  ! last try a<>0
+  do i=1, 5
+    tm(i,1)=x(i)*y(i); tm(i,2)=y(i)*y(i); tm(i,3)=x(i)
+    tm(i,4)=y(i); tm(i,5)=1; tv(i,1)=-x(i)*x(i)
+  end do
+  call Solve(6,tm,tv,a,b,c,d,e,f,det)
+  if (det.ne.0) then
+    goto 100 
+  else 
+    return
+  end if
+100 SeekConical=1
+  return 
+end   ! det<>0 means success
+
+! end of file conical1.f90

@@ -1,0 +1,111 @@
+!****************************************************
+!* Program to demonstrate Chi_Square() Subroutine   *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*             F90 Version by J.-P. Moreau, Paris.  *
+!*                    (www.jpmoreau.fr)             *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!* How many degrees of freedom: 100                 *
+!* What is the range (X1,X2):                       *
+!*   X1: 50                                         *
+!*   X2: 150                                        *
+!* What is the table step size: 5                   *
+!*                                                  *
+!*    X       Chi-Square PDF                        *
+!*   ------------------------                       *
+!*    50        0.00000                             *
+!*    55        0.00003                             *
+!*    60        0.00018                             *
+!*    65        0.00076                             *
+!*    70        0.00237                             *
+!*    75        0.00571                             *
+!*    80        0.01107                             *
+!*    85        0.01772                             *
+!*    90        0.02393                             *
+!*    95        0.02779                             *
+!*   100        0.02816                             *
+!*   105        0.02525                             *
+!*   110        0.02025                             *
+!*   115        0.01468                             *
+!*   120        0.00970                             *
+!*   125        0.00588                             *
+!*   130        0.00330                             *
+!*   135        0.00172                             *
+!*   140        0.00084                             *
+!*   145        0.00038                             *
+!*   150        0.00017                             *
+!*                                                  *
+!****************************************************
+PROGRAM CHISQR
+
+  real*8  m1,x,x1,x2,x3,y
+  integer m
+
+  write(*,"(/' How many degrees of freedom: ')",advance='no')
+  read *, m
+  print *,'What is the range (X1,X2):'
+  write(*,"('   X1: ')",advance='no')
+  read *, x1
+  write(*,"('   X2: ')",advance='no')
+  read *, x2
+  write(*,"(' What is the table step size: ')",advance='no')
+  read *, x3
+  print *, ' '
+  print *, '   X       Chi-Square PDF '
+  print *, '--------------------------'
+  x=x1
+  do while (x <= x2)  
+    call Chi_Square(m,x,y)
+    write(*,10)  x, y
+    x = x + x3
+  end do
+  print *, ' '
+  stop
+10 format('  ',F4.0,'        ',F7.5)
+end
+
+!***************************************************
+!* Series approximation subroutine LN(X!)          *
+!* Accuracy better then 6 places for x>=3          *
+!* Accuracy better than 12 places for x>10         *
+!* Advantage is that very large values of the      *
+!* argument can be used without fear of over flow. *
+!* Reference: CRC Math Tables.                     *
+!* x is the input, y is the output.                *
+!* *************************************************
+Subroutine LN_FactX(x,y)  
+  real*8 x, x1, y
+  x1 = 1.d0 / (x * x)
+  y = (x + 0.5d0) * dlog(x) - x * (1.d0 - x1 / 12 + x1 * x1 / 360.d0 - x1 * x1 * x1 / 1260.d0 + x1 * x1 * x1 * x1 / 1680.d0)
+  y = y + 0.918938533205d0
+  return
+end
+
+!******************************************************
+!* Chi-square function subroutine. This program takes *
+!* a given degree of freedom, m and value, x, and     *
+!* calculates the chi-square density distribution     *
+!* function value, y.                                 *
+!* Reference: Texas Instruments SR-51 owners Manual,  *
+!* 1974.                                              *
+!* Subroutine used: LN(X!).                           *
+!******************************************************
+Subroutine Chi_Square(m,x,y)
+  real*8 c, m1, x, y
+  !Save X
+  m1 = x
+  !Perform calculation
+  x =  (dfloat(m) / 2.d0 - 1.d0)
+  !Call LN(X!) subroutine
+  call LN_FactX(x,y)
+  x = m1
+  c = -x / 2 + (dfloat(m) / 2.d0 - 1.d0) * dlog(x) - (dfloat(m) / 2.d0) * dlog(2.d0) - y
+  y = dexp(c)
+  return
+end
+
+
+! End of file chi-sqr.f90

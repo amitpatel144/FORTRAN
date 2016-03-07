@@ -1,0 +1,150 @@
+!****************************************************
+!* Program to demonstrate complex series evaluation *
+!* It is assumed that the coefficients are obtained *
+!* from a subroutine.                               *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*             F90 Version by J.-P. Moreau, Paris.  *
+!*                    (www.jpmoreau.fr)             *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* Input the complex number as prompted:            *
+!*                                                  *
+!*   Real part    = 1                               *
+!*   Complex part = 0                               *
+!*                                                  *
+!* Results are:                                     *
+!*                                                  *
+!*   Z1 =  32.0000                                  *
+!*   Z2 =   0.0000                                  *
+!*                                                  *
+!****************************************************
+PROGRAM CMPLXSER
+
+real*8  A(0:5)
+real*8  x,y,z1,z2
+integer m
+
+  ! Get coefficients
+  call Coeff(m,A)
+  ! input complex number
+  print *,' '
+  print *,'Input the complex number as prompted:'
+  print *,' '
+  write(*,"('   Real part    = ')",advance='no')
+  read *, x
+  write(*,"('   Complex part = ')",advance='no')
+  read *, y
+  print *,' '
+
+  call Complex_Series(m,A,x,y,z1,z2)
+
+  print *,' '
+  print *,'Results are:'
+  print *,' '
+  write(*,50) z1
+  write(*,60) z2
+
+  stop
+
+50 format('   Z1 = ',F8.4)
+60 format('   Z2 = ',F8.4//)
+
+end
+
+!Coefficients subroutine
+subroutine Coeff(m,A)
+integer m
+real*8  A(0:5) 
+  m=5
+  A(0) = 1
+  A(1) = 5
+  A(2) = 10
+  A(3) = 10
+  A(4) = 5
+  A(5) = 1
+  return
+end
+
+! Rectangular (x,y) to polar (u,v) conversion
+Subroutine RectPol(x,y,u,v)
+  real*8 x,y,u,v,PI
+  PI = 4.d0*datan(1.d0)
+  u = dsqrt(x*x+y*y)
+  ! Guard against ambiguous vector
+  if (y.eq.0.d0)  y = 1.d-30
+  ! Guard against divide by zero
+  if (x.eq.0.d0)  x = 1.d-30
+  v = datan(y/x)
+  if (x<0) v = v + PI
+  if (v<0) v = v + 2.d0*PI
+  return
+end
+
+! Polar (u,v) to rectangular (x,y) conversion
+Subroutine PolRect(u,v,x,y)
+  real*8 x,y,u,v
+  x = u*dcos(v)
+  y = u*dsin(v)
+  return
+end
+
+! Polar (u,v) power n, result in (u1,v1)
+Subroutine PolPower(n,u,v,u1,v1)
+  real*8 u,v,u1,v1,PI
+  integer n
+  PI = 4.d0*datan(1.d0)
+  u1 = u**n  
+  v1 = n * v
+  v1 = v1 - 2.d0*PI * int(v1/2.d0/PI)
+  return
+end
+
+! Rectangular complex number (x,y) power n
+Subroutine RectPower(n,x,y)
+  integer n
+  real*8 x,y,u,v,u1,v1  
+  ! Rectangular to polar conversion
+  call RectPol(x,y,u,v);
+  ! Polar power
+  call PolPower(n,u,v,u1,v1);
+  ! Change variable for conversion
+  u=u1 ; v=v1
+  ! Polar to rectangular conversion
+  call PolRect(u,v,x,y)
+  return
+end
+
+!********************************************************
+!*         Complex series evaluation subroutine         *
+!* ---------------------------------------------------- *
+!* The series coefficients are A(i), assumed real, the  *
+!* order of the polynomial is m. The subroutine uses    *
+!* repeated calls to the nth power (Z^N) complex number *
+!* subroutine. Inputs to the subroutine are x, y, m and *
+!* the A(i). Outputs are z1 (real) and z2 (imaginary).  *
+!********************************************************
+Subroutine Complex_Series(m,A,x,y,z1,z2)
+  integer m, n  
+  real*8 a1,a2,x,y,z1,z2,A(0:5)
+  z1 = A(0) ; z2 = 0.d0
+  ! Store x and y
+  a1 = x ; a2 = y
+  do n = 1, m
+    ! Recall original x and y
+    x = a1 ; y = a2
+    ! Call Z^N subroutine
+    call RectPower(n,x,y)
+    ! Form partial sum
+    z1 = z1 + A(n) * x
+    z2 = z2 + A(n) * y
+  end do
+  ! Restore x and y
+  x = a1 ; y = a2
+  return
+end
+
+! End of file cmplxser.f90

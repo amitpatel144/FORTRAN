@@ -1,0 +1,150 @@
+!**********************************************
+!* This program allows user to perform combi- *
+!* natory analysis, such as Factorial N,      *
+!* Combination C(n,p) and Permutation A(n,p). *
+!* ------------------------------------------ *
+!* Ref.: "Mathématiques en Turbo-Pascal By    *
+!*        M. Ducamp and A. Reverchon (2),     *
+!*        Eyrolles, Paris, 1988".             *
+!* ------------------------------------------ *
+!* Sample runs:                               *
+!*                                            *
+!* COMBINATORY ANALYSIS                       *
+!*                                            *
+!*   1:  Factorial n!                         *
+!*   2:  Combination C n,p                    *
+!*   3:  Permutation A n,p                    *
+!*   0:  Quit                                 *
+!*                                            *
+!*   Your choice (0 to 3): 1                  *
+!*                                            *
+!*   N = 100                                  *
+!*   N! = 9.3248476268  10^ 157               *
+!*                                            *
+!*   Your choice (0 to 3): 2                  *
+!*                                            *
+!*   N = 7                                    *
+!*   P = 3                                    *
+!*   Cnp =           35                       *
+!*                                            *
+!*   Your choice (0 to 3): 3                  *
+!*                                            *
+!*   N = 10                                   *
+!*   P = 6                                    *
+!*   Anp =       151200                       *
+!*                                            *
+!*                F90 version by J-P Moreau   *
+!*                    (www.jpmoreau.fr)       *
+!**********************************************
+PROGRAM COMBI_ANALYSIS
+implicit none
+INTEGER p, ichoice, n
+real*4 Anp, Cnp, Factorial, R1, r2, s
+  ichoice=1
+  do while(ichoice.ne.0)
+    print *,''
+    print *,' COMBINATORY ANALYSIS'
+    print *,''
+    print *,'  1:  Factorial n!'
+    print *,'  2:  Combination C n,p'
+    print *,'  3:  Permutation A n,p'
+    print *,'  0:  Quit'
+    print *,''
+    write(*,100,advance='no'); read *, ichoice
+    print *,''
+    if (ichoice<0) ichoice=0
+    if (ichoice>3) ichoice=3
+    if (ichoice.eq.0) goto 90      !quit
+    if (ichoice.eq.1) then         !Factorial n
+      write(*,110,advance='no'); read *, n
+      s=Factorial(n,r1,r2)
+      if (s>0) then
+	    write(*,150)  s
+	  else
+	    write(*,151)  r1, r2	 
+      endif
+    endif  
+    if (ichoice.eq.2) then          !Combination n,p
+      write(*,110,advance='no'); read *, n
+	  write(*,120,advance='no'); read *, p
+      s=Cnp(n,p)                    !=Anp(n,p)/p!
+      if (s>0.) then
+	    write(*,160)  s
+	  else 
+	    write(*,161)
+      endif
+    endif
+    if (ichoice.eq.3) then          !Permutation n,p
+      write(*,110,advance='no'); read *, n
+	  write(*,120,advance='no'); read *, p
+      s=Anp(n,p)
+      if (s>0.) then
+	    write(*,170)  s
+	  else 
+	    write(*,161)
+      endif
+    endif
+	print *,''
+    Pause ' Hit any key to continue...'
+  enddo
+90  stop
+
+100 format('  Your choice (0 to 3): ')
+110 format('  N = ')
+120 format('  P = ')
+
+150 format('  N! =',F12.0)
+151 format('  N! =',F12.10,'   10^',F4.0)
+
+160 format('  Cnp =',F12.0)
+161 format('  Quantity impossible to evaluate')
+
+170 format('  Anp =',F12.0)
+
+END
+
+  !Factorial n
+  real*4 Function Factorial(n,mantissa,exponent)
+  implicit none
+  real*4, parameter :: PI=3.1415926535
+  REAL*4 exponent, mantissa, fa
+  integer i, n
+    fa=1; Factorial=0;
+    if (n<25) then
+      do i=1, n   
+	    fa=fa*i
+      end do
+      Factorial=fa
+    else
+      fa=(LOG(2.*PI*n)/2. + n*LOG(FLOAT(n))-n)/LOG(10.)
+      exponent=INT(fa); mantissa=EXP((fa-INT(fa))*LOG(10.))
+    endif
+  End
+
+  !Comnination C n,p
+  real*4 Function Cnp(n,p)
+  implicit none
+  INTEGER n, p
+  REAL*4 a, b
+  real*4 Anp, Factorial
+  Cnp=Anp(n,p)/Factorial(p,a,b)
+  End
+
+  !Permutation A n,p
+  Real*4 Function Anp(n,p)
+  implicit none
+  real*4, parameter :: REALMAX=1E30
+  INTEGER n, p, i
+  real*4 r
+    Anp=0.
+    if (p>n) return
+    r=1.
+    do i=n-p+1, n
+      if (r>REALMAX/i) return
+      r=r*i
+    end do
+    Anp=r
+  End
+
+
+!end of file combi.pas

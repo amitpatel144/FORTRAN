@@ -1,0 +1,158 @@
+!***********************************************************************
+!* Response of a 1dof Mass-Spring System with damping to a sinusoidal  *
+!* input force                                                         *
+!* ------------------------------------------------------------------- *
+!* Main Variables:                                                     *
+!*                  M: Mass                                            *
+!*                  K: Stiffness                                       *
+!*                  C: Viscous Damping Coefficient                     *
+!*                  E: Structural Damping Coefficient                  *
+!*                 F0: Input Force                                     *
+!* ------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                         *
+!*                                                                     *
+!*  Mass M..... = 50                                                   *
+!*  Stiffness K = 1e6                                                  * 
+!*  Force F0... = 10000                                                *
+!*                                                                     *
+!*  (V)iscous or (S)tructural Damping: S                               *
+!*                                                                     *
+!*  Structural damping factor: 0.05                                    * 
+!*                                                                     *
+!*  Frequency Scanning                                                 *
+!*                                                                     *
+!*  Resonance Frequency of undamped system = 22.508                    *
+!*                                                                     *
+!*  Starting frequency = 20                                            *
+!*  Ending frequency...= 25                                            *
+!*  Frequency step.....= 0.25                                          *
+!*                                                                     *
+!* Frequency   Displacement   Phase (deg)                              *
+!* --------------------------------------                              *
+!*  20.00      0.046234       13.366020                                *
+!*  20.25      0.050756       14.701453                                *
+!*  20.50      0.056293       16.347698                                *
+!*  20.75      0.063206       18.423082                                *
+!*  21.00      0.072037       21.111465                                *
+!*  21.25      0.083609       24.711308                                *
+!*  21.50      0.099181       29.729366                                *
+!*  21.75      0.120525       37.058281                                *
+!*  22.00      0.149218       48.252850                                *
+!*  22.25      0.181993       65.500542                                *
+!*  22.50      0.199980       89.195045                                *
+!*  22.75      0.183564      -66.609123                                *
+!*  23.00      0.149839      -48.520615                                *
+!*  23.25      0.119585      -36.721485                                *
+!*  23.50      0.097048      -29.028175                                *
+!*  23.75      0.080679      -23.790739                                *
+!*  24.00      0.068578      -20.053143                                *
+!*  24.25      0.059388      -17.273960                                *
+!*  24.50      0.052222      -15.136021                                *
+!*  24.75      0.046502      -13.444960                                *
+!*  25.00      0.041843      -12.076314                                *
+!*                                                                     *
+!* ------------------------------------------------------------------- *
+!* REFERENCE: 'Mécanique des vibrations linéaires By M. Lalanne,       *
+!*             P. Berthier, J. Der Hagopian, Masson, Paris 1980'.      *
+!*                                                                     *
+!*                                  F90 Release By J-P Moreau, Paris.  *
+!*                                         (www.jpmoreau.fr)           *
+!***********************************************************************
+Program SIN1DOF
+
+
+REAL M, K, I1, M1
+INTEGER C2
+CHARACTER*1 B
+
+PI = 3.1415926535
+
+PRINT *,' '
+WRITE(*,10,advance='no'); READ *, M
+WRITE(*,20,advance='no'); READ *, K
+WRITE(*,30,advance='no'); READ *, F0
+PRINT *,' '
+
+380 WRITE(*,40,advance='no'); READ *, B
+IF (B.EQ.'V') GOTO 450
+IF (B.EQ.'S') GOTO 500
+GOTO 380
+
+450 PRINT *,' '
+WRITE(*,50,advance='no'); READ *, C
+C2 = 1
+GOTO 540
+
+500 PRINT *,' '
+WRITE(*,60,advance='no'); READ *, E
+C2 = 2
+
+540 PRINT *,' '
+PRINT *,' Frequency Scanning'
+PRINT *,' '
+F4 = 1. / 2. / PI * SQRT(K / M)
+WRITE(*,100)  F4
+PRINT *,' '
+WRITE(*,110,advance='no'); READ *, F1
+WRITE(*,120,advance='no'); READ *, F2
+WRITE(*,130,advance='no'); READ *, F3
+
+F = F1
+
+PRINT *,' '
+PRINT *,' Frequency   Displacement   Phase (deg) '
+PRINT *,' -------------------------------------- '
+
+940 W = 2 * PI * F
+IF (C2.EQ.2) GOTO 1010
+D = (K - M * W * W)**2 + (C * W)**2
+O1 = (K - M * W * W) / D**0.5
+I1 = C * W / D**0.5
+M1 = F0 / SQRT(D)
+GOTO 1050
+1010 D = (K - M * W * W)**2 + (E * K)**2
+O1 = (K - M * W * W) / D**0.5
+I1 = E * K / D**0.5
+M1 = F0 / SQRT(D)
+
+1050 IF (M1.NE.0.) GOTO 1140
+T1 = 0.
+GOTO 1180
+1140 IF (O1.EQ.-1.) THEN
+  T1 = PI
+  GOTO 1180
+END IF
+IF (O1.EQ.1.) THEN
+  T1 = 0
+  GOTO 1180
+END IF
+
+IF (I1 < 0.) GOTO 1170
+!T1 = ACOS(O1)
+T1 = ATAN(SQRT(1. - O1**2) / O1)
+GOTO 1180
+1170 T1 = 2. * PI - ATAN(SQRT(1. - O1**2) / O1)
+
+1180 T3 = T1 / PI * 180.
+
+WRITE(*,200)  F, M1, T3
+F = F + F3
+IF (F <= F2) GOTO 940
+
+10 FORMAT(' Mass M = ')
+20 FORMAT(' Stiffness K = ')
+30 FORMAT(' Force F = ')
+40 FORMAT(' (V)iscous or (S)tructural Damping: ')
+50 FORMAT(' Viscous damping coefficient C = ')
+60 FORMAT(' Structural damping factor: ')
+
+100 FORMAT(' Resonanve Frequency of undamped system = ',F7.3,' Hz.')
+110 FORMAT(' Starting frequency = ')
+120 FORMAT(' Ending frequency...= ')
+130 FORMAT(' Frequency step.....= ')
+
+200 FORMAT(F7.2,F14.6,'  ',F14.6)
+
+END
+
+!end of file 1dof01.f90

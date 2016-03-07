@@ -1,0 +1,97 @@
+!*************************************************************
+!*    Interpolate a function F(x) by continuous fractions    *
+!* --------------------------------------------------------- *
+!* SAMPLE RUN:                                               *
+!* (Interpolate function e(x) between x=0 and x=2)           *
+!*                                                           *
+!* Number of points: 3                                       *
+!* X( 0), Y( 0): 0 1                                         *
+!* X( 1), Y( 1): 1 2.71828                                   *
+!* X( 2), Y( 2): 2 7.38906                                   *
+!*                                                           *
+!* Coefficients D(K):                                        *
+!* D(0) =      1.000000                                      *
+!* D(1) =      0.581977                                      *
+!* D(2) =     -3.718271                                      *
+!*                                                           *
+!* X = 1.5                                                   *
+!*                                                           *
+!* For X =   1.5  Y =   4.351909                             *
+!*                                                           *
+!* --------------------------------------------------------- *
+!* Ref.: "Méthodes de calcul numérique, Tome 2 By Claude     *
+!*        Nowakowski, PSI Edition, 1984" [BIBLI 04].         *
+!*                                                           *
+!*                         F90 Release By J-P Moreau, Paris. *
+!*                                (www.jpmoreau.fr)          *
+!*************************************************************
+Program Confract
+
+real*8, parameter :: SIZE = 50
+
+integer K,L,M,N,N1
+real*8  X(SIZE), Y(SIZE), D(SIZE)
+real*8  DD, DL, S, XX
+
+  print *,' '
+  write(*,10,advance='no'); Read *, N1
+
+  N = N1 - 1
+  M = N
+
+!Read data from screen
+  do K = 0, N
+    Write(*,20,advance='no') K, K; Read *, X(K), Y(K)
+  end do
+
+!Calculate coefficients D(K)
+  do K = 0, N 
+    D(K) = Y(K)
+  end do
+
+  do L = 1, M
+    do K = L, N
+      DD = (X(K) - X(L - 1)) / (D(K) - D(L - 1))
+      IF (K.ne.L) THEN
+        D(K) = DD
+      ELSE
+        DL = DD
+      end if
+    end do
+    D(L) = DL
+  end do
+
+!print coefficients
+  print *,' '
+  print *,' Coefficients D(K):'
+  do K = 0, N
+    Write(*,40)  K, D(K)
+  end do
+
+!Interpolate for X=XX
+  print *,' '
+  write(*,50,advance='no'); Read *, XX
+
+!Evaluate continuous fraction
+  S = (XX - X(N - 1)) / D(N)
+  do K = N - 1, 1, -1
+    S = (XX - X(K - 1)) / (D(K) + S)
+  end do
+
+  S = S + D(0)
+
+  print *,' '
+  Write(*,60)  XX, S
+  print *,' '
+
+  stop
+
+10 format(' Number of points: ')
+20 format(' X(',I2,'), Y(',I2,'): ')
+40 format(' D(',I2,') = ', F10.6)
+50 format(' X= ')
+60 format(' For X= ',F10.6,'  Y= ',F10.6)
+
+END
+
+!end of file confract.f90

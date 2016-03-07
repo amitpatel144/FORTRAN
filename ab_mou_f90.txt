@@ -1,0 +1,657 @@
+!************************************************************************
+!*                                                                      *
+!* Solve an ordinary system of differential equations of first order    *
+!* -------------------------------------------------------------------- *
+!* using the predictor-corrector method of Adams-Bashforth-Moulton      *
+!* ----------------------------------------------------------------     *
+!*                                                                      *
+!* Programming language: ANSI C                                         *
+!* Compiler:             Turbo C 2.0                                    *
+!* Computer:             IBM PS/2 70 with 80387                         *
+!* Author:               Jobst Hoffmann (FORTRAN)                       *
+!* Adaptation:           Juergen Dietel, Computer Center, RWTH Aachen   *
+!* Source:               existing C, Pascal, QuickBASIC and FORTRAN     *
+!*                       codes                                          *
+!* Date:                 7.9.1992                                       *
+!*                                                                      *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!* -------------------------------------------------------------------- *
+!* REF.: "Numerical Algorithms with C, By Gisela Engeln-Muellges        *
+!*        and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].           *
+!************************************************************************
+MODULE AB_MOU
+
+integer, parameter :: NMAX = 9
+
+Type Hilfstyp            ! Rcord of auxiliary vectors .....................
+   real*8 f(0:NMAX)      ! buffder for the starting values:  f[1],...,f[4] 
+                         ! contain the newest entries from rk_start() and  
+                         ! abm_schritt(), f[0] is also needed              
+   real*8 tmp(0:NMAX)    ! aux buffer for the vectors k[i] from one Runge- 
+                         ! Kutta step; used in abm_schritt() for a linear  
+                         ! combination of nodes in correktor step          
+   real*8 ki_sum(0:NMAX) ! Linear combination A[0]*k[0]+..+A[3]*k[3] in the
+                         ! Runge-Kutta method and end result of            
+                         ! rk_schritt()                                    
+   real*8 y1(0:NMAX)     ! in rk_start() solution for step size  3*h, or   
+                         ! in abm_schritt() solution of the predictor step 
+                         ! (also used for aux. purposes in rk_schritt() )  
+   real*8 y2(0:NMAX)     ! newest approximation                            
+   real*8 diff(0:NMAX)   ! error estimate for computed solution            
+End Type Hilfstyp
+
+integer bspn             ! #example in t_dlgs
+
+CONTAINS
+
+!For debug only
+Subroutine printvec(V, n)
+  real*8 V(0:n-1)
+  write(*,*) (V(i),i=0,n-1)
+  write(*,*) ' '
+  return
+end subroutine printvec
+
+Subroutine Write_Hilf(hilf, n)
+Type(Hilfstyp) hilf
+integer n
+  write(*,*) ' Record hilf:'
+  write(*,*) ' Vector f:'
+  call printvec(hilf%f,5)
+  write(*,*) ' Vector tmp:'
+  call printvec(hilf%tmp,n)
+  write(*,*) ' Vector ki_sum:'
+  call printvec(hilf%ki_sum,4)
+  write(*,*) ' Vector y1:'
+  call printvec(hilf%y1,n)
+  write(*,*) ' Vector y2:'
+  call printvec(hilf%y2,n)
+  write(*,*) ' Vector diff:'
+  call printvec(hilf%diff,n)
+  Return
+End Subroutine Write_Hilf
+
+
+real*8 Function norm_max  &    ! Find the maximum norm of a REAL vector
+           (  &
+            vektor,       &                  ! vector .................
+            n             &                  ! length of vector .......
+           )                                 ! Maximum norm ...........
+real*8 vektor(0:n-1)                         
+!************************************************************************
+!* Return the maximum norm of a [0..n-1] vector  v.                     *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!*  None                                                                *
+!************************************************************************
+  real*8 norm,  &                           ! local max
+  betrag                                    ! magnitude of a component
+
+  norm=0.d0
+  do i=0, n-1
+    betrag=dabs(vektor(i))
+    if (betrag > norm)  norm = betrag
+  end do   
+  norm_max = norm
+  return 
+End Function norm_max
+
+Subroutine Copy_Vector(a, b, n)
+real*8 a(0:n-1), b(0:n-1)
+  do i=0, n-1 
+    a(i) = b(i)
+  end do
+  return
+End Subroutine Copy_Vector
+
+Subroutine Init0_vector(vektor, n)
+real*8 vektor(0:n-1)
+!************************************************************************
+!* initialize the [0..n-1] vector vektor to be the zero vector          *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!*  ZERO                                                                *
+!************************************************************************
+  do i=0, n-1
+    vektor(i) = 0.d0
+  end do
+  return
+End Subroutine Init0_vector
+
+Subroutine Inc_vector(ziel,quelle, factor, n)
+real*8 ziel(0:n-1), quelle(0:n-1), factor
+!************************************************************************
+!* add factor * quelle to the vector ziel                               *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!*  None                                                                *
+!************************************************************************
+  do i= 0, n-1
+    ziel(i) = ziel(i) + factor * quelle(i)
+  end do
+  return
+End Subroutine Inc_vector
+
+Subroutine Add_vector(summe,summand1,summand2, factor, n)
+real*8 summe(0:n-1), summand1(0:n-1), summand2(0:n-1), factor
+!************************************************************************
+!* add factor * summand2 to the [0..n-1] vector summand1, store result  *
+!* summe.                                                               *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!*  None                                                                *
+!************************************************************************
+  do i=0, n-1
+    summe(i) = summand1(i) + factor * summand2(i)
+  end do
+  return
+End Subroutine Add_vector
+
+
+Subroutine rk_schritt(       &
+                       x0,   &
+                       y0,   &
+                       n,    &
+                       hilf, &
+                       h     &
+                    )
+real*8 x0,y0(0:n-1),h; Type(Hilfstyp) hilf 
+!************************************************************************
+!* perform one Runge-Kutta integration                                  *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* x0    x-value from wchich to integrate                               *
+!* y0    initial value of solution at  x0                               *
+!* n     number of DEs                                                  *
+!* h     step size for current Runge-Kutta integration                  *
+!*                                                                      *
+!* Output parameter:                                                    *
+!* =================                                                    *
+!* hilf  stores the result in ki_sum. The entries in y1 and tmp have no *
+!*       meaning.                                                       *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* Hilfstyp, inc_vector, add_vector.                                    *
+!************************************************************************
+  real*8 A(0:3), a1(0:3)
+
+  ! ---- Coefficients of the classical Runge-Kutta method -------------
+  A(0) = 1.d0 / 6.d0; A(1) = 1.d0 / 3.d0
+  A(2) = 1.d0 / 3.d0; A(3) = 1.d0 / 6.d0
+  a1(0) = 0.d0; a1(1) = 0.5d0
+  a1(2) = 0.5d0; a1(3) = 1.d0                   !use also as the b(j,s)
+
+  call dgl(bspn, n, x0, y0, hilf%tmp) !k(0) <- right hand side at (x0,y0)
+
+  do i = 0, n-1                                 !initialize ki_sum with
+    hilf%ki_sum(i) = A(0) * hilf%tmp(i)         !first term
+  end do
+
+  do j = 1, 3                        !compute k[1]..k[3], add to ki_sum
+                                     !multiplied by factor
+    call add_vector(hilf%y1, y0, &                  !y1 <- y0 +
+                    hilf%tmp, a1(j) * h, n)         !a1[j] * h * k[j - 1]
+    call dgl(bspn,n,x0 + a1(j) * h, hilf%y1, hilf%tmp)      !compute k[j]
+
+    call inc_vector(hilf%ki_sum, &
+                    hilf%tmp, A(j), n)             !ki_sum += A[j] * k[j]
+  end do
+  return
+End Subroutine rk_schritt
+
+
+integer Function rk_start (       &
+                    x,            &
+                    x0,           &
+                    y,            &
+                    n,            & 
+                    xend,         &
+                    h,            & 
+                    hmax,         &
+                    new_step,     &
+                    methode, aufrufe, &
+                    hilf )
+real*8 x,x0,y(0:n-1),xend,h,hmax
+integer n,methode,aufrufe
+logical new_step
+Type(Hilfstyp) hilf 
+!************************************************************************
+!* Find the starting values using the Runge-Kutta method as needed in   *
+!* prae_korr() for the Adams-Bashforth-Moulton method                   *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* x         x-value for start of integration                           *
+!* y         Initial value for the solution at x                        *
+!* n         number of DE equations                                     *
+!* xend      x-value where solution is wanted; xend may be less than x  *
+!* h         Step size                                                  *
+!* hmax      maximal step size, must be positive                        *
+!* new_step  <> 0: check new step size for properness                   *
+!*            = 0: do not check new step size                           *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* x0       x-value until which we have integrated                      *
+!* h        step size for next integration                              *
+!* methode  value 0; hence the error estimate in prae_korr() is per-    *
+!*          formed for the factor for Runge-Kutta values                *
+!* aufrufe  actual number of calls of dgl                               *
+!* hilf     Record, which contains info of the solution:                *
+!*          y1:         approximate solution needed for error estimation*
+!*                      (Step size  3*h)                                *
+!*          y2:         actual approximate solution                     *
+!*          f[2]..f[4]: starting values                                 *
+!*          The entries in  ki_sum and tmp represent auxiliary values.  *
+!*                                                                      *
+!* Return value :                                                       *
+!* ==============                                                       *
+!* = 0: all ok                                                          *
+!* = 1: new step size too small relative to machine constant            *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* Hilfstyp, rk_schritt, inc_vector, add_vector, MACH_EPS, Min,         *
+!* copy_vector.                                                         *
+!************************************************************************
+  real*8,  parameter :: MACH_EPS = 2.2d-16 
+  
+  if (new_step) then               !check new step size for properness
+    h = Min(h, hmax)
+    h = Min(DABS(h), DABS(xend - x)/3.d0)
+    if (xend <= x)  h = -h
+    if (DABS(h) <= 8.d0 * MACH_EPS * DABS(x)) then
+      rk_start = 1
+      return
+    end if
+  end if
+
+  x0 = x                                           !save initial value
+
+  call copy_vector(hilf%y2, y, n)                             !y2 <- y
+
+  do j = 2, 4                                !three steps with steps h
+    call rk_schritt(x, hilf%y2, n, hilf, h)         !accumulate ki_sum
+    x = x + h
+    call inc_vector(hilf%y2, hilf%ki_sum, h, n)        !y2 += h*ki_sum
+    call dgl(bspn,n,x, hilf%y2, hilf%f(j)) !copy remainder of starting
+  end do                                   !values in  f(2)..f(4)
+
+  !after three steps with size h, we now perform one step with 3*h
+  !result put into y1.
+
+  call rk_schritt(x0, y, n, hilf, 3.d0 * h)            !compute ki_sum
+  call add_vector(hilf%y1, y, hilf%ki_sum, 3.d0*h, n)
+
+  x0      = x0 + 3.d0 * h
+  methode =  0
+  aufrufe = aufrufe + 13      !13 calls of dgl for the starting values
+
+  rk_start = 0
+  return
+End Function rk_start
+
+
+! ----------------------------------------------------------------------
+Subroutine abm_schritt (     &
+                        x0,  &
+                        n,   &
+                        h,   &
+                        methode, aufrufe,  &
+                        hilf )
+real*8 x0,h; integer n,methode,aufrufe; Type(Hilfstyp) hilf 
+!************************************************************************
+!* Perform one step of the Adams-Bashforth-Moulton method               *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* x0    initial x-value                                                *
+!* n     number of DEs in system                                        *
+!* h     step size                                                      *
+!* hilf  Structure with the vectors f[1]..f[4] for the starting values  *
+!*                                                                      *
+!* Output parameter:                                                    *
+!* =================                                                    *
+!* x0       final x-value of the integration                            *
+!* methode  equal to 1; hence the error estimation in prae_korr() is    *
+!*          performed with the factor for Adams-Bashforth-Moulton.      *
+!* aufrufe  current number of calls of dgl                              *
+!* hilf     Structure with the following output :                       *
+!*          y1:   approximate solution used for the error estimation    *
+!*                (from predictor step)                                 *
+!*          y2:   approximate solution from corrector step              *
+!*          f[4]: new node for starting values                          *
+!*          f[0],...,f[3] are altered and tmp is used as aux storage    *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* Hilfstyp, Init0_vector, inc_vector, add_vector, ONE.                 *
+!************************************************************************
+  real*8 prae(0:3), korr(0:3) 
+  real*8 tmp              !aux vector for cyclic exchanges of adresses
+                          !of starting vectors
+
+  ! ---- the coefficients for  Adams-Bashforth-Moulton ----------------
+  prae(0) =  -9.d0; prae(1) = 37.d0
+  prae(2) = -59.d0; prae(3) = 55.d0                          !Predictor
+  korr(0) =   1.d0; korr(1) = -5.d0
+  korr(2) =  19.d0; korr(3) =  9.d0                          !corrector
+
+  tmp = hilf%f(0)                     !the starting values are expected
+  do j = 0, 3                         !reside in f(0), ..., f(3) , but
+    hilf%f(j) = hilf%f(j+1)           !are stored in f(1)..f(4), we
+  end do                              !rotate their pointer. 
+  hilf%f(4) = tmp
+
+  call init0_vector(hilf%y1, n)                     !one predictor step
+  do j = 0, 3
+    call inc_vector(hilf%y1, hilf%f(j), prae(j), n)
+  end do
+  call add_vector(hilf%y1, hilf%y2, hilf%y1, h/24.d0, n)
+
+  x0 = x0 + h                                !move on by h; compute rhs
+  call dgl(bspn,n,x0, hilf%y1, hilf%f(4))    !of DE at (x0,y1) : this
+                                             !yields the start for the
+                                             !corrector.
+
+  call init0_vector(hilf%tmp, n)             !one corrector step
+  do j = 0, 3
+    call inc_vector(hilf%tmp, hilf%f(j+1), korr(j), n)
+  end do
+  call inc_vector(hilf%y2, hilf%tmp, h/24.d0, n)         !y2: new appr.
+                                                         !solution.
+  call dgl(bspn,n,x0, hilf%y2, hilf%f(4))  !f[4] comtains the node for
+                                           !the starting values
+                                           !derived from the corrector.
+  methode = 1
+  aufrufe = aufrufe + 2            !2 calls of dgl for one  A-B-M step
+
+  return
+
+End Subroutine abm_schritt
+
+
+! ---------------------------------------------------------------------
+!Predictor-corrector method for 1st order DE systems
+integer Function prae_korr (  &
+              x,              &      !initial/final x-value ........}
+              y,              &      !initial value/ solution ......}
+              n,              &      !number of DEs ................}
+              xend,           &      !desired final x-value ........}
+              h,              &      !starting/final step size .....}
+              epsabs,         &      !absolute error bound .........}
+              epsrel,         &      !relative error bound .........}
+              fmax,           &      !maximal # of calls for dgl ...}
+              aufrufe,        &      !actual # of calls of dgl .....}
+              hmax,           &      !maximal step size ............}
+              neu  )                 !delete old data ? ............}
+real*8 x,y(0:n-1),xend,h,epsabs,epsrel,hmax
+integer n,fmax,aufrufe; logical neu
+!************************************************************************
+!* Solve a system of ordinary differential equations                    *
+!*                                                                      *
+!*      y' = f(x,y)        with the initial condition y(x0) = y0        *
+!*                                                                      *
+!* using the predictor-corrector method of Adams-Bashforth-Moulton.     *
+!* The needed starting values are obtained by an initial run of Runge-  *
+!* Kutta with the same order as the  A-B-M method.                      *
+!* We work with automatic step size control with doubling/halfing of    *
+!* the step size according to the subsequent error estimates.           *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* x        x-value where a corresponding y-value is known              *
+!* y        [0..n-1] vector with the initial y-data                     *
+!* n        number of DEs                                               *
+!* xend     x-value for which we want to find the solution; may be less *
+!*          than x                                                      *
+!* h        step size for next step; this is usually determined inside  *
+!*          this function                                               *
+!* epsabs\  error bounds for absolute and relative errors; each >= 0    *
+!* epsrel/  We apply a mixed test :                                     *
+!*              |local error|  <=  |y| * epsrel + epsabs.               *
+!*          For  epsrel = 0, we test for absolute error only.           *
+!*          For  epsabs = 0, we test for relative error.                *
+!*          Each error bound is internally set to 10 * machine constant *
+!*          if it should be prescribed to be too small.                 *
+!* fmax     upper bound for the allowed number of evaluations of the    *
+!*          right hand side  dgl of the DE system                       *
+!* hmax     maximal  step size; must be positive                        *
+!* neu      If TRUE, we start off using Runge-Kutta, even if the earlier*
+!*          integration counld be continued with another A-B-M step     *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* x        final x-value of integration (if run was successful: x=xend)*
+!* y        [0..n-1] approximate solution vector at x                   *
+!* h        final step size; should be used for start of next call.     *
+!*          If changed, please reset flag as well.                      *
+!* aufrufe  counter for calls of dgl                                    *
+!*                                                                      *
+!* Return value :                                                       *
+!* ==============                                                       *
+!* error code :                                                         *
+!*   = 0: no error, xend was reached                                    *
+!*   = 1: after fmax calls of dgl we have not reached xend:             *
+!*        a new call with unchanged parameters might be successful      *
+!*        (or try raising the error bounds)                             *
+!*   = 2: the step size is less than 8 * machine constant.              *
+!*        Before subsequent calls increase h and the error bounds.      *
+!*   = 3: epsabs or epsrel negative, or both equal to zero.             *
+!*   = 4: xend = x                                                      *
+!*   = 5: hmax negative                                                 *
+!*   = 6: n <= 0                                                        *
+!*   = 7: lack of available memory                                      *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* rk_start, abm_schritt, init_praeko, MACH_EPS, max, boolean, EIGHT,   *
+!* norm_max, copy_vector, REAL, ZERO, ONE, TEN, FALSE, TRUE.            *
+!************************************************************************
+
+logical, parameter :: CHECK = .TRUE.  !check new step size in rk_start
+real*8,  parameter :: MACH_EPS = 2.2d-16 
+
+  !Vector with factors for error estimation:
+  !guess(0) for Runge-Kutta, guess(1) for Adams-Bashforth-Moulton.
+  real*8 guess(0:1)
+
+  real*8 x0, x_save,  &       !aux storage for       x
+  h_save                      !aux storage for       h
+  
+  integer methode             !Number of most recently used method
+                              !(Runge-Kutta or Adams-Bashforth-M.)
+
+  Type(Hilfstyp) hilf         !local auxiliary variables
+
+  real*8 ynorm,  &            !Maximum norm from hilf%y2
+  diffnorm                    !Maximum norm from hilf%diff
+  integer i,ii,  &            !loop counters
+  rks                         !Result of rk_start
+  logical folgeaufruf         !Flag indicating we can continue
+                              !an earlier call with A-B-M method
+
+  folgeaufruf = .FALSE.
+
+  guess(0) = 1.d0/80.d0
+  guess(1) = -19.d0/270.d0
+
+  ! ------------------- Check input data ----------------------------
+  if (epsabs < 0.d0.or.epsrel < 0.d0.or.epsabs + epsrel <= 0.d0) then
+    folgeaufruf = .FALSE.
+    prae_korr = 3
+    return
+  end if
+  if (xend == x) then
+    folgeaufruf = .FALSE.
+    prae_korr = 4
+    return
+  end if
+  if (hmax <= 0.d0) then
+    folgeaufruf = .FALSE.
+    prae_korr = 5
+    return
+  end if
+  if (n <= 0) then
+    folgeaufruf = .FALSE.
+    prae_korr = 6
+    return
+  end if
+
+  ! -------------- Prepare integration loop -------------------------
+  epsrel = Max(epsrel, 10.d0 * MACH_EPS)
+  epsabs = Max(epsabs, 10.d0 * MACH_EPS)
+
+  aufrufe = 1
+
+  if (neu) then                           !Force start with R-K step ?
+    folgeaufruf = .FALSE.
+  end if
+
+  if (folgeaufruf) then                 !Use values of previous call ?
+    call abm_schritt(x0, n, h,  &       !Perform A-B-M step.
+                     methode, aufrufe, hilf)
+
+  else                                  !very first call ?
+    call dgl(bspn,n,x, y, hilf%f(1))    !store beginning of starting
+    aufrufe = aufrufe + 1               !values in hilf.f[1]
+    h_save = h                          !save starting step size
+	x_save = x                          
+    rks =  rk_start(x, x0, y, n,  &     !new step size too small ?
+                    xend, h, hmax, CHECK,  &
+                    methode, aufrufe, hilf)
+    x = x_save
+    if (rks.ne.0) then
+      h           = h_save
+      folgeaufruf = .FALSE.
+      prae_korr = 0
+      return
+    end if
+    ! ---------- starting values available in                ----------
+    ! ---------- hilf.f[1], hilf.f[2], hilf.f[3], hilf.f[4]. ----------
+  end if
+
+  ! ---------------------- Integration  loop --------------------------
+  do While (.TRUE.)
+
+    if (aufrufe > fmax) then                !excessive function calls ?
+      x = x0
+      call copy_vector(y, hilf%y2, n)      !newest approximation for  y
+      folgeaufruf = .TRUE.
+      prae_korr = 1                    !stop and report excessive calls
+      return
+    end if
+
+    do i = 0, n-1                                     !error estimation
+      hilf%diff(i) = guess(methode) * (hilf%y2(i) - hilf%y1(i))
+    end do
+
+    diffnorm = norm_max(hilf%diff, n)
+    ynorm    = norm_max(hilf%y2,   n)
+
+    if (diffnorm >= epsrel * ynorm + epsabs) then  !error too large ?
+      h = h * 0.5d0                                !halve the step size
+                                                   !and  repeat.
+      if (DABS(h) <= 8.d0*MACH_EPS*DABS(x0)) then  !step size too small?
+        folgeaufruf = .FALSE.
+        prae_korr = 2
+        return
+      end if
+
+	  x_save = x
+      ii = rk_start(x, x0, y, n,           &      !compute new starting
+               xend, h, hmax, .NOT.CHECK,  &      !values with  Runge-
+               methode, aufrufe, hilf)            !Kutta.
+      x = x_save 
+
+    else                                !error not excessive ?
+                                        !step was successful, continue
+      x = x0                            !on with the previous step size
+      do i = 0, n-1                     !add estimated error onto new
+        hilf%y2(i) = hilf%y2(i) + hilf%diff(i)           !approximation
+      end do
+      call copy_vector(y, hilf%y2, n)   !newest approximation for y
+      call dgl(bspn,n,x0, y, hilf%f(4)) !correct last node for the next
+                                        !A-B-M step.
+      aufrufe = aufrufe + 1
+
+      !accuracy excessive ?
+      if (diffnorm <= 0.02d0 * (epsrel * ynorm + epsabs)) then
+
+        h      = h + h                                !double step size
+        h_save = Max(h, h_save)
+
+        if (h > 0.d0.and.x0 >= xend.or.  &            !reached xend ?
+           (h < 0.d0.and.x0 <= xend)) then
+          folgeaufruf = .FALSE.
+          prae_korr = 0                               !all done,
+          return                                      !normal exit
+        end if
+
+        !Continue integration with doubled step size.
+        !First find a new set of starting values via Runge-Kutta.
+
+        call copy_vector(hilf%f(1), & !use final value of starting value
+                    hilf%f(4),      & !as the first entry for the new set
+                    n )
+        x_save = x
+        if (rk_start(x, x0, y, n,   &         !new step size too small ?
+                     xend, h, hmax, CHECK, &
+                     methode, aufrufe, hilf).ne.0) then 
+          h           = h_save
+          folgeaufruf = .FALSE.
+          prae_korr = 0
+          return
+        end if
+		x = x_save
+      else                                     !last step successful ?
+      
+        if ((h > 0.d0.and.x0 >= xend).or.  &   !has xend been reached ?
+           (h < 0.d0.and.x0 <= xend)) then
+          folgeaufruf = .FALSE.
+          prae_korr = 0
+          return
+        end if
+
+        if ((h > 0.d0.and.x0 + h >= xend).or. &   !sufficintly close
+           (h < 0.d0.and.x0 + h <= xend)) then    !to  xend ?
+
+          !The next step would lead beyond xend. Hence we now use
+          !xend - x0 as the step size, and start anew using R-K.
+
+          h = xend - x0
+          h_save = h
+          call copy_vector(hilf%f(1), &  !assign the final entry of the
+                      hilf%f(4),      &  !old starting values to be the
+                      n )                !first value of the new one.
+          x_save = x
+          if (rk_start(x, x0, y, n,   &  !new step size too small ?
+                       xend, h, hmax, CHECK, &
+                       methode, aufrufe, hilf).ne.0) then
+            h           = h_save
+            folgeaufruf = .FALSE.
+            prae_korr = 0
+            return
+          end if
+		  x = x_save
+        else
+          call abm_schritt(x0, n, h,  &  !perform one A-B-M step
+                           methode,   &
+                           aufrufe, hilf)
+        end if
+      end if
+    end if
+  end do !while True
+  return 
+End Function prae_korr
+
+End Module AB_MOU
+
+! -------------------------- END ab_mou.f90 ---------------------------

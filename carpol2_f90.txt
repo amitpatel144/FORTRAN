@@ -1,0 +1,200 @@
+!*********************************************************
+!* Calculate the coefficients of the characteristic poly-*
+!* nomial P(l)=A-l*I of a real matrix A(i,j)             *
+!* ----------------------------------------------------- *
+!* Ref.: "Algèbre, Algorithmes et programmes en Pascal   *
+!*        By Jean-Louis Jardrin, DUNOD Paris, 1988"      *
+!*        [BIBLI 10].                                    *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!* (Find the caracteristic polynomial of matrix:         *
+!*           1  0  0  0  0  1                            *
+!*           1  1  0  0  0 -1                            *
+!*      A = -1  1  1  0  0  1                            *
+!*           1 -1  1  1  0 -1                            *
+!*          -1  1 -1  1  1  1                            *
+!*           1 -1  1 -1  1 -1  )                         *
+!*                                                       *
+!* Input matrix size (max 100): 6                        *
+!*  Line 1:                                              *
+!*   Element 1: 1                                        *
+!*   Element 2: 0                                        *
+!*   Element 3: 0                                        *
+!*   Element 4: 0                                        *
+!*   Element 5: 0                                        *
+!*   Element 6: 1                                        *
+!*  Line 2:                                              *
+!*   Element 1: 1                                        *
+!*   Element 2: 1                                        *
+!*   Element 3: 0                                        *
+!*   Element 4: 0                                        *
+!*   Element 5: 0                                        *
+!*   Element 6: -1                                       *
+!*  Line 3:                                              *
+!*   Element 1: -1                                       *
+!*   Element 2: 1                                        *
+!*   Element 3: 1                                        *
+!*   Element 4: 0                                        *
+!*   Element 5: 0                                        *
+!*   Element 6: 1                                        *
+!*  Line 4:                                              *
+!*   Element 1: 1                                        *
+!*   Element 2: -1                                       *
+!*   Element 3: 1                                        *
+!*   Element 4: 1                                        *
+!*   Element 5: 0                                        *
+!*   Element 6: -1                                       *
+!*  Line 5:                                              *
+!*   Element 1: -1                                       *
+!*   Element 2: 1                                        *
+!*   Element 3: -1                                       *
+!*   Element 4: 1                                        *
+!*   Element 5: 1                                        *
+!*   Element 6: 1                                        *
+!*  Line 6:                                              *
+!*   Element 1: 1                                        *
+!*   Element 2: -1                                       *
+!*   Element 3: 1                                        *
+!*   Element 4: -1                                       *
+!*   Element 5: 1                                        *
+!*   Element 6: -1                                       *
+!*                                                       *
+!* Chracteristic polynomial P(l):                        *
+!* Coefficient for degree 6:   1.000000                  *
+!* Coefficient for degree 5:  -4.000000                  *
+!* Coefficient for degree 4:   0.000000                  *
+!* Coefficient for degree 3:  30.000000                  *
+!* Coefficient for degree 2: -75.000000                  *
+!* Coefficient for degree 1:  79.000000                  *
+!* Coefficient for degree 0: -32.000000                  *
+!*                                                       *
+!* (The characteristic polynomial of matrix A is:        *
+!*   P(l)=l^6-4*l^5+30*l^3-75*l^2+79*l-32 )              *
+!*                                                       *
+!*                 F90 version by J-P Moreau, Paris      *
+!*               (with dynamically allocated vectors).   *
+!*                        (www.jpmoreau.fr)              *
+!*********************************************************
+Program CARPOL2
+
+integer ialloc, k,n
+real*8, pointer :: A(:,:), P(:)
+
+  print *,' '
+  !read size of matrix A
+  write(*,10,advance='no'); read *, n
+
+  !allocate memory for A and P
+  allocate(A(1:n,1:n),stat=ialloc)
+  allocate(P(1:n+1),stat=ialloc)
+
+  !read A matrix
+  call Read_data(n, A)
+
+  !call routine to calculate coefficients
+  call PCMS(n,A,P)
+
+  !print results
+  print *,' '
+  print *,' Characteristic polynomial P(l): '
+  do k=1, n+1
+    write(*,20) n-k+1, P(k)
+  end do
+  print *,' '
+
+10 format(' Input matrix size: ')
+20 format(' Coefficient for degree ',I2,': ',F10.6)
+
+END
+
+!read A matrix from screen
+Subroutine Read_data(n,A)
+integer n, i,j
+real*8 A(n,n)
+  do i=1, n
+    print *,' '
+	write(*,10) i
+    do j=1, n
+      write(*,20,advance='no') j; read *, A(i,j)
+    end do
+  end do
+  return
+10 format(' Line ',I2)
+20 format('  Element ',I2,': ')
+End
+
+!calculate trace of matrix C(n,n)
+real*8 Function TRM(n, C)
+integer n,i
+real*8 t0, C(1:n,1:n)
+  t0=0.d0
+  do i=1, n
+    t0=t0+C(i,i)
+  end do
+  TRM=t0
+  return
+End
+
+!******************************************************
+!* The subroutine PCMS calculates the real coeffi-    *
+!* cients of the characteristic polynomial P(l)=A-l*I *
+!* of a real square matrix A(i,j).                    *
+!*                                                    *
+!* Note: the roots of P(l) are the real or complex    *
+!* eigenvalues of matrix A(i,j).                      *
+!* -------------------------------------------------- *
+!* INPUTS:                                            *
+!*          n: zize of matrix (integer)               *
+!*          A: real square matrix of size (n,n)       *
+!*             (see main program).                    *
+!* OUTPUT:                                            *
+!*          P: vector of real coefficients of P(l)    *
+!******************************************************
+Subroutine PCMS(n, A, P)
+integer n, i,j,k,l, ialloc
+real*8 A(n,n), P(n), s,t0
+real*8, pointer :: B(:,:),C(:,:)
+
+!allocate temporary matrices B and C
+  allocate(B(1:n,1:n),stat=ialloc)
+  allocate(C(1:n,1:n),stat=ialloc)
+  
+  if (MOD(n,2).ne.0)  then   !n is odd 
+    P(1)=-1.d0
+  else 
+    P(1)= 1.d0
+  end if
+  do l=1, n
+    if (l==1) then
+	  C = A
+    else
+      do i=1, n
+        do j=1, n
+          s=0.d0
+          do k=1, n
+            s=s+B(i,k)*A(k,j)
+          end do
+          C(i,j)=s
+        end do
+      end do
+    end if
+    t0=TRM(n,C)/l
+    P(l+1)=-t0*P(1)
+    if (l<n) then
+      do i=1, n
+        do j=1, n
+          if (j==i) then 
+		    B(i,j)=C(i,j)-t0
+          else 
+		    B(i,j)=C(i,j)
+          end if
+        end do
+      end do
+    end if
+  end do
+  return
+End !PCMS
+
+!end of file carpol2.f90
+
+

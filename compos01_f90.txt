@@ -1,0 +1,200 @@
+!************************************************************************
+!*  This program calculates the stresses in a unidirectional layer of a *
+!*  composite material, knowing deformations exx, eyy, gxy, and angle   *
+!*  theta of fibers in x direction. We consider here that we have a     *
+!*  plane stress state.                                                 *
+!*                                                                      *
+!*  The stresses sxx, syy and sxy are calculated:                       *
+!*                                                                      *
+!*    1. in plane (x,y),                                                *
+!*    2. in the main axes (L,W) of the layer.                           *
+!*                                                                      *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                          *
+!*                                                                      *
+!*   STRESSES IN A UNIDIRECTIONAL COMPOSITE LAYER                       *
+!*                                                                      *
+!*      Angle of fibers:  30.000 deg                                    *
+!*      eps. xx        :  10.000  mm                                    *
+!*      eps. yy        :  -5.000  mm                                    *
+!*      gam. xy        :  20.000  mm                                    *
+!*                                                                      *
+!*   REDUCED STIFFNESS MATRIX (MAIN AXES):                              *
+!*                                                                      *
+!*   0.410509E+02   0.328407E+01   0.000000E+00                         *
+!*   0.328407E+01   0.102627E+02   0.000000E+00                         *
+!*   0.000000E+00   0.000000E+00   0.450000E+01                         *
+!*                                                                      *
+!*   REDUCED STIFFNESS MATRIX (X, Y AXES):                              *
+!*                                                                      *
+!*   0.283391E+02   0.829885E+01   0.956112E+01                         *
+!*   0.829885E+01   0.129450E+02   0.377055E+01                         *
+!*   0.956112E+01   0.377055E+01   0.951478E+01                         *
+!*                                                                      *
+!*   Stresses in axes x, y:                                             *
+!*                                                                      *
+!*   0.433119E+03 MPa                                                   *
+!*   0.936746E+02 MPa                                                   *
+!*   0.267054E+03 MPa                                                   *
+!*                                                                      *
+!*   Stresses in main axes:                                             *
+!*                                                                      *
+!*   0.579533E+03 MPa                                                   *
+!*  -0.527399E+02 MPa                                                   *
+!*  -0.134567E+02 MPa                                                   *
+!*                                                                      *
+!*   END OF PROGRAM.                                                    *
+!* -------------------------------------------------------------------- *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!************************************************************************
+PROGRAM COMPOS01
+
+      PARAMETER(NMAX=3)
+      REAL*8 PI,EL,ET,NULT,GLT
+      REAL*8 TEMP,TH,EXX,EYY,GXY
+
+      REAL*8 Q(NMAX,NMAX),Q1(NMAX,NMAX)
+      REAL*8 S(NMAX),S1(NMAX),E(NMAX)
+
+      REAL*8 dcos4, dsin4
+
+      PI = 4.D0*DATAN(1.D0)
+
+! material constants (GPa) 
+
+      EL = 40.D0   
+      ET = 10.D0 
+      NULT =  0.32D0
+      GLT  =  4.5D0
+
+! initial data 
+
+      TH  = 30.D0 
+      EXX = 0.01D0
+      EYY =-5.D-03 
+      GXY = 2.D-02
+
+      WRITE(*,*) ' '
+	  WRITE(*,*) '  STRESSES IN A UNIDIRECTIONAL COMPOSITE LAYER'
+      WRITE(*,*) ' '
+      WRITE(*,20) '    Angle of fibers: ',TH,' deg'
+      WRITE(*,20) '    eps. xx        : ',1000*EXX,' mm'
+      WRITE(*,20) '    eps. yy        : ',1000*EYY,' mm'   
+      WRITE(*,20) '    gam. xy        : ',1000*GXY,' mm'   
+
+!   reduced stiffness matrix in main axes (L,W) 
+      CALL MATNUL(Q)
+      Q(1,1) = EL/(1.D0-((ET/EL)*NULT*NULT))
+      Q(2,2) = (ET/EL)*Q(1,1)
+      Q(1,2) = NULT*Q(2,2)
+      Q(2,1) = Q(1,2)
+      Q(3,3) = GLT
+      CALL MATPRINT('REDUCED STIFFNESS MATRIX (MAIN AXES):',Q)
+
+!   reduced stiffness matrix in axes (x,y) 
+      CALL MATNUL(Q1)
+      TH = 30.D0*PI/180.D0
+      TEMP = dsin(TH)*dsin(TH)*dcos(TH)*dcos(TH)
+      Q1(1,1)=Q(1,1)*dcos4(TH)+Q(2,2)*dsin4(TH)+2.D0*(Q(1,2)+2.D0*Q(3,3))*TEMP
+      Q1(1,2)=(Q(1,1)+Q(2,2)-4.D0*Q(3,3))*TEMP+Q(1,2)*(dcos4(TH)+dsin4(TH))
+      Q1(2,1)=Q1(1,2)
+      TEMP = dsin(TH)*dcos(TH)*dcos(TH)*dcos(TH)
+      Q1(1,3)=(Q(1,1)-Q(1,2)-2.D0*Q(3,3))*TEMP
+      TEMP = dsin(TH)*dsin(TH)*dsin(TH)*dcos(TH)
+      Q1(1,3)=Q1(1,3)+(Q(1,2)-Q(2,2)+2.0*Q(3,3))*TEMP
+      Q1(3,1)=Q1(1,3)
+      TEMP = dsin(th)*dsin(th)*dcos(th)*dcos(th)
+      Q1(2,2)=Q(1,1)*dsin4(th)+2.0*(Q(1,2)+2.0*Q(3,3))*TEMP+Q(2,2)*dcos4(th)
+      TEMP = dsin(th)*dsin(th)*dsin(th)*dcos(th)
+      Q1(2,3)=(Q(1,1)-Q(1,2)-2.0*Q(3,3))*TEMP
+      TEMP = dcos(th)*dcos(th)*dcos(th)*dsin(th)
+      Q1(2,3)=Q1(2,3)+(Q(1,2)-Q(2,2)+2.0*Q(3,3))*TEMP
+      Q1(3,2)=Q1(2,3)
+      TEMP = dsin(th)*dsin(th)*dcos(th)*dcos(th)
+      Q1(3,3)=(Q(1,1)+Q(2,2)-2.0*(Q(1,2)+Q(3,3)))*TEMP+Q(3,3)*(dsin4(th)+dcos4(th))
+      CALL MATPRINT('REDUCED STIFFNESS MATRIX (X, Y AXES):',Q1)
+
+!   stresses in axes (x, y): 
+      E(1)=EXX 
+      E(2)=EYY 
+      E(3)=GXY
+      CALL MATMULT(Q1,E,S)
+      WRITE (*,*) ' '
+      WRITE (*,*) '  Stresses in axes x, y:'
+      WRITE (*,*) ' '
+      DO I=1,NMAX
+        WRITE (*,10) 1000*S(I)
+      ENDDO
+
+!   stresses in main axes: 
+      TEMP=dsin(th)*dcos(th)
+      Q(1,1)=dcos(th)*dcos(th) 
+      Q(1,2)=dsin(th)*dsin(th)
+      Q(1,3)=2.0*TEMP
+      Q(2,1)=Q(1,2)
+      Q(2,2)=Q(1,1)
+      Q(2,3)=-Q(1,3)
+      Q(3,1)=-TEMP
+      Q(3,2)=TEMP
+      Q(3,3)=dcos(th)*dcos(th)-dsin(th)*dsin(th)
+      CALL MATMULT(Q,S,S1)
+      WRITE (*,*) ' '
+      WRITE (*,*) '  Stresses in main axes:'
+      WRITE (*,*) ' '
+      DO I=1,NMAX
+        WRITE (*,10) 1000*S1(I)
+      ENDDO
+      WRITE (*,*) ' '
+      STOP '   END OF PROGRAM'
+   10 FORMAT('  ',E13.6,' MPa')
+   20 FORMAT(A23,F7.3,A4)
+END   !of main program
+
+SUBROUTINE MATNUL(A) 
+      PARAMETER(NMAX=3)
+      REAL*8 A(NMAX,NMAX)
+      DO I=1,NMAX
+        DO J=1,NMAX
+          A(I,J)=0.D0
+        ENDDO
+      ENDDO
+END
+
+SUBROUTINE MATMULT(A, B, C)  
+      PARAMETER(NMAX=3)
+      REAL*8 A(NMAX,NMAX),B(NMAX),C(NMAX)
+      REAL*8 SUM
+      DO I=1,NMAX
+        SUM= 0.D0
+        DO K=1,NMAX
+          SUM=SUM+A(I,K)*B(K)
+        ENDDO
+        C(I)=SUM
+      ENDDO
+END
+
+SUBROUTINE MATPRINT(title,A) 
+      PARAMETER(NMAX=3)
+      CHARACTER*(*) title
+      REAL*8 A(NMAX,NMAX)
+      WRITE(*,*) ' '
+      WRITE(*,*) '  ',title
+      WRITE(*,*) ' '
+      WRITE(*,10) ((A(I,J),J=1,NMAX),I=1,NMAX)
+   10 FORMAT(3('  ',E13.6))
+      END
+
+      REAL*8 FUNCTION dcos4(t) 
+      REAL*8 a,t
+      a=dcos(t)
+      dcos4 = a*a*a*a
+      END
+
+      REAL*8 FUNCTION dsin4(t) 
+      REAL*8 a,t
+      a=dsin(t)
+      dsin4 = a*a*a*a
+END
+
+!end of file Compos01.f90

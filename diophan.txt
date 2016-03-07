@@ -1,0 +1,137 @@
+!**********************************************
+!* Solving a diophantian equation ax+by = c   *
+!*      (a,b,c,x,y are integer numbers)       *
+!* ------------------------------------------ *
+!* Ref.: "Mathématiques en Turbo-Pascal       *
+!*        By M. Ducamp and A. Reverchon (2),  *
+!*        Eyrolles, Paris, 1988" [BIBLI 05].  *
+!* ------------------------------------------ *
+!* Sample run:                                *
+!*                                            *
+!* SOLVING IN Z EQUATION AX + BY = C          *
+!*                                            *
+!*    A = 3                                   *
+!*    B = -2                                  *
+!*    C = 7                                   *
+!*                                            *
+!* Solutions are:                             *
+!*                                            *
+!*   X =    1 +     2*K                       *
+!*   Y =   -2 +     3*K                       *
+!*                                            *
+!*                F90 Version By J-P Moreau.  *
+!*                    (www.jpmoreau.fr)       *
+!**********************************************
+Program Diophantian_Equation
+
+implicit none
+integer, parameter :: TRUE=1, FALSE=0
+
+integer iresult, Diophantian
+real    a,b,c,p,q,x0,y0
+
+  print *,' '
+  print *,' SOLVING IN Z EQUATION AX + BY = C'
+  print *,' ' 
+  write(*,100,advance='no'); Read *, a
+  write(*,110,advance='no'); Read *, b
+  write(*,120,advance='no'); Read *, c 
+  print *,' '
+
+  iresult = Diophantian(a,b,c,x0,y0,p,q)
+
+  if (iresult.eq.TRUE) then
+    print *,' ' 
+    print *,' Solutions are:'
+    print *,' '
+    write(*,200)  x0, abs(q)
+    if (p*q>0) then 
+	  write(*,210)  y0, abs(p)
+    else
+      write(*,220)  y0, abs(p)
+    endif
+  else
+    print *,' No solutions.'
+  endif
+  print *,' '
+  print *,' '
+  stop
+
+100 format('    A = ')
+110 format('    B = ')
+120 format('    C = ')
+200 format('   X=',F6.0,' +',F6.0,' *K')
+210 format('   Y=',F6.0,' -',F6.0,' *K')
+220 format('   Y=',F6.0,' +',F6.0,' *K')
+
+END
+
+
+!return greatest common divisor of two integer numbers
+integer FUNCTION GCD(a,b)
+  implicit none
+  real a,b,  r, temp
+  a = int(abs(a))
+  b = int(abs(b))
+  if (a>1e10.or.b>1e10) then 
+    GCD=1; return
+  endif
+  if (a.eq.0.or.b.eq.0) then 
+    GCD=1; return
+  endif
+  if (a<b) then
+    temp=a; a=b; b=temp
+  endif
+
+1010 r=a-b*int(a/b)
+    a=b; b=r
+  if (abs(r)>1e-10) goto 1010
+  GCD = a
+return
+end
+
+
+!***********************************************************
+!* Solving equation ax+by=c, a,b,c,x,y are integer numbers *
+!* ------------------------------------------------------- *
+!* INPUT:   a,b,c       coefficients of equation           *
+!* OUTPUT:  solutions are x0+kp and y0-kq, with k=0,1,2... *
+!*          or k=-1,-2,-3...                               *
+!* The function returns TRUE if solutions exist (that is,  *
+!* if the GCD of a,b is also a divisor of c).              *
+!***********************************************************
+Integer Function Diophantian(a,b,c,x0,y0,p,q)
+implicit none
+integer, parameter :: TRUE=1, FALSE=0
+real  a,b,c,x0,y0,p,q
+real  aa, bb, pg, x1, x2, y1, y2
+integer ifound, GCD
+
+  Diophantian=FALSE
+  if (a.eq.0) return; if (b.eq.0) return
+  aa=a; bb=b  !send copies of a and b to function GCD!
+  pg=GCD(aa,bb)
+  a=a/pg; b=b/pg; c=c/pg
+  if (c.ne.INT(c)) return    !pg must be also a divisor of c
+  x1=0; y2=0
+  ifound=FALSE
+10 y1=(c-a*x1)/b
+    if (y1.eq.INT(y1)) then
+      x0=x1; y0=y1
+      ifound=TRUE
+    else
+      x1=-x1; if (x1>=0) x1=x1+1
+      x2=(c-b*y2)/a
+      if (x2.eq.INT(x2)) then
+        x0=x2; y0=y2; ifound=TRUE
+      else
+        y2=-y2; if (y2>=0) y2=y2+1
+      endif
+    endif
+  if(ifound.eq.FALSE) goto 10
+  p=a; q=b
+  Diophantian=TRUE
+  return
+End;
+
+!end of file diophan.f90

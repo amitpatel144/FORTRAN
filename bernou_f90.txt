@@ -1,0 +1,114 @@
+!************************************************
+!* Roots of a polynomial by Bernouilli's method *
+!* -------------------------------------------- *
+!* Reference: "Methodes de calcul numerique By  *
+!*             Claude Nowakowski, PSI Editions, *
+!*             France, 1981" [BIBLI 04].        *
+!*                                              *
+!*                F90 version by J-P Moreau     *
+!*                    (www.jpmoreau.fr)         *
+!* -------------------------------------------- *
+!* SAMPLE RUN:                                  *
+!*                                              *
+!* Roots of a polynomial by Bernouilli's method *
+!*                                              *
+!* Input order of polynomial: 4                 *
+!*                                              *
+!* Input coefficients of the polynomial:        *
+!*                                              *
+!*   A( 0 ) = 1                                 *
+!*   A( 1 ) = 2                                 *
+!*   A( 2 ) = -13                               *
+!*   A( 3 ) = -14                               *
+!*   A( 4 ) = 24                                *
+!*                                              *
+!* ===== R O O T S =====                        *
+!*                                              *
+!*   X1 =   -4.0000                             *
+!*   X2 =    3.0000                             *
+!*   X3 =   -2.0001                             *
+!*   X4 =    1.0001                             *
+!*                                              *
+!************************************************
+PROGRAM Test_Bernouilli
+
+integer k,nd
+real*8  A(0:24)
+
+  print *,' '  
+  print *,'Roots of a polynomial by Bernouilli''s method'
+  print *,' '
+  write(*,"(' Input order of polynomial: ')",advance='no')
+  read  *, nd
+  print *,' '
+  print *,'Input coefficients of the polynomial:'
+  print *,' '
+  do k=0, nd
+    write(*,10,advance='no')  k 
+	read  *, A(k)
+  end do
+
+  ! call Bernouilli procedure and printf results
+  call Bernouilli(nd,A);
+
+  print *,' '
+  print *,' '
+
+  stop
+
+10 format('   A(',i1,') = '); 
+
+end
+
+! Bernouilli's subroutine
+Subroutine Bernouilli(n,A)
+! Labels: 5,50,100
+  real*8 A(0:24),Y(0:24)
+  integer k,l,n,nroot
+  real*8  er,s,x,x1
+  print *,' '
+  print *,' ===== R O O T S ====='
+  print *,' '
+  if (dabs(A(0))<1.d-12) then
+    print *,'Error: A(0) must be <> 0 !'
+    return
+  end if
+  do k=0, n
+    A(k)=A(k)/A(0)
+  end do
+  nroot=0
+5 x1=0.d0
+  nroot=nroot+1
+  do k=2, n
+    Y(k)=0.d0
+  end do
+  Y(1)=1.d0
+  do l=1, 50
+    s=0.d0
+    do k=1, n
+      s = s + Y(k)*A(k)
+    end do
+    Y(0)=-s
+    x=Y(0)/Y(1)
+    er=dabs(x1-x)
+    if (l<n) goto 50
+    if (er<5.d-5) goto 100
+50  x1=x
+    do k=n, 1, -1
+      Y(k)=Y(k-1)
+    end do
+  end do !l loop
+  print *,'Error: no convergence - error=', er
+  return
+100 write(*,200)  nroot, x
+  n=n-1
+  if (n.eq.0) return
+  A(1) = A(1) + x
+  do k=2, n
+    A(k) = A(k) + x*A(k-1)
+  end do
+  goto 5
+200 format('   X',i1,' = ',F10.4)
+end
+
+! end of file bernou.f90

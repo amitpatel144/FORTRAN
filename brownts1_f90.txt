@@ -1,0 +1,151 @@
+!************************************************************************
+!* This program tests the procedure brown1 which is designed to solve   *
+!* a nonlinear system of equations                                      *
+!*             f0  (x0,x1,...,xn-1)  =  0                               *
+!*             f1  (x0,x1,...,xn-1)  =  0                               *
+!*             ...                                                      *
+!*             fn-1(x0,x1,...,xn-1)  =  0                               *
+!* using Brown's method (see unit Brown.pas).                           *
+!*                                                                      *
+!* Scope of program:                                                    *
+!* ================                                                     *
+!* The program reads the input from stdin and writes output onto file   *
+!* brownts1.lst.                                                        *
+!*                                                                      *
+!* After reading, the input is printed out for control purposes. Then   *
+!* Brown's method is performed and, barring premature errors, the end   *
+!* results are printed.                                                 *
+!*                                                                      *
+!* The system to solve is defined in unit Brown.pas.                    *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                          *
+!*                                                                      *
+!* Desired precision : 1.d-8                                            *
+!* Protocole (0 or 1): 0                                                *
+!* Maximum number of iterations : 25                                    *
+!* Components of starting vector:                                       *
+!* 1.d0                                                                 *
+!* 1.d0                                                                 *
+!* 1.d0                                                                 *
+!* 1.d0                                                                 *
+!*                                                                      *
+!* The output file brownts1.lst contains:                               *
+!*                                                                      *
+!* -------------------------------------------------------------------- *
+!* Brown's method for nonlinear systems of equations                    *
+!* -------------------------------------------------------------------- *
+!* Example n° 3                                                         *
+!* System to be solved:                                                 *
+!* 10*x0 + x1 + x2 + x3 - 20 + sin(x0)^2 + cos(x1)^2 = 0                *
+!* x0 + 20*x1 + x2 + x3 - 48 + 1/(x[0]^6)            = 0                *
+!* (x0+x1)^2 + 30*x2 + x3 - 97 + Ln(x0) + Ln(x1+x2)  = 0                *
+!*  x0 + x1 + x2 + 40*x3 -166 + x0*x0                = 0                *
+!* Starting vector:                                                     *
+!*    1.000    1.000    1.000    1.000                                  *
+!* Error bound =  1.00000000000000E-0008                                *
+!* Maximal number of iterations = 25                                    *
+!*                                                                      *
+!* Intermediate results are not kept.                                   *
+!* Solution vector:                                                     *
+!*  1.040648  1.972398  2.745049  3.978974                              *
+!* Number of iterations: 4                                              *
+!* -------------------------------------------------------------------- *
+!*                                                                      *
+!*                                  F90 version by J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!************************************************************************
+! Files used: brown.f90, tfunct.f90
+! -----------------------------------------------------------------------
+Program Test_Brown
+Use Brown             !for subroutine Brown1
+Use TFUNCT            !for SIZE, etc. 
+
+!Label: 1000
+
+integer n,      &     ! size of system
+        maxit,  &     ! maximal number of iterations
+        error,  &     ! error code of subroutine brown1
+        itanz,  &     ! number of iterations performed
+        i,      &     ! Loop variable
+        prot          ! protocole flag
+real*8  eps,    &     ! desired accuracy
+        x0(0:SIZE), & ! [0..n-1] starting vector
+        x1(0:SIZE)    ! [0..n-1] approximate solution
+  
+  ! -------------------- read input ----------------------------------
+  print *,' ' 
+  n = 4               ! size of system
+  write(*,10,advance='no'); read *, eps
+  print *,' '
+  write(*,20,advance='no'); read *, prot
+  print *,' '
+  write(*,30,advance='no'); read *, maxit
+  print *,' '    
+  write(*,40)
+  do i = 0, n-1 
+    read *, x0(i)
+  end do
+  print *,' '
+  ! ------------ print input for checking purposes -------------------
+  open(unit=1,file='brownts1.lst',status='unknown')
+  write(1,*) ' ----------------------------------------------------'
+  write(1,*) '  Brown''s method for nonlinear systems of equations'
+  write(1,*) ' ----------------------------------------------------'
+  write(1,*) ' Example n° 3' 
+  write(1,*) ' System to be solved:'
+  write(1,*) ' 10*x0 + x1 + x2 + x3 - 20 + sin(x0)^2 + cos(x1)^2 = 0'
+  write(1,*) ' x0 + 20*x1 + x2 + x3 - 48 + 1/(x[0]^6)            = 0'
+  write(1,*) ' (x0+x1)^2 + 30*x2 + x3 - 97 + Ln(x0) + Ln(x1+x2)  = 0'
+  write(1,*) '  x0 + x1 + x2 + 40*x3 -166 + x0*x0                = 0'
+  write(1,*) ' Starting vector:'
+  write(1,50) (x0(i), i=0,n-1)
+  write(1,*) ' '
+  write(1,*) ' Error bound = ', eps
+  write(1,*) ' Maximal number of iterations = ', maxit
+  write(1,*) ' '
+  if (prot.ne.0) then
+    write(1,*) ' Intermediate results are saved.'
+  else
+    write(1,*) ' Intermediate results are not kept.'
+  end if
+  ! ------------ solve nonlinear system ------------------------------
+  call Brown1(n, x0, eps, prot, maxit, x1, itanz, error)
+
+  Select Case(error)
+    case(0) 
+	  goto 1000
+    case(1) 
+	  print *,' brown: too many steps'
+    case(2) 
+	  print *,' brown: linearized system singular'
+    case(3) 
+	  print *,' brown: lack of memory'
+    case(4) 
+	  print *,' brown: wrong input parameter: n < 1 or maxit < 1'
+    case(5) 
+	  print *,' brown: error calling function'
+  End Select
+
+  ! ---------------------- print solution -----------------------------
+1000 write(1,*) ' Solution vector:'
+  write(1,60) (x1(i), i=0,n-1)
+  write(1,*) ' '
+  write(1,*) ' Number of iterations: ', itanz   
+  write(1,*) ' ----------------------------------------------------'
+  close(unit=1)
+  
+  print *, ' Results in file brownts1.lst.'
+  print *,' '
+  stop
+
+10 format(' Desired precision : ')
+20 format(' Protocole (0 or 1): ')
+30 format(' Maximal number of iterations : ')
+40 format(' Componants of starting vector: ') 
+
+50 format(10F9.3)
+60 format(10F10.6)
+
+END 
+
+! end of file brownts1.f90

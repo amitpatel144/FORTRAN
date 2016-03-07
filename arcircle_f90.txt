@@ -1,0 +1,158 @@
+!*****************************************************
+!* This program allows calculating the 4 parameters  *
+!* of an arc of circle knowing two of them.          *
+!*  R:radius of circle S:curvilinear abscissa of arc *
+!*  C:length of chord  T:angle of arc of circle (rad)*
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!*   R=0                                             *
+!*   S=0                                             *
+!*   C=2                                             *
+!*   T=1                                             *
+!*                                                   *
+!* SUCCESS: Yes.                                     *
+!*                                                   *
+!* Radius              :    2.085830                 *
+!* Curvilinear abscissa:    2.085830                 *
+!* Chord               :    2.000000                 *
+!* Angle (radians)     :    1.000000                 *
+!*                                                   *
+!* Surface of angular sector     :   2.175343        *
+!* Surface between arc and chord :  0.3448550        *
+!*                                                   *
+!*                        F90 Version By J-P Moreau. *
+!*                            (www.jpmoreau.fr)      *
+!*****************************************************
+Program arc_of_circle
+
+parameter(FALSE=0,TRUE=1,PI=3.14159265359)
+
+  print *,''
+  print *,'             ARC OF CIRCLE'
+  print *,' -----------------------------------------'
+  print *,'  Give two parameters between:'
+  print *,'    R: radius of circle'
+  print *,'    S: curvilinear abscissa'
+  print *,'    C: chord'
+  print *,'    T: angle of arc in radians'
+  print *,'  The other two must be given as zero.'
+  print *,'  The program then calculates the'
+  print *,'  missing parameters and the two surfaces:'
+  print *,'    S1: total surface of angular sector'
+  print *,'    S2: surface between chord and arc s.'
+  print *,' -----------------------------------------'
+  write(*,100,advance='no'); read *, r
+  write(*,110,advance='no'); read *, s
+  write(*,115,advance='no'); read *, c
+  write(*,120,advance='no'); read *, t
+  print *,''
+  done=FALSE; ndata=0
+  !verify consistency of data r,s,c,t
+  if (r.ne.0.) ndata=ndata+1
+  if (s.ne.0.) ndata=ndata+1
+  if (c.ne.0.) ndata=ndata+1
+  if (t.ne.0.) ndata=ndata+1
+  if (ndata > 2) then
+    print *,' Too many data <> 0 (maximum two).'
+    goto 500
+  end if
+  if (ndata < 2) then
+    print *,' Not enough data <> 0 (minimum two).'
+    goto 500
+  end if
+  if (t<0.or.t>PI) then
+    print *,' Angle t(radians) must be between 0 and PI.'
+    goto 500
+  end if
+  if (s>0.and.c>=s) then
+    print *,' Chord c must be smaller than curvilinear abscissa s.'
+    goto 500
+  end if
+  if (c>0.and.s>c*PI/2) then
+    print *,' Curvilinear abscissa s must be smaller than chord times PI/2.'
+    goto 500
+  end if
+  if (r>0.and.s>PI*r) then
+    print *,' Curvilinear abscissa s must be smaller then radius r times PI.'
+    goto 500
+  end if
+  !end of verify data
+
+  x=1; y=0           !to ensure initial abs(x-y)<>0
+
+  if (t>0) then
+    if (r>0) then
+      !---------------------- t and r are given ----
+      s=r*t; c=2*r*sin(t/2)
+    else
+      if (s>0) then
+      !---------------------- t and s are given ----
+        r=s/t; c=2*r*sin(t/2)
+      else
+      !---------------------- t and c are given ----
+        r=c/2/sin(t/2); s=r*t
+      end if
+    end if
+  else  !t is not given
+    if (c.eq.0.) then
+      !---------------------- r and s are given ----
+      t=s/r; c=2*r*sin(t/2)
+    else
+      if (r>0.) then
+        !---------------------- r and c are given ----
+        if (c<2*r) then
+          t=2*atan(c/sqrt(4*r*r-c*c))
+        else
+          t=PI
+        end if
+        s=r*t
+      else
+      !---------------------- s and c are given
+        y=c
+        do while(abs(x-y)>1.E-8)
+          x=y;        u=s/x
+          a=s*cos(u); b=x*sin(u)-a
+          if ((c-a)*b<=0.) goto 500
+          y=x*(c-a)/b
+        end do
+        r=y/2; t=s/r
+      end if
+    end if
+  end if	 
+  !calculate surfaces s1 and s2
+  s1=s*r/2
+  s2=(s-c*cos(t/2))*r/2
+  done=TRUE
+
+  !print results
+  if (done.eq.TRUE) then
+    print *,''
+    print *,' SUCCESS:  Yes.'
+    print *,''
+    print *,' Radius              : ', r
+    print *,' Curvilinear abscissa: ', s
+    print *,' Chord               : ', c
+    print *,' Angle (radians)     : ', t
+    print *,''
+    print *,' Surface of angular sector     : ',s1
+    print *,' Surface between arc and chord : ',s2
+  else
+    print *,' SUCCESS:  No.'
+  end if
+
+500 print *,''
+    stop
+
+100 format('     R= ')
+110 format('     S= ')
+115 format('     C= ')
+120 format('     T= ')
+
+END
+
+! end of file arcircle.f90

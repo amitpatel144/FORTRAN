@@ -1,0 +1,210 @@
+!************************************************************************************
+!*       A char based calculator program for huge integers using unit PCalcFunc     *
+!* -------------------------------------------------------------------------------- *
+!* SAMPLE RUNS:                                                                     *
+!* (Calculate 2 power 4096 and 600!).                                               *
+!*                                                                                  *
+!* First number : 2                                                                 *
+!* Operator     : ^                                                                 *
+!* Second number: 4096                                                              *
+!*                                                                                  *
+!*  POWER: 1,044,388,881,413,152,506,691,752,710,716,624,382,579,964,249,047,383,78 *
+!* 0,384,233,483,283,953,907,971,557,456,848,826,811,934,997,558,340,890,106,714,43 *
+!* 9,262,837,987,573,438,185,793,607,263,236,087,851,365,277,945,956,976,543,709,99 *
+!* 8,340,361,590,134,383,718,314,428,070,011,855,946,226,376,318,839,397,712,745,67 *
+!* 2,334,684,344,586,617,496,807,908,705,803,704,071,284,048,740,118,609,114,467,97 *
+!* 7,783,598,029,006,686,938,976,881,787,785,946,905,630,190,260,940,599,579,453,43 *
+!* 2,823,469,303,026,696,443,059,025,015,972,399,867,714,215,541,693,835,559,885,29 *
+!* 1,486,318,237,914,434,496,734,087,811,872,639,496,475,100,189,041,349,008,417,06 *
+!* 1,675,093,668,333,850,551,032,972,088,269,550,769,983,616,369,411,933,015,213,79 *
+!* 6,825,837,188,091,833,656,751,221,318,492,846,368,125,550,225,998,300,412,344,78 *
+!* 4,862,595,674,492,194,617,023,806,505,913,245,610,825,731,835,380,087,608,622,10 *
+!* 2,834,270,197,698,202,313,169,017,678,006,675,195,485,079,921,636,419,370,285,37 *
+!* 5,124,784,014,907,159,135,459,982,790,513,399,611,551,794,271,106,831,134,090,58 *
+!* 4,272,884,279,791,554,849,782,954,323,534,517,065,223,269,061,394,905,987,693,00 *
+!* 2,122,963,395,687,782,878,948,440,616,007,412,945,674,919,823,050,571,642,377,15 *
+!* 4,816,321,380,631,045,902,916,136,926,708,342,856,440,730,447,899,971,901,781,46 *
+!* 5,763,473,223,850,267,253,059,899,795,996,090,799,469,201,774,624,817,718,449,86 *
+!* 7,455,659,250,178,329,070,473,119,433,165,550,807,568,221,846,571,746,373,296,88 *
+!* 4,912,819,520,317,457,002,440,926,616,910,874,148,385,078,411,929,804,522,981,85 *
+!* 7,338,977,648,103,126,085,903,001,302,413,467,189,726,673,216,491,511,131,602,92 *
+!* 0,781,738,033,436,090,243,804,708,340,403,154,190,336                            *
+!*                                                                                  *
+!* First number : 600                                                               *
+!* Operator     : !                                                                 *
+!*                                                                                  *
+!*  FACTORIAL: 12,655,723,162,254,307,425,418,678,245,150,829,297,671,403,862,274,6 *
+!* 60,768,187,828,858,528,140,823,147,351,237,817,802,795,619,571,074,765,208,532,5 *
+!* 98,060,224,803,240,903,782,164,769,430,795,025,578,054,271,906,283,387,643,826,0 *
+!* 88,448,124,626,488,332,623,608,376,164,081,221,171,179,439,885,840,257,818,732,9 *
+!* 19,037,889,603,719,186,743,943,363,062,139,593,784,473,922,231,852,782,547,619,7 *
+!* 71,723,889,252,476,871,186,000,174,697,934,549,112,845,662,596,182,308,280,390,6 *
+!* 15,184,691,924,446,215,552,586,523,740,084,932,807,259,056,238,962,104,689,731,5 *
+!* 22,587,564,412,231,618,018,774,350,801,526,839,567,367,444,928,206,231,310,973,6 *
+!* 19,440,354,723,718,012,867,753,019,556,135,721,376,207,959,558,860,559,933,052,8 *
+!* 56,914,157,120,622,980,057,169,891,912,595,926,540,427,596,853,441,276,985,006,7 *
+!* 24,869,558,201,930,657,900,240,943,007,657,817,473,684,008,944,448,183,219,124,1 *
+!* 63,017,666,607,770,667,585,082,169,598,239,230,274,035,517,738,648,065,600,492,7 *
+!* 02,095,732,843,492,708,856,036,920,219,883,363,111,527,988,109,277,392,696,562,7 *
+!* 76,813,446,645,651,238,419,301,586,157,342,867,860,646,666,350,050,113,314,787,9 *
+!* 11,320,639,668,510,871,569,846,664,873,595,017,518,995,670,958,477,806,411,667,5 *
+!* 05,346,462,590,471,136,862,647,349,666,243,426,242,677,175,204,732,314,281,064,4 *
+!* 17,939,041,868,653,741,187,423,064,985,189,556,742,640,111,598,580,035,644,021,8 *
+!* 35,576,715,752,869,397,465,453,828,584,471,291,269,955,890,393,294,448,315,746,5 *
+!* 00,268,702,149,708,808,053,100,406,398,480,942,695,623,586,049,403,348,084,970,0 *
+!* 64,668,900,206,251,516,968,479,727,515,576,425,962,392,136,269,169,089,884,609,7 *
+!* 94,271,331,061,018,895,634,421,094,082,310,408,889,752,954,265,842,691,732,460,5 *
+!* 38,911,784,960,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,0 *
+!* 00,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,0 *
+!* 00,000,000,000,000,000,000,000,000,000,000,000,000                               *
+!* -------------------------------------------------------------------------------- *
+!* Ref.: "PC Magazine Turbo Pascal for Windows, Techniques and Utilities By Neil    *
+!*        J. Rubenking, Ziff Davis Press, 1992".                                    *
+!*                                                                                  *
+!*                                           F90 Release 1.0 By J-P Moreau, Paris.  *
+!*                                                     (www.jpmoreau.fr)            *
+!************************************************************************************
+!Note: operators / must be typed '/' or d, * must be typed '*' or m
+USE PCALCFUN
+
+  implicit none
+  character*SIZE op, opRand, rem, tmp
+  character*1 operation, opr 
+  integer flag, Status 
+
+  print *,' '
+  print *,'                  I  N  S  T  R  U  C  T  I  O  N  S'
+  print *,' '
+  print *,' ----------------------------------------------------------------------------'
+  print *,'  Valid operators are + - ''*'' ''/'' ^ ! a c.  Enter calculations in the form'
+  print *,' "n1 op n2" where "n1" and "n2" are numbers and "op" is one of the operators '
+  print *,' listed above (0 to exit).'
+  print *,' ----------------------------------------------------------------------------'
+
+  op = '9999'
+  do while (Compare(op,'0').ne.0)
+    opr=''
+    print *,' '
+	write(*,10,advance='no'); read *, op
+    
+    if (Compare(op,'0').ne.0) then
+      write(*,20,advance='no'); read *, opr
+      if (opr.ne.'!') then
+        write(*,30,advance='no'); read *, opRand
+	  end if
+      print *,' '
+
+      operation=opr(1:1)
+
+      Select Case(operation) 
+      case('+') 
+	    print *,' SUM: ' 
+        call add(op, opRand, SIZE, Status)
+        if (Status.ne.cer_Ok) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+      case('-')               
+        print *,' DIFFERENCE: ' 
+        call sub(op, opRand, SIZE, Status) 
+        if (Status.ne.cer_Ok) then 
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+      case('*','m') 
+	    print *,' PRODUCT: ' 
+        call prod(op, opRand, SIZE, Status) 
+        if (Status.ne.cer_Ok) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+      case('/','d') 
+        print *,' QUOTIENT: ' 
+        call divide(op, opRand, rem, SIZE, Status) 
+        if (Status.ne.cer_Ok) then
+		  print *, '*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+          call AddComma(rem)
+          print *,' REMAINDER: ' 
+          print *, rem(1:Len_Trim(rem)) 
+        end if
+      case('!') 
+        print *,' FACTORIAL: '
+        call fact(op, SIZE, Status)
+        if (Status.ne.cer_Ok) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+      case('^') 
+	    print *,' POWER: ' 
+        call power(op, opRand, SIZE, Status) 
+        if (Status.ne.cer_Ok) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if 
+      case('a')
+        print *,' PERMU: '; flag=0
+        rem=op
+        call sub(op, opRand, SIZE, Status)             ! op  contains n-p
+        if (Status.ne.cer_Ok) flag=1
+        call fact(op, SIZE, Status)                    ! op contains (n-p)!
+        if (Status.ne.cer_Ok) flag=1
+        opRand=rem                                     ! opRand contains n
+        call fact(opRand, SIZE, Status)                ! opRand contains n!
+        if (Status.ne.cer_Ok) flag=1
+        call divide(opRand,op,rem,SIZE,Status)
+        op=opRand                                      ! op contains A(n,p) = n! / (n-p)!
+        if (Status.ne.cer_Ok) flag=1
+        if (flag.ne.0) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+      case('c')
+        print *,' COMBI: '; flag=0
+        rem=op; tmp=opRand
+        call sub(op, opRand, SIZE, Status)             ! op  contains n-p
+        if (Status.ne.cer_Ok) flag=1
+        call fact(op, SIZE, Status)                    ! op contains (n-p)!
+        if (Status.ne.cer_Ok) flag=1
+        opRand=rem                                     ! opRand contains n
+        call fact(opRand, SIZE, Status)                ! opRand contains n!
+        if (Status.ne.cer_Ok) flag=1
+        call divide(opRand,op,rem,SIZE,Status)
+        op=opRand                                      ! op contains A(n,p) = n! / (n-p)!
+        if (Status.ne.cer_Ok) flag=1
+		call fact(tmp,SIZE,status)
+        if (Status.ne.cer_Ok) flag=1
+        call divide(op,tmp,rem,SIZE,Status)            ! op contains C(n,p)
+        if (Status.ne.cer_Ok) flag=1
+        if (flag.ne.0) then
+		  print *,'*ERROR*'
+		else
+		  call AddComma(op)
+          print *, op(1:Len_Trim(op)) 
+        end if
+	  End Select
+      print *,' '
+    end if
+  end do
+
+10 format(' First number: ')
+20 format(' Operator: ')
+30 format(' Second number: ')
+
+End
+
+! End of file calc.f90

@@ -1,0 +1,96 @@
+!*****************************************************
+!*       Nth Derivative of a polynomial P(x)         *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *     
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* Nth DERIVATIVE OF A POLYNOMIAL:                   *
+!*                                                   *
+!* P(X) = 4x5 -3/5x3 + x2 -7/2x +11                  *
+!* Order of derivative: 1                            *
+!*                                                   *
+!*+    20 X4 -     9/     5 X2  +     2 X            *
+!*-     7/     2                                     *
+!*                                                   *
+!*                                                   *
+!* Nth DERIVATIVE OF A POLYNOMIAL:                   *
+!*                                                   *
+!* P(X) = 4x5 -3/5x3 + x2 -7/2x +11                  *
+!* Order of derivative: 3                            *
+!*                                                   *
+!*+   240 X2  -    18/     5                         *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  EnterPolynom(), DisplayPolynom(), MultNumber(),  *
+!*  SetNumber().                                     *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+Program DerivPol
+Use Polynoms                  !see module polynoms.f90
+
+type(ar_polynom)  P, R        !polynomial type
+integer n                     !order of derivative
+integer res, DerivPolynom
+
+  print *,''
+  print *,' Nth DERIVATIVE OF A POLYNOMIAL:'
+  print *,''
+  if (EnterPolynom('  P(X) = ', P).eq.0)  stop
+  print *,''
+  write(*,10,advance='no'); read *, n
+
+  res = DerivPolynom(P,n,R)
+  if (res.ne.0) then
+    call Displaypolynom(R)
+  else
+    print *,' Error in calculating derivative.'
+  end if
+  print *,''
+  print *,''
+  stop
+
+10 format('  Order of derivative: ')
+
+END
+
+
+integer Function DerivPolynom(P,n,R)
+  USE POLYNOMS
+  type(ar_polynom) P, R
+  type(ar_number)  u, v
+  integer*4 ii,jj
+  R%degree=P%degree-n
+  if (R%degree<0) then
+    R%degree=0; 
+    if (SetNumber(R%coeff(0), '0').eq.0) then
+      DerivPolynom=0
+      return
+  end if
+  else
+    do i=0, R%degree
+      R%coeff(i)=P%coeff(i+n)
+      ii=i;
+      do j=1, n
+        !put ii+jj in u (as integer)
+	jj=j
+	u%is_real=0; u%p=ii+jj; u%q=1; u%value=0.d0
+        if (MultNumber(R%coeff(i),u,v).eq.0) then
+          DerivPolynom=0
+	  return
+        end if
+	R%coeff(i)=v
+      end do
+    end do
+  end if	       
+  DerivPolynom=1
+End      
+
+
+!end of file derivpol.f90

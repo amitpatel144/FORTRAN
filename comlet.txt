@@ -1,0 +1,61 @@
+!************************************************************
+!*   This small program finds coincidences of letters in    *
+!*   two given words of up to 26 letters.                   *
+!* -------------------------------------------------------- *
+!* SAMPLE RUN:                                              *
+!*                                                          *
+!* Input first word : Bonjour                               *
+!* Input second word: Monsieur                              *
+!*                                                          *
+!* The letter o is common to the two words.                 *
+!* The letter n is common to the two words.                 *
+!* The letter u is common to the two words.                 *
+!* The letter r is common to the two words.                 *
+!*                                                          *
+!* -------------------------------------------------------- *
+!* Reference: "Exercices en Turbo Pascal By Claude Delannoy *
+!*             Eyrolles, 1997".                             *
+!*                                                          *
+!*                       F90 Release By J-P Moreau, Paris.  *
+!*                              (www.jpmoreau.fr)           *
+!************************************************************
+Program Common_Letters
+
+integer, parameter :: Lmax=26     !max. length of a word
+
+character*Lmax mot1, &            !1st word
+               mot2               !2nd word
+logical  found                    !2 letters identical if TRUE
+integer  i, j                     !loop counters
+integer  l1,l2                    !length of mot1, mot2
+
+! Read two words
+  print *,' '
+  write(*,10,advance='no'); read *, mot1
+  write(*,20,advance='no'); read *, mot2
+  print *,' '
+
+  l1=Len_Trim(mot1)
+  l2=Len_Trim(mot2)
+
+! Compare the two words
+  do i=1, l1
+    found=.FALSE.
+    j=1
+    do while (found==.FALSE..and.j<=l2)
+	  if (mot1(i:i)==mot2(j:j)) then
+        print *, ' The letter ', mot1(i:i),' is common to the two words.'
+        mot2(j:j)=' '     !to deactivate the found coincidence
+        found=.TRUE.
+      end if
+      j=j+1
+    end do
+  end do
+  print *,' '
+
+10 format('  Input first word : ')
+20 format('  Input second word: ')
+
+End
+
+! end of file comlet.f90

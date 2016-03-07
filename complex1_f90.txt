@@ -1,0 +1,415 @@
+!Subroutines and Functions used by program ucomplex.f90
+!                     (www.jpmoreau.fr)
+MODULE COMPLEX1
+
+  !complex number
+  TYPE Zcomplex
+    REAL*8  x	  ! algebraic form
+    REAL*8  y	  !
+    REAL*8  r	  ! polar form
+    REAL*8  t	  !
+  END TYPE Zcomplex
+
+  !NOTE: The native FORTRAN COMPLEX type is not used here.
+
+CONTAINS
+
+  !write a complex number (algebraic form + polar form)
+  Subroutine DisplayNumber(n)
+    type(Zcomplex) n
+    write(*,100,advance='no')  n%x
+    if (n%y.ne.0.d0) then 
+      if (n%y>0) then
+	    write(*,110,advance='no')
+	  else 
+	    write(*,111,advance='no')
+      endif
+      write(*,115,advance='no')  dabs(n%y)
+    else 
+	  write(*,120,advance='no')
+    endif
+    if (n%r.ne.0.d0) then
+	  write(*,100,advance='no')  n%r
+    else 
+	  write(*,121,advance='no')
+    endif 
+    if (n%t.ne.0.d0) then
+      write(*,125,advance='no')
+      if (n%t>0) then
+	    write(*,110,advance='no')
+	  else 
+	    write(*,111,advance='no')
+      endif
+      write(*,115)  dabs(n%t)
+    else 
+	  write(*,120)
+    endif
+	return
+100 format(' ',F10.7)
+110 format(' +')
+111 format(' -')
+115 format(' i  ',F10.7)
+120 format('                 ')
+121 format('          ')
+125 format(' EXP')
+
+  End subroutine DisplayNumber
+
+  !set a complex number z to ZERO
+  Subroutine Empty(z)
+    type(Zcomplex) z
+    z%x=0.d0; z%y=0.d0; z%r=0.d0; z%t=0.d0
+    return
+  End subroutine Empty 
+
+  !copy z1 in z
+  Subroutine Zcopy(z1, z)
+    type(Zcomplex) z1,z
+    z%x=z1%x; z%y=z1%y
+    z%r=z1%r; z%t=z1%t
+	return
+  End subroutine Zcopy
+
+  !y=x*x
+  REAL*8 FUNCTION SQR(x)
+    real*8 x
+    SQR=x*x
+  END FUNCTION SQR
+
+  !rectangular to polar conversion
+  SUBROUTINE RectPol(n)
+    TYPE(Zcomplex) n
+	REAL*8 PI 
+	PI=3.1415926535d0
+    n%r=dsqrt(SQR(n%x)+SQR(n%y))
+    if (n%x.eq.0.d0) then 
+      if (n%y>0.d0) then
+	    n%t=PI/2.d0
+      else 
+	    if (n%y<0) then
+		  n%t=-PI/2.d0 
+		else 
+		  n%t=0.d0
+        endif
+	  endif	  
+	else 
+      n%t=datan(n%y/n%x)
+      if (n%x<0.d0) then 
+        if (n%y>=0) then
+		  n%t=n%t+PI 
+		else 
+		  n%t=n%t-PI
+        endif
+      endif
+	endif
+    return
+  END SUBROUTINE RectPol
+
+  !polar to rectangular conversion
+  SUBROUTINE PolRect(n)
+    TYPE(Zcomplex) n
+    REAL*8 PI 
+	PI=3.1415926535d0
+    if (n%t>PI) n%t=n%t-2*PI
+    if (n%t<-PI) n%t=n%t+2*PI
+    n%x=n%r*dcos(n%t); n%y=n%r*dsin(n%t)
+	return
+  END SUBROUTINE PolRect
+
+  !add two complex numbers
+  integer FUNCTION ZSum(z1, z2, z)
+    TYPE(Zcomplex) z1,z2,z
+    z%x=z1%x+z2%x
+	z%y=z1%y+z2%y
+    call RectPol(z)
+    ZSum=1
+  END FUNCTION ZSum
+  
+  !subtract two complex numbers
+  integer FUNCTION ZMinus(z1, z2, z)
+    TYPE(Zcomplex) z1,z2,z
+    z%x=z1%x-z2%x
+    z%y=z1%y-z2%y
+    call RectPol(z)
+    ZMinus=1
+  END FUNCTION ZMinus
+
+  !multiply two complex numbers
+  integer FUNCTION ZMult(z1, z2, z)
+    TYPE(Zcomplex) z1,z2,z
+    z%r=z1%r*z2%r
+    z%t=z1%t+z2%t
+    call PolRect(z)
+    ZMult=1
+  END FUNCTION ZMult
+
+  !divide two complex numbers
+  integer FUNCTION ZDiv(z1, z2, z)
+    TYPE(Zcomplex) z1,z2,z
+    if (z2%r.eq.0.d0) then
+	  ZDiv=0
+    else 
+      z%r=z1%r/z2%r
+      z%t=z1%t-z2%t
+      call PolRect(z)
+      ZDiv=1
+    endif
+  END FUNCTION ZDiv
+
+  !compute exp(z)
+  integer FUNCTION Zexp(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=dexp(z1%x)*dcos(z1%y)
+    z%y=dexp(z1%x)*dsin(z1%y)
+    call RectPol(z)
+    Zexp=1
+  END FUNCTION Zexp
+
+  !compute Ln(z)
+  integer FUNCTION ZLn(z1, z)
+    TYPE(Zcomplex) z1,z
+    if (z1%r<=0) then
+	  ZLn=0
+    else
+      z%x=dlog(z1%r)
+      z%y=z1%t
+      call RectPol(z)
+      ZLn=1
+    endif
+  END FUNCTION ZLn
+
+  !compute Z^2
+  integer FUNCTION ZSqr(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=SQR(z1%x)-SQR(z1%y)
+    z%y=2.d0*z1%x*z1%y
+    call RectPol(z)
+    ZSqr=1
+  END FUNCTION ZSqr
+
+  !compute SQRT(Z)
+  integer FUNCTION ZSqrt(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=dsqrt(z1%r)*dcos(z1%t/2.d0)
+    z%y=dsqrt(z1%r)*dsin(z1%t/2.d0)
+    call RectPol(z)
+    ZSqrt=1
+  END FUNCTION ZSqrt
+
+  !compute 1/Z
+  integer FUNCTION ZInv(z1, z)
+    TYPE(Zcomplex) z1,z
+    if (z1%r.eq.0.d0) then
+	  ZInv=0
+    else 
+      z%r=1.d0 / z1%r
+      z%t= -z1%t
+      call PolRect(z)
+      ZInv=1
+    endif
+  END FUNCTION ZInv
+
+  !compute Z1^Z2
+  integer FUNCTION ZPower(z1, z2, z)
+    TYPE(Zcomplex) z1,z2,z,z3
+	ZPower=0
+    if (ZLn(z1,z3).eq.1) then
+      if (ZMult(z3,z2,z3).eq.1) then
+        if (Zexp(z3,z).eq.1) then
+		  ZPower=1
+        endif
+      endif
+    endif
+  END FUNCTION ZPower
+
+  !compute Sh(Z)
+  integer FUNCTION ZSh(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=(dexp(z1%x)*dcos(z1%y) - dexp(-z1%x)*dcos(-z1%y))/2.d0
+    z%y=(dexp(z1%x)*dsin(z1%y) - dexp(-z1%x)*dsin(-z1%y))/2.d0
+    call RectPol(z)
+    ZSh=1
+  END FUNCTION ZSh
+
+  !compute Ch(Z)
+  integer FUNCTION ZCh(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=(dexp(z1%x)*dcos(z1%y) + dexp(-z1%x)*dcos(-z1%y))/2.d0
+    z%y=(dexp(z1%x)*dsin(z1%y) + dexp(-z1%x)*dsin(-z1%y))/2.d0
+    call RectPol(z)
+    ZCh=1
+  END FUNCTION ZCh
+
+  !compute sin(Z)
+  integer FUNCTION ZSin(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=(dexp(-z1%y)*dsin(z1%x) - dexp(z1%y)*dsin(-z1%x))/2.d0
+    z%y=-(dexp(z1%y)*dcos(z1%x) - dexp(z1%y)*dcos(-z1%x))/2.d0
+    call RectPol(z)
+    ZSin=1
+  END FUNCTION ZSin
+
+  !compute cos(Z)
+  integer FUNCTION ZCos(z1, z)
+    TYPE(Zcomplex) z1,z
+    z%x=(dexp(-z1%y)*dcos(z1%x) + dexp(z1%y)*dcos(-z1%x))/2.d0
+    z%y=(dexp(-z1%y)*dsin(z1%x) + dexp(z1%y)*dsin(-z1%x))/2.d0
+    call RectPol(z)
+    ZCos=1
+  END FUNCTION ZCos
+
+  !compute Tan(Z)
+  integer FUNCTION ZTan(z1, z)
+    TYPE(Zcomplex) z1,z,z3,z4
+	ZTan=0
+    if (ZSin(z1,z3).eq.1) then 
+      if (ZCos(z1,z4).eq.1) then
+        if (ZDiv(z3,z4,z).eq.1) then
+		  ZTan=1
+        endif
+      endif
+    endif
+  END FUNCTION ZTan
+
+  !compute Th(Z)
+  integer FUNCTION ZTh(z1, z)
+    TYPE(Zcomplex) z1,z,z3,z4
+	ZTh=0
+    if (ZSh(z1,z3).eq.1) then
+      if (ZCh(z1,z4).eq.1) then
+        if (ZDiv(z3,z4,z).eq.1) then
+		  ZTh=1
+        endif
+      endif
+	endif   
+  END FUNCTION ZTh
+
+  integer FUNCTION ZArcsin(z1, z)
+    TYPE(Zcomplex) z1,z,z3
+    z3%x=1.d0-SQR(z1%x)+SQR(z1%y)
+    z3%y=-2.d0*z1%x*z1%y
+    call RectPol(z3)
+    if (ZSqrt(z3,z3).eq.0) then
+	  Zarcsin=0
+	  return
+    endif
+    z3%x=z3%x-z1%y
+    z3%y=z3%y+z1%x
+    call RectPol(z3)
+    if (ZLn(z3,z3).eq.0) then
+	  Zarcsin=0 
+	  return
+    endif
+    z%x=z3%y
+    z%y=-z3%x
+    call RectPol(z)
+    Zarcsin=1
+  END FUNCTION ZArcsin
+
+  integer FUNCTION ZArccos(z1, z)
+    TYPE(Zcomplex) z1,z,z3
+    z3%x=1.d0-SQR(z1%x)+SQR(z1%y)
+    z3%y=-2.d0*z1%x*z1%y
+    call RectPol(z3)
+    if (ZSqrt(z3,z3).eq.0) then
+	  Zarccos=0
+	  return
+    endif
+    z3%x=z1%x-z3%y
+	z3%y=z1%y+z3%x
+    call RectPol(z3)
+    if (ZLn(z3,z3).eq.0) then
+	  Zarccos=0 
+	  return
+    endif
+    z%x=z3%y
+    z%y=-z3%x
+    call RectPol(z)
+    Zarccos=1
+  END FUNCTION ZArccos
+
+  integer FUNCTION ZArctan(z1, z)
+    TYPE(Zcomplex) z1,z,z2,z3
+    z2%x=-z1%x
+    z2%y=1.d0-z1%y
+    z3%x=z1%x
+    z3%y=1.d0+z1%y
+    call RectPol(z2) 
+	call RectPol(z3)
+    if (ZDiv(z2,z3,z3).eq.0) then
+	  ZArctan=0
+	  return
+    endif 
+    if (ZLn(z3,z3).eq.0) then
+	  ZArctan=0
+	  return
+    endif
+    z%x=z3%y/2.d0
+    z%y=-z3%x/2.d0
+    call RectPol(z)
+    ZArctan=1
+  END FUNCTION ZArctan
+
+  integer FUNCTION ZArgsh(z1, z)
+    TYPE(Zcomplex) z1,z,z3
+    z3%x=1.d0+SQR(z1%x)-SQR(z1%y)
+    z3%y=2.d0*z1%x*z1%y
+    call RectPol(z3)
+    if (ZSqrt(z3,z3).eq.0) then
+	  ZArgsh=0
+	  return
+    endif
+    z3%x=z3%x+z1%x
+    z3%y=z3%y+z1%y
+    call RectPol(z3)
+    if (ZLn(z3,z).eq.0) then
+	  ZArgsh=0
+	  return
+    endif
+    ZArgsh=1
+  END FUNCTION ZArgsh
+
+  integer FUNCTION ZArgch(z1, z)
+    TYPE(Zcomplex) z1,z,z3
+    z3%x=-1.d0+SQR(z1%x)-SQR(z1%y)
+    z3%y=2.d0*z1%x*z1%y
+    call RectPol(z3)
+    if (ZSqrt(z3,z3).eq.0) then
+	  ZArgch=0
+	  return
+    endif
+    z3%x=z3%x+z1%x
+    z3%y=z3%y+z1%y
+    call RectPol(z3)
+    if (ZLn(z3,z).eq.0) then
+	  ZArgch=0
+	  return
+    endif
+    ZArgch=1
+  END FUNCTION ZArgch
+
+  integer FUNCTION ZArgth(z1, z)
+    TYPE(Zcomplex) z1,z,z2,z3
+    z2%x=1.d0+z1%x
+    z2%y=z1%y
+    z3%x=1.d0-z1%x
+    z3%y=-z1%y
+    call RectPol(z2)
+	call RectPol(z3)
+    if (ZDiv(z2,z3,z3).eq.0) then
+	  ZArgth=0
+	  return
+    endif
+    if (ZLn(z3,z3).eq.0) then
+	  ZArgth=0
+	  return
+    endif
+    z%x=z3%x/2.d0
+    z%y=z3%y/2.d0
+    call RectPol(z)
+    ZArgth=1
+  END FUNCTION ZArgth
+
+END MODULE COMPLEX1
+
+!end of file complex1.f90

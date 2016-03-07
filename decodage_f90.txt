@@ -1,0 +1,97 @@
+!**************************************************************************
+!*                  Decode an encoded ASCII Test                          *
+!* ---------------------------------------------------------------------- * 
+!* The ASCII text must have been encoded by codage.exe that generates two *
+!* output files:                                                          *
+!* 1. code.lst: a random encoding table                                   *
+!* 2. codage.lst: the encoded text.                                       *
+!* ---------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                            *
+!* File codage.lst contains:                                              *
+!*                                                                        *
+!* J&d%&8_ (]HVV.                                                         *
+!* A`S` Ixz{&3fC.                                                         *
+!*                                                                        *
+!* r(v                                                                    *
+!*     x@ ~d&,.                                                           *
+!*                                                                        *
+!* TpZVa                                                                  *
+!*   |d& x@L6Fc 3d ;22 ,d                                                 *
+!*     ~&x3S<x@/7' '7{U&<xQQ.                                             *
+!*   vS8,MSC.                                                             *
+!*   udzSIxzH&3                                                           *
+!* pauY                                                                   *
+!*                                                                        *
+!* File code.lst contains:                                                *
+!*                                                                        *
+!* t!="1#h$y%X&''<(Q)?*W+7,g-Y.s/c061;2K3/425F6i758E9@:.;}<L=!>0?w@(ATBHC *
+!* uDpE[FZGRHVInJkK#LfMaNGOJP+QvR]S\TAUrVIWeXOY>Z4["\$]j^B_l`8amb{c,dSe|f *
+!* %gUhxi*jMkDl_mzndoop9q&r`s3t-uNv~wqxCy:z^{)|P}b~                       *
+!*                                                                        *
+!* (! is coded t, " is coded =, # is coded 1, etc.)                       *
+!*                                                                        *
+!* The output file decodage.lst contains;                                 *
+!*                                                                        *
+!* Program ASCII;                                                         *
+!* Uses WincrtMy;                                                         *
+!*                                                                        *
+!* VAR                                                                    *
+!*     i: word;                                                           *
+!*                                                                        *
+!* BEGIN                                                                  *
+!*   for i:=160 to 255 do                                                 *
+!*     write(i:4,' ',chr(i));                                             *
+!*   Readkey;                                                             *
+!*   DoneWinCrt                                                           *
+!* END.                                                                   *
+!*                                                                        *
+!*                                    F90 Release By J-P Moreau, Paris.   *
+!*                                           (www.jpmoreau.fr)            *
+!**************************************************************************
+Program Decodage
+
+integer, parameter :: MINCAR=33     !ASCII characters from 33 to 126 only 
+integer, parameter :: MAXCAR=126
+integer, parameter :: MAXSTR=80     !lines of length 80 
+
+
+  character*1 A(MINCAR:MAXCAR), Z(MINCAR:MAXCAR)
+  integer alea,fait,i,j  
+  character*MAXSTR ligne, decodee
+
+! open text files
+  open(unit=1, file='codage.lst', action='read')
+  open(unit=2, file='decodage.lst', status='unknown')
+  open(unit=3, file='code.lst', action='read')
+
+! read random encoding table   
+  print *,' Random encoding table:'
+  read(3,50)  (Z(i),A(i),i=MINCAR,MAXCAR)
+  write(*,50)  (Z(i),A(i),i=MINCAR,MAXCAR)
+  close(unit=3)
+
+! decode line by line and save  
+10 Read(1,30,end=20) ligne
+     decodee = ligne;
+     do i=1, MAXSTR
+       do j=MINCAR, MAXCAR
+         if (IACHAR(ligne(i:i))==IACHAR(Z(j)))  decodee(i:i)=A(j)
+       end do
+     end do
+     write(2,30) decodee
+   goto 10
+20 close(unit=1)                     
+  write(2,*) ' '
+  close(unit=2)
+
+  print *,' '
+  print *,' Program terminated. Results in file decodage.lst'
+  print *,' '
+
+30 format(A80)
+50 format(70A1)
+
+END
+
+!end of file decodage.f90
+

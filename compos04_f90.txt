@@ -1,0 +1,811 @@
+!***************************************************************************************
+!* This program calculates the deformations and stresses in a laminated material made  *
+!* of n unidirectional composite layers, knowing the resulting imposed efforts.        *
+!*                                                                                     *
+!* The 6x6 stiffness matrix to define has the following coefficients:                  *
+!*                                                                                     *
+!*     A11 A12 A16 B11 B12 B16                                                         *
+!*     A12 A22 A26 B12 B22 B26        ! A  B !                                         *
+!*     A16 A26 A66 B16 B26 B66    or  !      !                                         *
+!*     B11 B12 B16 D11 D12 D16        ! B  D !                                         *
+!*     B12 B22 B26 D12 D22 D26                                                         *
+!*     B16 B26 B66 D16 D26 D66                                                         *
+!*                                                                                     *
+!* The imposed efforts vector is (Nx,Ny,Nxy,Mx,My,Mxy)                                 * 
+!*                                                                                     *
+!* The deformation vector is (EPs xx, EPs yy, gam xy, Kx, Ky, Kxy)                     * 
+!*                                                                                     *
+!* ----------------------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                                         *
+!*   The output file Compos04.lst contains (extract):                                  *
+!*                                                                                     *
+!*   CALCULATE DEFORMATIONS AND STRESSES                                               *
+!*        IN A LAMINATED MATERIAL                                                      *
+!*                                                                                     *
+!*   Imposed resulting efforts:                                                        *
+!*                                                                                     *
+!*     NX =0.10000E+07  NY =0.50000E+06  NXY =0.25000E+06                              *
+!*     MX =0.00000E+00  MY =0.00000E+00  MXY =0.00000E+00                              *
+!*                                                                                     *
+!*   Number of layers:            4                                                    *
+!*                                                                                     *
+!*     Layer  1 : angle  15.0 deg. - thickness   1.5 mm                                *
+!*                                                                                     *
+!*     Layer  2 : angle -30.0 deg. - thickness   1.0 mm                                *
+!*                                                                                     *
+!*     Layer  3 : angle -15.0 deg. - thickness   1.5 mm                                * 
+!*                                                                                     *
+!*     Layer  4 : angle  30.0 deg. - thickness   1.0 mm                                *
+!*                                                                                     *
+!*   Material Parameters:                                                              *
+!*                                                                                     *
+!*     El =  38.0    Et =   9.0                                                        *
+!*   NUlt =  0.32    Glt=   3.6                                                        *
+!*                                                                                     *
+!*                                                                                     *
+!*   BASIC REDUCED STIFFNESS MATRIX IN GPa:                                            *
+!*                                                                                     *
+!*   0.38945E+02   0.29516E+01   0.00000E+00                                           *
+!*   0.29516E+01   0.92237E+01   0.00000E+00                                           *
+!*   0.00000E+00   0.00000E+00   0.36000E+01                                           *
+!*                                                                                     *
+!*   Layer #:           1                                                              * 
+!*                                                                                     * 
+!*   REDUCED STIFFNESS MATRIX IN GPa:                                                  *
+!*                                                                                     *
+!*   0.35212E+02   0.46931E+01   0.67316E+01                                           *
+!*   0.46931E+01   0.94731E+01   0.69862E+00                                           *
+!*   0.67316E+01   0.69862E+00   0.53416E+01                                           *
+!* ---/---                                                                             *
+!*   Stresses in each layer in main axes:                                              *
+!*                                                                                     *
+!*   Layer #           1                                                               *
+!*                                                                                     *
+!*   For z = -0.25000E+01 mm:                                                          *                                                
+!*                                                                                     *
+!*    sigma L :  0.28274E+03  MPa                                                      *
+!*    sigma T :  0.78080E+02  MPa                                                      *
+!*    sigma LT:  0.45159E+02  MPa                                                      *
+!*                                                                                     *
+!*   For z = -0.10000E+01 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.28858E+03  MPa                                                      *
+!*    sigma T :  0.70533E+02  MPa                                                      *
+!*    sigma LT:  0.34701E+02  MPa                                                      *
+!*                                                                                     *
+!*   Layer #           2                                                               *
+!*                                                                                     *
+!*   For z = -0.10000E+01 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.86434E+02  MPa                                                      *
+!*    sigma T :  0.10576E+03  MPa                                                      *
+!*    sigma LT:  0.57365E+01  MPa                                                      *
+!*                                                                                     *
+!*   For z =  0.00000E+00 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.11193E+03  MPa                                                      *
+!*    sigma T :  0.96965E+02  MPa                                                      *
+!*    sigma LT:  0.83890E+01  MPa                                                      *
+!*                                                                                     *
+!*   Layer #           3                                                               *
+!*                                                                                     *
+!*   For z =  0.00000E+00 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.15147E+03  MPa                                                      *
+!*    sigma T :  0.90075E+02  MPa                                                      *
+!*    sigma LT:  0.21129E+02  MPa                                                      *
+!*                                                                                     *
+!*   For z =  0.15000E+01 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.19264E+03  MPa                                                      *
+!*    sigma T :  0.76371E+02  MPa                                                      *
+!*    sigma LT:  0.19346E+02  MPa                                                      *
+!*                                                                                     *
+!*   Layer #           4                                                               *
+!*                                                                                     *
+!*   For z =  0.15000E+01 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.33321E+03  MPa                                                      *
+!*    sigma T :  0.51876E+02  MPa                                                      *
+!*    sigma LT:  0.87729E+01  MPa                                                      *
+!*                                                                                     *
+!*   For z =  0.25000E+01 mm:                                                          *
+!*                                                                                     *
+!*    sigma L :  0.31791E+03  MPa                                                      * 
+!*    sigma T :  0.50191E+02  MPa                                                      *
+!*    sigma LT:  0.14086E+01  MPa                                                      *
+!* ----------------------------------------------------------------------------------- *
+!* REFERENCE: "MATERIAUX COMPOSITES - Comportement mécanique et analyse des structures *
+!*             By J.-M. Berthelot - MASSON 1996".                                      *
+!*                                                                                     *
+!*                                           F90 Release By J-P MOREAU - August 1997.  *
+!*                                                      (www.jpmoreau.fr)              *
+!*************************************************************************************** 
+    PROGRAM COMPOS04
+! MAXCOU = maximum number of layers
+      PARAMETER (NMAX=3,MAXCOU=10)
+      COMMON /A/ EL,ET,NULT,GLT
+      REAL*8 EL,ET,NULT,GLT,PI
+! angle and thickness of layer 
+      REAL*8 TH(MAXCOU),EP(MAXCOU)
+
+      REAL*8 H(MAXCOU),HM
+      REAL*8 Q0(NMAX,NMAX),Q(MAXCOU,NMAX,NMAX)
+      REAL*8 A(NMAX,NMAX),B(NMAX,NMAX),D(NMAX,NMAX)
+      REAL*8 R(6,6),X(6,6),N(6),E0(6),EDEB(6),EFIN(6)
+      REAL*8 DET,NX,NY,NXY,MX,MY,MXY
+      REAL*8 T(NMAX,NMAX),AK(MAXCOU,NMAX),BK(MAXCOU,NMAX)
+      REAL*8 AK1(MAXCOU,NMAX),BK1(MAXCOU,NMAX) 
+      REAL*8 TEMP(NMAX),TEMP1(NMAX)
+
+      PI = 4.D0*DATAN(1.D0)
+    
+! Material constants in GPa
+
+      EL = 38.D0   
+      ET =  9.D0    
+      NULT =  0.32D0 
+      GLT = 3.6D0
+
+! imposed efforts
+      NX=1.D6
+      NY=0.5D6
+      NXY=0.25D6
+      MX=0.D0
+      MY=0.D0
+      MXY=0.D0
+
+      N(1)=1.D-9*NX
+      N(2)=1.D-9*NY
+      N(3)=1.D-9*NXY
+      N(4)=1.D-9*MX
+      N(5)=1.D-9*MY
+      N(6)=1.D-9*MXY
+
+      DO I=1,6
+        E0(I)=0.D0
+        EDEB(I)=0.D0
+        EFIN(I)=0.D0
+      ENDDO
+
+! print data to output file
+      open(2,file='compos04.lst',status='unknown')
+      WRITE(2,*) ' '
+      WRITE(2,*) '  CALCULATE DEFORMATIONS AND STRESSES'
+      WRITE(2,*) '       IN A LAMINATED MATERIAL'    
+      WRITE(2,*) ' ' 
+      WRITE(2,*) '  Imposed resulting efforts:'
+      WRITE(2,15) NX,NY,NXY
+      WRITE(2,16) Mx,MY,MXY
+
+! number of layers in laminate    
+      NCOUCHES=4                      
+
+! define angles and thicknesses of layers 1-4      
+      TH(1)=15.D0 
+      EP(1)=1.5D-3       
+      TH(2)= -30.D0 
+      EP(2)=1.0D-3           
+      TH(3)=-15.D0 
+      EP(3)=1.5D-3      
+      TH(4)= 30.D0 
+      EP(4)=1.0D-3        
+           
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Number of layers: ',NCOUCHES      
+      DO I=1,NCOUCHES
+        WRITE(2,10) I,TH(I),1.D3*EP(I)
+! put angles in radians
+        TH(I) = TH(I)*PI/180.D0    
+      ENDDO 
+
+      WRITE(2,*) ' '   
+      WRITE(2,*) '  Material Parameters:'
+      WRITE(2,20) EL,ET
+      WRITE(2,21) NULT,GLT   
+      WRITE(2,*) ' '   
+     
+! reduced stiffness matrix (angle = 0)
+      CALL MATNUL(Q0,NMAX) 
+      CALL CAL_Q0(Q0)  
+      CALL MATPR2 ('  BASIC REDUCED STIFFNESS MATRIX IN GPa:', Q0, NMAX)
+    
+! calculate the reduced stiffness matrices for different angles <> 0
+      DO I=1,NCOUCHES
+        IF (TH(I).EQ.0.D0) THEN 
+          CALL MATEGAL(I,Q,Q0)
+        ELSE 
+          CALL CAL_Q(I,Q0,Q,TH(I))                 
+        ENDIF  
+        WRITE(2,*) ' '
+        WRITE(2,*) '  Layer #:',I
+        CALL MATPR1('  REDUCED STIFFNESS MATRIX IN GPa:', I, Q, NMAX)
+      ENDDO  
+     
+! calculate A matrix
+! A = sum of 1e3*EP(k)*Q(K)  
+      CALL MATNUL(A,NMAX)
+      DO I=1,NMAX
+        DO J=1,NMAX  
+          DO K=1,NCOUCHES
+            A(I,J)=A(I,J)+1000.D0*(EP(K)*Q(K,I,J))  
+          ENDDO  
+          IF (DABS(A(I,J)).LT.1.D-8) A(I,J)=0.D0   
+        ENDDO  
+      ENDDO    
+      CALL MATPR2('  A MATRIX IN 1E6 N/M:',A,3)
+                      
+! calculate B matrix
+! B = sum of 1e6*(1/2)*(h(k)*h(k)-h(k-1)*h(k-1))*Q(k)
+      CALL MATNUL(B,NMAX)
+      HM=0.D0
+      DO I=1,NCOUCHES 
+        HM=HM+EP(I)
+      ENDDO
+! average height of stack
+      HM=HM/2.D0           
+! lower height of layer #1
+      H(1) = -HM                 
+      DO I=2,NCOUCHES+1
+        H(I)=H(I-1)+EP(I-1)
+      ENDDO
+      DO I=1,NMAX
+        DO J=1,NMAX
+         DO K=1,NCOUCHES
+           B(I,J)=B(I,J)+1.D6*0.5D0*((H(K+1)*H(K+1)-H(K)*H(K))*Q(K,I,J))
+         ENDDO
+         IF (DABS(B(I,J)).LT.1.D-8) B(I,J)=0.D0   
+        ENDDO
+      ENDDO    
+      CALL MATPR2('  B MATRIX IN 1E3 N:',B,NMAX)                           
+    
+! calculate D matrix
+! D = sum of 1e9*(1/3)*(h(k)*h(k)*h(k)-h(k-1)*h(k-1)*h(k-1))*Q(k)     
+      CALL MATNUL(D,NMAX)
+      DO I=1,NMAX
+        DO J=1,NMAX  
+          DO K=2,NCOUCHES+1 
+            D(I,J)=D(I,J)+1.0D9*(1.D0/3.D0)*((H(K)*H(K)*H(K)-H(K-1)*H(K-  &
+            1)*H(K-1))*Q(K-1,I,J))
+          ENDDO
+          IF (DABS(D(I,J)).LT.1.D-8) D(I,J)=0.D0    
+        ENDDO  
+      ENDDO    
+      CALL MATPR2('  D MATRIX IN N.DM:',D,NMAX)       
+    
+! assemble the stiffness matrix of laminate 
+!          ! A B !
+!      R = !     !
+!          ! B D !
+      CALL MATNUL(R,6)
+      DO I=1,NMAX
+        DO J=1,NMAX                   
+          R(I,J) = 1.D6*A(I,J)
+        ENDDO
+      ENDDO
+      DO I=1,NMAX
+        DO J=4,NMAX+3                 
+          R(I,J) = 1.D3*B(I,J-3)
+        ENDDO
+      ENDDO
+      DO I=4,NMAX+3
+        DO J=1,NMAX                   
+          R(I,J) = 1.D3*B(I-3,J)
+        ENDDO
+      ENDDO
+      DO I=4,NMAX+3
+        DO J=4,NMAX+3                 
+          R(I,J) = D(I-3,J-3)
+        ENDDO
+      ENDDO
+      CALL MATPR2('  R STIFFNESS MATRIX:', R, 6)              
+      WRITE(2,*) ' '
+
+! Direct inversion of R matrix, stored in R
+      CALL MATINV(6,0,R,X,DET)
+      WRITE(2,*) '  DETERMINANT OF R: ', DET
+      DO I=1,6
+        DO J=1,6
+          R(I,J)=1.D9*R(I,J)
+        ENDDO
+      ENDDO
+      CALL MATPR2('  INVERSE MATRIX OF R:', R, 6)
+
+! Calculate déformations eps0xx, eps0yy, gam0xy,kx,ky,kxy
+! in main axes, stored in matrix E0(6)
+
+      CALL MATMUL(R,N,E0,6)
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Membrane deformations (in mm) and curbatures:'
+      WRITE(2,*) ' '
+      WRITE(2,30) 1.D3*E0(1)
+      WRITE(2,31) 1.D3*E0(2)
+      WRITE(2,32) 1.D3*E0(3)
+      WRITE(2,33) E0(4)
+      WRITE(2,34) E0(5)
+      WRITE(2,35) E0(6)
+
+! Deformations in reference axes (x,y)
+!     ! epsxx !   ! eps0xx !    ! kx  !
+!     ! epsyy ! = ! eps0yy ! +z ! ky  !
+!     ! gamxy !   ! gam0xy !    ! kxy !
+
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Deformations in reference axes (x,y):'
+      WRITE(2,40) 1.D3*H(1)
+      DO I=1,NMAX
+        EDEB(I)=E0(I)+H(1)*E0(I+3)
+      ENDDO
+      WRITE(2,45) 1.D3*EDEB(1)
+      WRITE(2,46) 1.D3*EDEB(2)
+      WRITE(2,47) 1.D3*EDEB(3)
+      WRITE(2,40) 1.D3*H(NCOUCHES+1)
+      DO I=1,NMAX
+        EFIN(I)=E0(I)+H(NCOUCHES+1)*E0(I+3)
+      ENDDO
+      WRITE(2,45) 1.D3*EFIN(1)
+      WRITE(2,46) 1.D3*EFIN(2)
+      WRITE(2,47) 1.D3*EFIN(3)
+
+! Deformations in each layer in main axes of layer
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Deformations in each layer in main axes:'
+      DO K=1,NCOUCHES
+        CALL INITT(T,TH(K))
+        DO I=1,NMAX
+          TEMP(I)=E0(I)
+        ENDDO
+        CALL MATMUL(T,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          AK(K,I)=TEMP1(I)   
+        ENDDO  
+        DO I=1,NMAX
+          TEMP(I)=E0(I+3)
+        ENDDO
+        CALL MATMUL(T,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          BK(K,I)=TEMP1(I)   
+        ENDDO  
+        WRITE(2,*) ' '
+        WRITE(2,*) '  Layer #',K
+        WRITE(2,40) 1.D3*H(K)
+        DO I=1,NMAX
+          EDEB(I)=AK(K,I)+H(K)*BK(K,I)
+        ENDDO
+        WRITE(2,45) 1.D3*EDEB(1)
+        WRITE(2,46) 1.D3*EDEB(2)
+        WRITE(2,47) 1.D3*EDEB(3)
+
+        WRITE(2,40) 1.D3*H(K+1)
+        DO I=1,NMAX
+          EFIN(I)=AK(K,I)+H(K+1)*BK(K,I)
+        ENDDO
+        WRITE(2,45) 1.D3*EFIN(1)
+        WRITE(2,46) 1.D3*EFIN(2)
+        WRITE(2,47) 1.D3*EFIN(3)
+      ENDDO
+
+! Stresses in each layer in reference axes
+
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Stresses in each layer in reference axes:'
+      DO K=1,NCOUCHES
+        DO I=1,NMAX
+          TEMP(I)=E0(I)
+        ENDDO
+        DO I=1,NMAX
+          DO J=1,NMAX
+            A(I,J)=Q(K,I,J)
+          ENDDO
+        ENDDO
+        CALL MATMUL(A,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          AK(K,I)=TEMP1(I)   
+        ENDDO  
+        DO I=1,NMAX
+          TEMP(I)=E0(I+3)
+        ENDDO
+        CALL MATMUL(A,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          BK(K,I)=TEMP1(I)   
+        ENDDO  
+        WRITE(2,*) ' '
+        WRITE(2,*) '  Layer #',K
+        WRITE(2,40) 1.D3*H(K)
+        DO I=1,NMAX
+          EDEB(I)=1.D3*(AK(K,I)+H(K)*BK(K,I))
+        ENDDO
+        WRITE(2,50) EDEB(1)
+        WRITE(2,51) EDEB(2)
+        WRITE(2,52) EDEB(3)
+
+        WRITE(2,40) 1.D3*H(K+1)
+        DO I=1,NMAX
+          EFIN(I)=1.D3*(AK(K,I)+H(K+1)*BK(K,I))
+        ENDDO
+        WRITE(2,50) EFIN(1)
+        WRITE(2,51) EFIN(2)
+        WRITE(2,52) EFIN(3)
+      ENDDO
+
+! Stresses in each layer in main axes
+
+      WRITE(2,*) ' '
+      WRITE(2,*) '  Stresses in each layer in main axes:'
+      DO K=1,NCOUCHES
+        CALL INITT1(T,TH(K))
+        DO I=1,NMAX
+          TEMP(I)=AK(K,I)
+        ENDDO
+        CALL MATMUL(T,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          AK1(K,I)=TEMP1(I)   
+        ENDDO  
+        DO I=1,NMAX
+          TEMP(I)=BK(K,I)
+        ENDDO
+        CALL MATMUL(T,TEMP,TEMP1,3)
+        DO I=1,NMAX
+          BK1(K,I)=TEMP1(I)   
+        ENDDO  
+        WRITE(2,*) ' '
+        WRITE(2,*) '  Layer #', K
+        WRITE(2,40) 1.D3*H(K)
+        DO I=1,NMAX
+          EDEB(I)=1.D3*(AK1(K,I)+H(K)*BK1(K,I))
+        ENDDO
+        WRITE(2,50) EDEB(1)
+        WRITE(2,51) EDEB(2)
+        WRITE(2,52) EDEB(3)
+
+        WRITE(2,40) 1.D3*H(K+1)
+        DO I=1,NMAX
+          EFIN(I)=1.D3*(AK1(K,I)+H(K+1)*BK1(K,I))
+        ENDDO
+        WRITE(2,50) EFIN(1)
+        WRITE(2,51) EFIN(2)
+        WRITE(2,52) EFIN(3)
+      ENDDO
+     
+      WRITE(2,*) ' '
+	close(2)
+      STOP '  END OF PROGRAM.'
+
+   10 FORMAT(/'     Layer',I3,' : angle',F6.1,' deg. - thickness',F6.1,' mm')
+   15 FORMAT(/'     NX =',E11.5,'  NY =',E11.5,'  NXY =',E11.5)
+   16 FORMAT('     MX =',E11.5,'  MY =',E11.5,'  MXY =',E11.5)
+   20 FORMAT(/'     El =',F6.1,'    Et =',F6.1)
+   21 FORMAT('   NUlt =',F6.2,'    Glt=',F6.1)
+   30 FORMAT('    eps0xx : ',E12.5)
+   31 FORMAT('    eps0yy : ',E12.5)  
+   32 FORMAT('    gam0xy : ',E12.5) 
+   33 FORMAT('    kx     : ',E12.5)
+   34 FORMAT('    ky     : ',E12.5)  
+   35 FORMAT('    kxy    : ',E12.5) 
+   40 FORMAT(/'   For z = ',E12.5,' mm:'/)   
+   45 FORMAT('    epsxx : ',E12.5,' mm')
+   46 FORMAT('    epsyy : ',E12.5,' mm')  
+   47 FORMAT('    gamxy : ',E12.5,' mm') 
+   50 FORMAT('    sigma L : ',E12.5,'  MPa')
+   51 FORMAT('    sigma T : ',E12.5,'  MPa')  
+   52 FORMAT('    sigma LT: ',E12.5,'  MPa') 
+    END  !of main program
+
+! set NxN matrix to zero  
+    SUBROUTINE MATNUL(A,N)   
+      REAL*8 A(N,N) 
+      DO I=1,N
+        DO J=1,N  
+          A(I,J)=0.D0   
+        ENDDO  
+      ENDDO  
+    END               
+
+! 3x3 A matrix = 3x3 B matrix
+    SUBROUTINE MATEGAL(K,A,B)   
+      PARAMETER (N=3,NCOUCHES=10)
+      REAL*8 A(NCOUCHES,N,N), B(N,N)
+      DO I=1,N
+        DO J=1,N  
+          A(K,I,J)=B(I,J)   
+        ENDDO  
+      ENDDO  
+    END
+     
+! multiply a NxN matrix by a Nx1 vector  
+    SUBROUTINE MATMUL(A, B, C, N)                                                
+      REAL*8 A(N,N),B(N),C(N),SUM
+      DO I=1,N                                                                 
+        SUM= 0.D0                                                                
+        DO K=1,N                                                              
+          SUM=SUM+A(I,K)*B(K)                                               
+        ENDDO  
+        C(I)=SUM                                                            
+      ENDDO                                                                   
+    END                                                                    
+  
+! print a NxN matrix with caption           
+    SUBROUTINE MATPR2(TITLE, A, N)   
+      CHARACTER*(*) TITLE   
+      REAL*8 A(N,N)
+      WRITE(2,*) ' '
+      WRITE(2,*) TITLE
+      WRITE(2,*) ' '
+      IF (N.EQ.3) THEN
+        WRITE(2,10) ((A(I,J),J=1,N),I=1,N)
+      ELSE
+        WRITE(2,20) ((A(I,J),J=1,N),I=1,N) 
+      ENDIF
+   10 FORMAT(3('  ',E12.5))
+   20 FORMAT(6('  ',E11.5)) 
+    END          
+  
+    SUBROUTINE MATPR1(TITRE, K, A, N)   
+      PARAMETER(NCOU=10)
+      CHARACTER*(*) TITRE   
+      REAL*8 A(NCOU,N,N)
+      WRITE(2,*) ' '
+      WRITE(2,*) TITRE
+      WRITE(2,*) ' '
+      WRITE(2,10) ((A(K,I,J),J=1,N),I=1,N)
+   10 FORMAT(3('  ',E12.5))
+    END          
+
+!  calculate cos(t) power 4 
+    REAL*8 FUNCTION DCOS4(T)              
+      REAL*8 A,T
+      A=DCOS(T)
+      DCOS4=A*A*A*A
+    END  
+     
+!  calculate sin(t) power 4 
+    REAL*8 FUNCTION DSIN4(T)              
+      REAL*8 A,T
+      A=DSIN(T)
+      DSIN4=A*A*A*A
+    END  
+  
+!  calculate the reduced stiffness matrix for theta=0  
+    SUBROUTINE CAL_Q0(Q)   
+      COMMON /A/ EL,ET,NULT,GLT  
+      REAL*8 EL,ET,NULT,GLT 
+      REAL*8 Q(3,3)
+      Q(1,1) = EL/(1.D0-((ET/EL)*NULT*NULT))
+      Q(2,2) = (ET/EL)*Q(1,1)
+      Q(1,2) = NULT*Q(2,2)
+      Q(2,1) = Q(1,2)
+      Q(3,3) = GLT        
+    END  
+  
+!  calculate the reduced stiffness Q matrix for theta <> 0 
+!  with the condition that the Q matrix for theta=0 is available   
+!  called here Q2
+    SUBROUTINE CAL_Q(K, Q2, Q, TH)  
+      PARAMETER (N=3,NCOUCHES=10)
+      REAL*8 Q(NCOUCHES,N,N),Q2(N,N),TH,TEMP
+      REAL*8 DCOS4, DSIN4
+      TEMP = DSIN(TH)*DSIN(TH)*DCOS(TH)*DCOS(TH)
+      Q(K,1,1) = Q2(1,1)*DCOS4(TH)+Q2(2,2)*DSIN4(TH)+2.D0*(Q2(1,2)+2.D0*Q2(3,3))*TEMP
+      Q(K,1,2) = (Q2(1,1)+Q2(2,2)-4.D0*Q2(3,3))*TEMP+Q2(1,2)*(DCOS4(TH)+DSIN4(TH))
+      Q(K,2,1)=Q(K,1,2)                                    
+      TEMP = DSIN(TH)*DCOS(TH)*DCOS(TH)*DCOS(TH)
+      Q(K,1,3)=(Q2(1,1)-Q2(1,2)-2.D0*Q2(3,3))*TEMP
+      TEMP = DSIN(TH)*DSIN(TH)*DSIN(TH)*DCOS(TH)
+      Q(K,1,3)=Q(K,1,3)+(Q2(1,2)-Q2(2,2)+2.D0*Q2(3,3))*TEMP    
+      Q(K,3,1)=Q(K,1,3)       
+      TEMP = DSIN(TH)*DSIN(TH)*DCOS(TH)*DCOS(TH)
+      Q(K,2,2) = Q2(1,1)*DSIN4(TH)+2.D0*(Q2(1,2)+2.D0*Q2(3,3))*TEMP+Q2(2,2)*DCOS4(TH)
+      TEMP = DSIN(TH)*DSIN(TH)*DSIN(TH)*DCOS(TH)
+      Q(K,2,3)=(Q2(1,1)-Q2(1,2)-2.D0*Q2(3,3))*TEMP
+      TEMP = DCOS(TH)*DCOS(TH)*DCOS(TH)*DSIN(TH)
+      Q(K,2,3)=Q(K,2,3)+(Q2(1,2)-Q2(2,2)+2.D0*Q2(3,3))*TEMP   
+      Q(K,3,2)=Q(K,2,3) 
+      TEMP = DSIN(TH)*DSIN(TH)*DCOS(TH)*DCOS(TH)     
+      Q(K,3,3) = (Q2(1,1)+Q2(2,2)-2.D0*(Q2(1,2)+Q2(3,3)))*TEMP+Q2(3,3)*(DSIN4(TH)+DCOS4(TH))
+    END  
+
+    SUBROUTINE MATINV(N,M,AA,BB,DET)                                              
+!*******************************************
+!*  SOLVING A LINEAR MATRIX SYSTEM AX = B  *
+!*  with Gauss-Jordan method using full    *
+!*  pivoting at each step. During the pro- *
+!*  cess, original A and B matrices are    *
+!*  destroyed to spare storage location.   *
+!* --------------------------------------- *
+!* INPUTS:    A   MATRIX N*N               *
+!*            B   MATRIX N*M               *
+!* --------------------------------------- *
+!* OUTPUS:    A   INVERSE OF A N*N         *
+!*            DET  DETERMINANT OF A        *
+!*            B   SOLUTION MATRIX N*M      *
+!* --------------------------------------- *
+!* NOTA - If M=0 inversion of A matrix     *
+!*        only.                            *
+!*******************************************                                    
+      PARAMETER(NMAX=6,MMAX=6,EPSMACH=1.D-10)                                    
+      REAL*8 AA(NMAX,NMAX),BB(NMAX,MMAX)                                                   
+      REAL*8 PC(NMAX),PL(NMAX),CS(NMAX)                                                  
+      REAL*8 PV,PAV,DET,TT                                                      
+! INITIALIZATIONS :                                                             
+      DET=1.D0                                                                  
+      DO I=1,N                                                                  
+        PC(I)=0.                                                                
+        PL(I)=0.                                                                
+        CS(I)=0.                                                                
+      ENDDO
+	  
+! Main loop	                                                                       
+      DO K=1,N                                                                  
+! Searching greatest pivot:                                              
+        PV=AA(K,K)                                                              
+        IK=K                                                                    
+        JK=K                                                                    
+        PAV=DABS(PV)                                                            
+        DO I=K,N                                                                
+          DO J=K,N                                                              
+            IF (DABS(AA(I,J)).GT.PAV) THEN                                      
+              PV=AA(I,J)                                                        
+              PAV=DABS(PV)                                                      
+              IK=I                                                              
+              JK=J                                                              
+            ENDIF                                                               
+          ENDDO                                                                 
+        ENDDO                                                                   
+                                                                               
+! Search terminated, Pivot is PV in location I=IK, J=JK.                    
+                                                                               
+! Save Pivot location:                                        
+        PC(K)=JK                                                                
+        PL(K)=IK                                                                
+                                                                               
+!Determinant DET is actualised
+!If DET=0, ERROR MESSAGE and STOP
+!Machine dependant EPSMACH equals here 1.DE-10                                         
+                                                                               
+        IF (IK.NE.K) DET=-DET                                                   
+        IF (JK.NE.K) DET=-DET                                                   
+        DET=DET*PV                                                              
+        IF (DABS(DET).LT.EPSMACH) THEN                                          
+! ERROR MESSAGE AND STOP                                                     
+          STOP '  STOP - DETERMINANT TOO SMALL!'                                                                  
+        ENDIF                                                                   
+                                                                               
+! Locate Pivot in K,K:                                              
+        IF(IK.NE.K) THEN                                                        
+          DO I=1,N                                                              
+! EXCHANGE LINES IK and K of AA:                                            
+            TT=AA(IK,I)                                                         
+            AA(IK,I)=AA(K,I)                                                    
+            AA(K,I)=TT                                                          
+          ENDDO                                                                 
+        ENDIF                                                                   
+      IF (M.NE.0) THEN                                                          
+        DO I=1,M                                                               
+          TT=BB(IK,I)                                                           
+          BB(IK,I)=BB(K,I)                                                      
+          BB(K,I)=TT                                                            
+        ENDDO                                                                   
+      ENDIF                                                                     
+! Pivot is located at right line.                                                
+        IF(JK.NE.K) THEN                                                        
+          DO I=1,N                                                              
+! EXCHANGE COLUMNS JK and K of AA :                                          
+            TT=AA(I,JK)                                                         
+            AA(I,JK)=AA(I,K)                                                    
+            AA(I,K)=TT                                                          
+          ENDDO                                                                 
+        ENDIF                                                                   
+! Pivot is located at right column.                                              
+! Pivot is now located at K,K.                                               
+                                                                               
+! STORE COLUMN K OF AA IN VECTOR CS                             
+! ET PUT COLUMN TO ZERO                                             
+        DO I=1,N                                                                
+          CS(I)=AA(I,K)                                                         
+          AA(I,K)=0.D0                                                          
+        ENDDO                                                                   
+                                                                               
+        CS(K)=0.                                                                
+        AA(K,K)=1.                                                              
+! MODIFY LINE K OF AA:                                            
+        IF(DABS(PV).LT.EPSMACH) THEN                                            
+          WRITE(2,*) '  STOP - PIVOT TOO SMALL!'                               
+          STOP                                                                  
+        ENDIF                                                                   
+        DO I=1,N                                                                
+          AA(K,I)=AA(K,I)/PV                                                    
+        ENDDO                                                                   
+        IF (M.NE.0) THEN                                                        
+          DO I=1,M                                                             
+            BB(K,I)=BB(K,I)/PV                                                  
+          ENDDO                                                                 
+        ENDIF                                                                   
+! MODIFY OTHER LINES OF AA:                                        
+        DO J=1,N                                                                
+          IF (J.EQ.K) CONTINUE                                                  
+          DO I=1,N                                                              
+! MODIFY LINE J OF AA :                                            
+            AA(J,I)=AA(J,I)-CS(J)*AA(K,I)                                       
+          ENDDO                                                                 
+          IF (M.NE.0) THEN                                                      
+            DO I=1,M                                                          
+              BB(J,I)=BB(J,I)-CS(J)*BB(K,I)                                     
+            ENDDO                                                               
+          ENDIF                                                                 
+        ENDDO                                                                   
+! LINE K OVER.                                                
+      ENDDO                                                                     
+!     End K loop                                                              
+                                                                               
+! MATRIX IS NOW INVERSED - MATRIX MUST BE REARRANGED                         
+                                                                               
+! EXCHANGE LINES                                                            
+      DO I=N,1,-1                                                               
+        IK=PC(I)                                                                
+        IF (IK.EQ.I) CONTINUE                                                   
+! EXCHANGE LINES I and PC(I) of AA:                                         
+        DO J=1,N                                                                
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(IK,J)                                                      
+          AA(IK,J)=TT                                                           
+        ENDDO                                                                   
+        IF (M.NE.0) THEN                                                        
+          DO J=1,M                                                             
+            TT=BB(I,J)                                                          
+            BB(I,J)=BB(IK,J)                                                    
+            BB(IK,J)=TT                                                         
+          ENDDO                                                                 
+        ENDIF                                                                   
+! NO MORE EXCHANGE NECESSARY, GO TO NEXT LINE                                                      
+      ENDDO                                                                     
+                                                                              
+! EXCHANGE COLUMNS                                                          
+                                                                               
+      DO J=N,1,-1                                                               
+        JK=PL(J)                                                                
+        IF (JK.EQ.J) CONTINUE                                                   
+! EXCHANGE COLUMNS J and PL(J) of AA:                                       
+        DO I=1,N                                                                
+          TT=AA(I,J)                                                            
+          AA(I,J)=AA(I,JK)                                                      
+          AA(I,JK)=TT                                                           
+        ENDDO                                                                   
+! NO MORE EXCHANGE NECESSARY, GO TO NEXT COLUMN 
+      ENDDO                                                                     
+! REARRANGEMENT TERMINATED.                                                        
+      RETURN                                                                    
+    END   !MATINV                                                                    
+
+! Matrix to change axes (x,y) for deformations
+
+    SUBROUTINE INITT(T,TH)
+      REAL*8 T(3,3),TH
+      T(1,1)=DCOS(TH)*DCOS(TH)
+      T(1,2)=DSIN(TH)*DSIN(TH)
+      T(1,3)=DSIN(TH)*DCOS(TH)
+      T(2,1)=DSIN(TH)*DSIN(TH)
+      T(2,2)=DCOS(TH)*DCOS(TH)
+      T(2,3)=-DSIN(TH)*DCOS(TH)
+      T(3,1)=-2.D0*DSIN(TH)*DCOS(TH)
+      T(3,2)=2.D0*DSIN(TH)*DCOS(TH)
+      T(3,3)=DCOS(TH)*DCOS(TH)-DSIN(TH)*DSIN(TH) 
+      RETURN
+    END
+
+! Matrix to change axes (x,y) for stresses
+
+    SUBROUTINE INITT1(T,TH)
+      REAL*8 T(3,3),TH
+      T(1,1)=DCOS(TH)*DCOS(TH)
+      T(1,2)=DSIN(TH)*DSIN(TH)
+      T(1,3)=2.D0*DSIN(TH)*DCOS(TH)
+      T(2,1)=DSIN(TH)*DSIN(TH)
+      T(2,2)=DCOS(TH)*DCOS(TH)
+      T(2,3)=-2.D0*DSIN(TH)*DCOS(TH)
+      T(3,1)=-DSIN(TH)*DCOS(TH)
+      T(3,2)=DSIN(TH)*DCOS(TH)
+      T(3,3)=DCOS(TH)*DCOS(TH)-DSIN(TH)*DSIN(TH) 
+      RETURN
+    END
+
+! End of file Compos04.f90

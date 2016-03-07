@@ -1,0 +1,79 @@
+!**********************************************************
+!*    This program calculates the Fourier coefficients    *
+!*   of a periodic function F(x) by using the procedure   *
+!*   AnalyticFourierHn of unit Fourier.                   *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*                                                        *
+!* Example:   F(x) equals 0 from -pi to 0 and sin(x)      *
+!*            from 0 to pi.                               *
+!*                                                        *
+!* Calculate the Fourier coefficients of a periodic       *
+!* function F(x):                                         *
+!*                                                        *
+!* Lowest  harmonic: 0                                    *
+!* Highest harmonic: 10                                   *
+!*                                                        *
+!* a0 =  0.318309886                                      *
+!* b0 =  0.000000000                                      *
+!*                                                        *
+!* a1 =  0.000000012                                      *
+!* b1 =  0.500000000                                      *
+!*                                                        *
+!* a2 = -0.212206591                                      *
+!* b2 =  0.000000000                                      *
+!* -----------------                                      *
+!* a9 = -0.000000000                                      *
+!* b9 = -0.000000000                                      *
+!*                                                        *
+!* a10 = -0.006430503                                     *
+!* b10 =  0.000000000                                     *
+!*                                                        *
+!*                     F90 Version By J-P Moreau, Paris   *
+!*                            (www.jpmoreau.fr)           *
+!**********************************************************
+!(to link with fourier.f90).
+PROGRAM Analytic_Fourier
+
+integer count,h1,h2
+REAL*8  x1,x2, ai,bi, PI
+
+  PI=4.d0*datan(1.d0)
+  print *,' '
+  print *,' Calculate the Fourier coefficients of a periodic function F(x):'
+  print *,'    (Function F(x) must be defined in file fourier.f90).'
+  print *,' '
+  x1=-PI; x2=PI
+  write(*,10,advance='no'); read *, h1
+  write(*,20,advance='no'); read *, h2
+  count=1
+  do i=h1, h2
+    print *,' '
+    call AnalyticFourierHn(x1,x2,i,ai,bi)
+	if (i<10) then
+      write(*,30)  i, ai
+	  write(*,40)  i, bi
+    else
+	  write(*,31)  i, ai
+      write(*,41)  i, bi
+    end if
+    if (MOD(count,5)==0) then
+      count=0
+	  print *,' '
+      pause 'Press any key to continue'
+    end if
+    count=count+1
+  end do
+  print *,' '
+  print *,' '
+
+10 format(' Lowest  harmonic: ')
+20 format(' Highest harmonic: ')
+30 format('  a',I1,' = ',F12.9)
+31 format('  a',I2,' = ',F12.9)
+40 format('  b',I1,' = ',F12.9)
+41 format('  b',I2,' = ',F12.9)
+
+END
+
+! end of file analfour.f90

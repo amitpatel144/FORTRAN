@@ -1,0 +1,103 @@
+!************************************************************************
+!* This is a test program for the function cg_method() from the module  *
+!* cg.f90 to solve a linear system                                      *
+!*                       A * X  =  Y                                    *
+!* for a symmetric positive definite matrix A using the conjugate       *
+!* gradient method.                                                     *
+!* -------------------------------------------------------------------- *
+!* Ref.: "Numerical algorithms with C, by Gisela Engeln-Muellges and    *
+!*        Frank Uhlig, Springer-Verlag, 1996".                          *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                          *
+!*                                                                      *
+!* Solve the following linear system:                                   *
+!*                                                                      *
+!* 4                     size N of matrix                               *
+!* 5.0 -1.0 -1.0 -1.0    the upper triangle (with diagonal)             *
+!*      5.0 -1.0 -1.0    of the positive definite matrix A              *
+!*           5.0 -1.0                                                   *
+!*                5.0                                                   *
+!* 1.0                   right hand side of the linear system           * 
+!* 1.0                                                                  *
+!* 1.0                                                                  * 
+!* 1.0                                                                  *
+!*                                                                      *
+!* -----------------------------------------------------                *
+!*  Symmetric Linear System (Conjugate Gradient Method)                 *
+!* -----------------------------------------------------                *
+!*  Test data (Matrix and right hand side):                             *
+!*    5.00000  -1.00000  -1.00000  -1.00000  1.00000                    *
+!*   -1.00000   5.00000  -1.00000  -1.00000  1.00000                    *
+!*   -1.00000  -1.00000   5.00000  -1.00000  1.00000                    *
+!*   -1.00000  -1.00000  -1.00000   5.00000  1.00000                    *
+!*                                                                      *
+!*  Solution for the linear system:                                     *
+!*    0.50000   0.50000   0.50000   0.50000                             *
+!* -----------------------------------------------------                *
+!*                                                                      *
+!*        F90 version without dynamic allocations by J-P Moreau, Paris  *
+!*                  (To compile and link with file cg.f90).             *
+!*                           (www.jpmoreau.fr)                          *
+!************************************************************************
+PROGRAM test_cg
+
+integer, parameter :: SIZE=24
+
+  real*8  a(0:SIZE,0:SIZE)   !the upper triangle of a positive definite real
+                             !matrix.            
+  real*8  y(0:SIZE), &       !right hand side of the linear system
+          x(0:SIZE)          !solution vector of the system
+  integer n,       &         !size of matrix A
+          i,       &         !row index
+          j,       &         !column index
+          fehler             !return value of cg_method()
+
+! ----------------------------- print header ---------------------
+  print *,''
+  print *,'-----------------------------------------------------'
+  print *,' Symmetric Linear System (Conjugate Gradient Method) '
+  print *,'-----------------------------------------------------'
+  
+! ----------------------------- Set inputs -----------------------
+  n=4                       !size of system to solve
+
+  !define a matrix
+  a(0,0)=5.d0; a(0,1)=-1.d0; a(0,2)=-1.d0; a(0,3)=-1.d0
+               a(1,1)= 5.d0; a(1,2)=-1.d0; a(1,3)=-1.d0
+                             a(2,2)= 5.d0; a(2,3)=-1.d0
+			  			                   a(3,3)= 5.d0
+	
+  !define b vector
+  y(0)=1.d0; y(1)=1.d0; y(2)=1.d0; y(3)=1.d0 
+
+  ! -------------- Print input data as a safeguard ----------------
+
+  print *,' Test data (Matrix and right hand side):'
+  do i = 0, n-1
+    write(*,100) (a(j,i),j=0,i-1), (a(i,j),j=i,n-1), y(i)
+  end do  
+
+  ! ---------------- solve linear system ---------------------------
+
+  call cg_method(n, a, y, x, fehler)             !perform  CG method
+
+
+  ! -------------------- Print output results ----------------------
+
+  if (fehler.ne.0) then                          !Error in CG method?
+    print *,' Error in executing CG method.'
+    print *,' Error code: ', fehler
+  else
+    print *,' Solution for the linear system:'
+    write(*,100)  (x(i),i=0,n-1)
+  end if     
+  print *,'-----------------------------------------------------'
+  print *,''
+  print *,''
+  stop
+
+100 format(10F9.5)
+
+end
+
+! end of file cgtst1.f90

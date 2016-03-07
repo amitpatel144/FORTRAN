@@ -1,0 +1,139 @@
+!**********************************************************
+!*                    PROGRAM CIRCUIT                     *
+!* Use Runge-Kutta method to solve a LRC circuit or equi- *
+!* valent damped mass-spring problem.                     *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*                                                        *
+!* (Solve mass-spring system with:                        *
+!*  F=75 N, M=50 kg, K=100 N (C=0.01), D=0.05)            *
+!*                                                        *
+!* Specify [o]scillating or [n]o oscillating term...      *
+!* o                                                      *
+!* Give V or F, L or M, R or D, C or 1/K (4L/C-R^2 > 0):  *
+!* 75 50 0.05 0.01                                        *
+!* one period at t=   4.442879    s                       *
+!* Give t_final and number of points:                     *
+!* 10 10                                                  *
+!*                                                        *
+!*     time        q or d    i or speed  analytic q or d  *
+!* 1.000000E+00  7.5037E-01  1.4993E+00    6.3310E-01     *
+!* 2.000000E+00  2.2485E+00 -1.7480E-03    1.4628E+00     *
+!* 3.000000E+00  7.4825E-01 -2.9955E+00    1.0890E+00     *
+!* 4.000000E+00 -2.2440E+00  5.4882E-03    1.4358E-01     *
+!* 5.000000E+00  7.5549E-01  5.9850E+00    2.2231E-01     *
+!* 6.000000E+00  6.7320E+00 -1.4953E-02    1.1913E+00     *
+!* 7.000000E+00  7.3505E-01 -1.1958E+01    1.4147E+00     *
+!* 8.000000E+00 -1.1202E+01  3.7843E-02    5.1634E-01     *
+!* 9.000000E+00  7.8782E-01  2.3892E+01    1.3089E-02     *
+!* 1.000000E+01  2.4630E+01 -9.1529E-02    7.5371E-01     *
+!* Press any key to continue                              *
+!* (For a better accuracy, increase number of points).    *
+!* ------------------------------------------------------ *
+!* Reference: "Problem Solving with Fortran 90 By David   *
+!*             R. Brooks, Springer-Verlag New York, 1997" *
+!********************************************************** 
+! 
+      MODULE RungeKutta
+!
+      CONTAINS
+!------------------------------------
+      REAL FUNCTION AofT(x,v,D,K,M,F)
+! Calculate acceleration for "mass and spring" problem.
+      IMPLICIT NONE
+      REAL, INTENT(IN) :: x,v,D,K,M,F
+      AofT=-(-F+D*v+K*x)/M
+      END FUNCTION AofT
+!--------------------------
+      SUBROUTINE MassAndSpring(x,v,D,K,M,F,dt)
+! Calculate motion for mass and spring problem with constant force term.
+      IMPLICIT NONE
+      REAL,INTENT(INOUT) :: x,v
+      REAL, INTENT(IN) :: D,K,M,F,dt
+      REAL k1_x,k2_x,k3_x,k4_x,k1_v,k2_v,k3_v,k4_v
+!
+! Runge-Kutta coefficients...
+      k1_x=v
+      k2_x=v+AofT(x,v,D,K,M,F)*dt/2.
+      k3_x=v+AofT(x,v,D,K,M,F)*dt/2.
+      k4_x=v+AofT(x,v,D,K,M,F)*dt
+      k1_v=AofT(x,v,D,K,M,F)
+      k2_v=AofT(x+v*dt/2.,v+k1_v*dt/2.,D,K,M,F)
+      k3_v=AofT(x+v*dt/2.,v+k2_v*dt/2.,D,K,M,F)
+      k4_v=AofT(x+v*dt,v+k3_v*dt,D,K,M,F)
+! Propagate solution...
+      x=x+(k1_x+2.*k2_x+2.*k3_x+k4_x)*dt/6.
+      v=v+(k1_v+2.*k2_v+2.*k3_v+k4_v)*dt/6.
+      END SUBROUTINE MassAndSpring
+!---------------------------------
+      END MODULE RungeKutta
+!==========================
+      PROGRAM Circuit
+!
+! Use Runge-Kutta method to solve LRC circuit problems.
+! Variable equivalences with mass-and-spring problem:
+! V   => force F
+! q   => displacement x
+! i   => velocity v
+! L   => mass m
+! R   => damping constant D
+! 1/C => spring constant K
+      USE RungeKutta, ONLY : MassAndSpring
+      IMPLICIT NONE
+      REAL i,q,L,C,R,V,t,dt,t_final
+      REAL k1_i,k2_i,k3_i,k4_i
+      INTEGER j,n
+      CHARACTER*1 choice
+!
+! Choose circuit type...
+!
+      PRINT *,' Specify [o]scillating or [n]o oscillating term...'
+      READ *,choice
+      SELECT CASE (choice)
+      CASE ('o','O')
+! Ld^2q/dt^2+Rdq/dt+q/C=V
+10      PRINT *,' Give V or F, L or M, R or D, C or 1/K (4L/C-R^2 > 0):'
+          READ *,V,L,R,C
+          PRINT *,' one period at t=',4*3.14159*L/SQRT(4.*L/C-R*R),' s'
+          PRINT *,' Give t_final and number of points:'
+          READ *,t_final,n
+        IF ((4.*L/C-R*R) <= 0.) GO TO 10
+        q=0.; i=C*V*R/2./L; t=0. !Initial values
+        dt=t_final/REAL(n)
+        PRINT *,'    time        q or d    i or speed  analytic q or d'
+        DO j=1,n
+          CALL MassAndSpring(q,i,R,1./C,L,V,dt)
+          t=t+dt
+          PRINT 1000,t,q,i,C*V*(1.-EXP(-R*t/2./L)*COS(SQRT(4.*L/C-R*R)*t/2./L))
+        END DO
+1000    FORMAT(1x,es12.6,2es12.4,es14.4)
+!
+      CASE ('n','N')
+! Ldi/dt+Ri=V (no oscillating term)...
+        PRINT *,' Give V, L, R:'
+        READ *,V,L,R
+        PRINT *,' time constant at t=',L/R,' s'
+        PRINT *,' Give t_final and number of points:'
+        READ *,t_final,n
+        i=0.; t=0. !Initial values
+        dt=t_final/REAL(n)
+        PRINT *,'       time          i        analytic 1'
+        DO j=1,n
+! Runge-Kutta coefficients...
+          k1_i=(V-R*i             )/L
+          k2_i=(V-R*(i+k1_i*dt/2.))/L
+          k3_i=(V-R*(i+k2_i*dt/2.))/L
+          k4_i=(V-R*(i+k3_i*dt)   )/L
+! Propagate solution...
+          i=i+(k1_i+2.*k2_i+2.*k3_i+k4_i)*dt/6.
+          t=t+dt
+          PRINT 1000,t,i,V/R*(1.-EXP(-R*t/L))
+        END DO
+!
+      CASE DEFAULT
+        PRINT *,' No such choice.  Try again...'
+      END SELECT
+!
+      END
+
+!end of file circuit.f90

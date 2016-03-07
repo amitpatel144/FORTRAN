@@ -1,0 +1,86 @@
+!****************************************************
+!*   Program to demonstrate Bisection subroutine    *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*               F90 version by J-P Moreau, Paris   *
+!*                      (www.jpmoreau.fr)           *
+!* ------------------------------------------------ *
+!* Example:  Find a real root of f(x)=(x+1)^5       *
+!*                                                  *
+!* Sample run:                                      *
+!*                                                  *
+!* What is the initial range (X0,X1):               *
+!*    X0 = -5                                       *
+!*    X1 = 0                                        *
+!* Convergence criterion: 1e-6                      *
+!*                                                  *
+!* The calculated zero is X = -0.9999996E+00        *
+!* The associated Y value is Y = -0.9655952E-05     *
+!* The number of steps was: 23                      *
+!*                                                  *
+!****************************************************
+PROGRAM Bisection
+
+real*8  e,x,x0,x1,Y
+integer m
+
+  print *,' '
+  print *,'What is the initial range (X0,X1):'
+  print *,' '
+  write(*,"('   X0 = ')",advance='no'); read *, x0
+  write(*,"('   X1 = ')",advance='no'); read *, x1
+  write(*,"(/' Convergence criterion: ')",advance='no')
+  read *, e
+
+  call Bisect(e,m,x,x0,x1)    ! Call bisection routine
+
+  write(*,50) x
+  write(*,60) Y(x)
+  write(*,70) m
+  
+  stop
+50 format(//' The calculated zero is X = ',E14.7)
+60 format(/' The associated Y value is Y = ',E14.7)
+70 format(/' The number of steps was: ',i2//)
+end
+
+!********************************
+real*8 Function Y(x) 
+  real*8 x
+  Y = (x-2.d0)*(x+1.d0)*(x+10.d0)
+end
+!********************************
+
+
+!***********************************************
+!*        Bisection method subroutine          *
+!* ------------------------------------------- *
+!* This routine iteratively seeks the zero of  *
+!* function Y(x) using the method of interval  *
+!* halving until the interval is less than e   *
+!* in width. It is assumed that the function   *
+!* Y(x) is available from a function routine.  *
+!* ------------------------------------------- *
+!* Input values: range (x0,x1), and e.         *
+!* Output values: root x, Y(x) and number of   *
+!* steps m.                                    *
+!***********************************************
+Subroutine Bisect(e,m,x,x0,x1)
+  integer m  
+  real*8 e,x,x0,x1,y0,yy,Y
+  m=0
+100 y0=Y(x0)
+  x=(x0+x1)/2.d0
+  yy=Y(x) 
+  m=m+1
+  if (dabs(yy*y0).eq.0) return
+  if ((yy*y0)<0.d0) x1=x
+  if ((yy*y0)>0.d0) x0=x
+  if (dabs(x1-x0)>e) goto 100
+  return
+end
+
+
+! End of file Bisect.f90

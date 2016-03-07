@@ -1,0 +1,117 @@
+!********************************************************************
+!*   Solve Y' = F(X,Y) with initial conditions using the Adams-     *
+!*   Moulton Prediction-Correction Method                           *
+!* ---------------------------------------------------------------- *
+!* SAMPLE RUN                                                       *
+!* (Integrate Y' = -Y + X/(1+X)^2 from X=0 to X=1 with initial      *
+!*  condition Y(0) = 1 )                                            *
+!*                                                                  *
+!*      X             Y            Y True      |Y-Y True|           *
+!*  ------------------------------------------------------          *
+!*  0.000000E+00  0.100000E+01  0.100000E+01  0.000000E+00          *
+!*  0.500000E-01  0.952381E+00  0.952381E+00  0.716977E-09          *
+!*  0.100000E+00  0.909091E+00  0.909091E+00  0.190987E-08          *
+!*  0.150000E+00  0.869569E+00  0.869565E+00  0.368444E-05   1      *
+!*  0.200000E+00  0.833340E+00  0.833333E+00  0.644065E-05   1      *
+!*  0.250000E+00  0.800009E+00  0.800000E+00  0.850220E-05   1      *
+!*  0.300000E+00  0.769241E+00  0.769231E+00  0.100264E-04   1      *
+!*  0.350000E+00  0.740752E+00  0.740741E+00  0.111325E-04   1      *
+!*  0.400000E+00  0.714298E+00  0.714286E+00  0.119113E-04   1      *
+!*  0.450000E+00  0.689668E+00  0.689655E+00  0.124333E-04   1      *
+!*  0.500000E+00  0.666679E+00  0.666667E+00  0.127530E-04   1      * 
+!*  0.550000E+00  0.645174E+00  0.645161E+00  0.129133E-04   1      *
+!*  0.600000E+00  0.625013E+00  0.625000E+00  0.129478E-04   1      * 
+!*  0.650000E+00  0.606073E+00  0.606061E+00  0.128835E-04   1      *
+!*  0.700000E+00  0.588248E+00  0.588235E+00  0.127418E-04   1      *
+!*  0.750000E+00  0.571441E+00  0.571429E+00  0.125397E-04   1      *
+!*  0.800000E+00  0.555568E+00  0.555556E+00  0.122910E-04   1      *
+!*  0.850000E+00  0.540553E+00  0.540541E+00  0.120070E-04   1      *
+!*  0.900000E+00  0.526327E+00  0.526316E+00  0.116966E-04   1      *
+!*  0.950000E+00  0.512832E+00  0.512821E+00  0.113670E-04   1      *
+!*  0.100000E+01  0.500011E+00  0.500000E+00  0.110243E-04   1      *
+!* ---------------------------------------------------------------- *
+!* REFERENCE: "Méthode de calcul numérique- Tome 2 - Programmes en  *
+!*             Basic et en Pascal By Claude Nowakowski, Edition du  *
+!*             P.S.I., 1984".                                       *
+!*                                                                  *
+!*                              F90 Release By J-P Moreau, Paris.   *
+!*                                      (www.jpmoreau.fr)           *
+!********************************************************************
+!See explanation file adambash.txt
+!---------------------------------
+real*8 X(0:3), Y(0:3)
+real*8 H,EC,ER,F,C,C1,C2,C3,C4,XX,YY,YC,YP
+integer K, L
+
+H = 0.05d0               !integration step
+X(0) = 0.d0; Y(0) = 1.d0 !Initial conditions
+EC = 1.d-6               !Precision
+
+PRINT *,' '
+PRINT *,'     X             Y            Y True      |Y-Y True| '
+PRINT *,' ------------------------------------------------------'
+
+WRITE(*,10) X(0), Y(0), Y(0), X(0)
+
+!Start with Runge-Kutta
+DO K = 0, 1
+  XX = X(K); YY = Y(K); call S1000(XX,YY,C1)
+  XX = X(K) + H / 2.d0; YY = Y(K) + H / 2.d0 * C1; call S1000(XX,YY,C2)
+  YY = Y(K) + H / 2.d0 * C2; call S1000(XX,YY,C3)
+  X(K + 1) = X(K) + H
+  XX = X(K + 1); YY = Y(K) + H * C3; call S1000(XX,YY,C4)
+  Y(K + 1) = Y(K) + H * (C1 + 2 * C2 + 2 * C3 + C4) / 6.d0
+  XX = X(K + 1); call S2000(XX,F); ER = DABS(F - Y(K + 1))
+
+  WRITE(*,10) X(K + 1), Y(K + 1), F, ER
+
+END DO
+
+100 K = 2
+XX = X(K); YY = Y(K); call S1000(XX,YY,C1)
+XX = X(K - 1); YY = Y(K - 1); call S1000(XX,YY,C2)
+XX = X(K - 2); YY = Y(K - 2); call S1000(XX,YY,C3)
+X(K + 1) = X(K) + H
+YP = Y(K) + H / 12.d0 * (23.d0 * C1 - 16.d0 * C2 + 5.d0 * C3)
+
+L = 0
+200 XX = X(K + 1); YY = YP; call S1000(XX,YY,C1)
+XX = X(K); YY = Y(K); call S1000(XX,YY,C2)
+XX = X(K - 1); YY = Y(K - 1); call S1000(XX,YY,C3)
+YC = Y(K) + H / 12.d0 * (5.d0 * C1 + 8.d0 * C2 - C3)
+
+IF (DABS(YP - YC) > EC) THEN
+  YP = YC; L = L + 1; GOTO 200
+END IF
+
+Y(K + 1) = YC; XX = X(K + 1); call S2000(XX,F); ER = DABS(F - Y(K + 1))
+
+WRITE(*,11) X(K + 1), Y(K + 1), F, ER, L
+
+DO K = 0, 2
+  X(K) = X(K + 1); Y(K) = Y(K + 1)
+END DO
+
+IF (X(2) < 1.d0)  GOTO 100
+
+print *,' '
+
+10 format(4E14.6)
+11 format(4E14.6,I4)
+
+END
+
+
+Subroutine S1000(XX,YY,C)
+real*8 XX,YY,C 
+  C = -YY + XX / ((1.d0 + XX) ** 2)
+  return
+end
+
+Subroutine S2000(XX,F)
+real*8 XX,F 
+  F = 1.d0 / (1.d0 + XX)
+  return
+end
+
+!end of file adammoul.f90

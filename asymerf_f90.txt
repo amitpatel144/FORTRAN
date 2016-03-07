@@ -1,0 +1,83 @@
+!****************************************************
+!*         Program to demonstrate ASYMERF           *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1].*
+!*                                                  *
+!*           F90 Version by J.-P. Moreau, Paris.    *
+!*                   (www.jpmoreau.fr)              *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!* Find the value of ERF(X)=2*Exp(-X*X)/SQRT(PI)    *
+!*                                                  *
+!* Input X ? 3                                      *
+!* ERF(X)= .9999779 with error estimate= -.00000000 *
+!* Number of terms evaluated was 10                 *
+!*                                                  *
+!* Input X ? 4                                      *
+!* ERF(X)= 1.0000000 with error estimate= 0.0000000 *
+!* Number of terms evaluated was 17                 *
+!*                                                  *
+!****************************************************
+PROGRAM ASYMERF
+
+   real*8  e, x, y
+   integer n
+
+   print *, ' '
+   write(*,'(" Input X: ")',advance='no')
+   read *, x
+
+   call Asym_erf(e,n,x,y)
+
+   write(*,50)  y, e
+   write(*,55)  n
+  
+   stop
+
+50 format(/' ERF(X)= ',F10.7,' with error estimate= ',F10.7/)
+55 format(' Number of terms evaluated was ',i2//)
+  
+end   
+
+
+!***********************************************************
+!* Asymptotic series expansion of the integral of          *
+!* 2 exp(-X*X)/(X*sqrt(PI)), the normalized error function *
+!* (ASYMERF). This program determines the values of the    *
+!* above integrand using an asymptotic series which is     *
+!* evaluated to the level of maximum accuracy.             *
+!* The integral is from 0 to X. The input parameter, X     *
+!* must be > 0. The results are returned in Y and Y1,      *
+!* with the error measure in E. The number of terms used   *
+!* is returned in N. The error is roughly equal to first   *
+!* term neglected in the series summation.                 *
+!* ------------------------------------------------------- *
+!* Reference: A short table of integrals by B.O. Peirce,   *
+!* Ginn and Company, 1957.                                 *
+!***********************************************************
+Subroutine Asym_erf(e,n,x,y)
+    ! Labels used: 100, 200
+    real*8 e, x, y
+    real*8 c1, c2, pi, y1
+    integer n
+    pi = 4.d0*datan(1.d0)
+    n = 1; y = 1.d0
+    c2 = 1.d0 / (2.d0 * x * x)
+100 y = y - c2
+    n = n + 2; c1 = c2
+    c2 = -c1 * n / (2.d0 * x * x)
+    ! Test for divergence - The break point is roughly N=X*X
+    if (dabs(c2) > dabs(c1)) goto 200
+    ! Continue summation
+    goto 100
+200 n = (n + 1) / 2
+    e = dexp(-x * x) / (x * dsqrt(pi))
+    y1 = y * e
+    y = 1.d0 - y1
+    e = e * c2
+    return
+end
+
+! End of file asymerf.f90

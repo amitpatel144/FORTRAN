@@ -1,0 +1,438 @@
+!************************************************************************
+!*                                                                      *
+!* Solve a system of first degree ordinary differential equations using *
+!* -------------------------------------------------------------------- *
+!* the extrapolation method of Bulirsch-Stoer-Gragg                     *
+!* -------------------------------------------------                    *
+!*                                                                      *
+!* Programming language: ANSI C                                         *
+!* Author:               Jobst Hoffmann (FORTRAN)                       *
+!* Adaptation:           Juergen Dietel, Computer Center, RWTH Aachen   *
+!* Source:               existing C, Pascal, QuickBASIC and FORTRAN     *
+!*                       codes                                          *
+!* Date:                 3.11.1992                                      *
+!*                                                                      *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!* -------------------------------------------------------------------- *
+!* REF.: "Numerical Algorithms with C, By Gisela Engeln-Muellges        *
+!*        and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].           *
+!************************************************************************
+MODULE Bulirsch
+
+  !GLOBAL VARIABLES
+
+  !the Bulirsch sequence
+  integer bufol(0:11)
+
+  integer ext_max                     !maximal order of the extrapolation
+
+CONTAINS
+
+! -----------------------------------------------------------------------
+Subroutine Init_bufol
+  bufol(0) = 2; bufol(1) = 4; bufol(2) = 6; bufol(3) = 8
+  bufol(4) = 12; bufol(5) = 16; bufol(6) = 24; bufol(7) = 32
+  bufol(8) = 48; bufol(9) = 64; bufol(10) = 96; bufol(11) = 128
+  return
+End Subroutine Init_bufol
+
+Subroutine extrapol (  &
+     row,              &
+     fhilf,            &
+     y,                &
+     n,                &
+     epsabs,           &
+     epsrel,           &
+     x, h,             &
+     h0,               &
+     ahead,            &
+     index             &
+    )
+integer row,n,index; real*8 fhilf(0:11,0:n-1), y(0:n-1), epsabs,epsrel,  &
+x,h,h0; logical ahead 
+!************************************************************************
+!* Perform one extrapolation step for function bul_stoe                 *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* row     pointer to the arrays  bufol and fhilf                       *
+!* fhilf   pointer to Matrix for extrapolation values                   *
+!* y       y-value of solution at x                                     *
+!* n       number of equations in the system                            *
+!* epsabs  absolute error bound                                         *
+!* epsrel  relative error bound                                         *
+!* x       x-value                                                      *
+!* h       local step sizes                                             *
+!* h0                                                                   *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* ahead  *ahead  = 1:  Step is acceptable                              *
+!*        *ahead != 1:  Step not acceptable                             *
+!* index  pointer to the arrays bufol and fhilf                         *
+!* x      final x-value                                                 *
+!* h      final step size                                               *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!*        ext_max, bufol, TRUE, Min, Max, Copy_vector, Power            *
+!************************************************************************
+  integer column      ! column of extrapolation scheme
+  real*8 diff_max, &  ! maximal difference of two columns in scheme
+  fhilf_i1,        &  ! column in extrapolation scheme
+  fhilf_i2,        &  ! column to the right of fhilf_i1
+  bufol_r,         &  ! element in Bulirsch sequence
+  bufol_i,         &  ! ditto
+  y_max,           &  ! maximal value in a column
+  help                ! aux variable
+
+  integer maxcol
+
+  y_max = 0.d0
+  maxcol = Min(row+1,ext_max)
+  ahead=.FALSE.
+
+  do column = 2, maxcol
+
+    if (ahead) return
+    index = Min(11 - column, row - column + 3)
+    diff_max = 0.d0
+    do i = 0, n-1
+      fhilf_i1 = fhilf(index - 1, i)
+      fhilf_i2 = fhilf(index - 2, i)
+      bufol_r  = 1.d0*bufol(row)
+      bufol_i  = 1.d0*bufol(index - 2)
+      fhilf(index - 2, i) = fhilf_i1 + (fhilf_i1 - fhilf_i2)/((bufol_r / bufol_i)**2 - 1.d0)
+      fhilf_i1 = fhilf(index - 1, i)
+      fhilf_i2 = fhilf(index - 2, i)
+      y_max    = Max(y_max, DABS(fhilf_i2))
+      diff_max = Max(diff_max, DABS(fhilf_i2 - fhilf_i1))
+    end do
+   
+    if (diff_max < epsrel * y_max + epsabs) then    !Step acceptable?
+      x = x + h0
+      !Copy_vector(y, fhilf(index - 2), n)
+      do i=0, n-1 
+	    y(i) = fhilf(index-2, i)
+      end do 
+      help  = 1.d0*(column - ext_max)
+      !Step size for next step
+      h     = 0.9d0 * h * (0.6**help)
+      row   = -1
+      ahead = .TRUE.
+    end if
+  end do
+  return
+End Subroutine extrapol
+
+
+! ------------------------------------------------------------------------
+integer Function bul_stoe & !Extrapolation method for 1st order DE systems
+    (    & 
+         x,    &               ! initial x-value/ final x-value .....
+         xend, &               ! desired end point ..................
+         n,    &               ! number of DEs ......................
+         y,    &               ! initial y-value/ final y-value .....
+         epsabs,  &            ! absolute error bound ...............
+         epsrel,  &            ! relative error bound ...............
+         h,    &               ! initial/final step size ............
+         hmax, &               ! maximal step size ..................
+         neu,  &               ! use an outside given x ? ...........
+         fmax, &               ! maximal # of calls of  dgl() .......
+         aufrufe  )            ! actual # of calls of dgl() .........
+real*8 x,xend,y(0:n-1),epsabs,epsrel,h,hmax; logical neu; integer fmax
+integer aufrufe
+!************************************************************************
+!* Compute the solution of an intial value problem for a first order    *
+!* system of ordinary differential equations                            *
+!*                                                                      *
+!*      y' = f(x,y)        with initial value y(x0) = y0                *
+!*                                                                      *
+!* by using the extrapolation method of Bulirsch-Stoer-Gragg.           *
+!* The maximal extrapolation order is set internally depending on the   *
+!* machine constant; the step size control follows the ideas in :       *
+!*     HALL, G.; WATT, J.M: Modern Numerical Methods for Ordinary       *
+!*                          Differential Equations, Oxford 1976,        *
+!*                          Clarendon Press,  [HALL76]                  *
+!* REMARK :                                                             *
+!* The dynamic allocations from this function are only set free for a   *
+!* new run or with improper input (fehler = TRUE or Return value >= 2). *
+!* Hence we advise the user to end work with this function by one call  *
+!* with an improper value such as n = -2 in order to free up all storage*
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* x        x-value                                                     *
+!* y        [0..n-1] vector with initial y-value at x                   *
+!* dgl      pointer to a function which evaluates the right hand side   *
+!*          odf the DE system   y' = f(x,y)                             *
+!* n        number of equations in the system                           *
+!* xend     desired final value for x, xend < x is allowed              *
+!* h        step size for next step                                     *
+!* hmax     maximal step size; hmax > 0                                 *
+!* epsabs\  error bounds for absolute and relative errors, both non     *
+!* epsrel/  negative.                                                   *
+!*          We test for the mixed error:                                *
+!*              |lokaler Fehler|  <=  |y| * epsrel + epsabs.            *
+!*          If epsrel = 0, we test the absolute error; if epsabs = 0 we *
+!*          test the relative error. epsrel will be set to 10 * machine *
+!*          constant if it has been chosen smaller than this.           *
+!* neu      Flag, indicating whether this function is called to compute *
+!*          on after one partial run that was cut short due to too many *
+!*          evaluations:                                                *
+!*          neu = FALSE: continue with old values                       *
+!*          neu = TRUE:  start new                                      *
+!* fmax     upper bound for the number of allowed function evaluations  *
+!*          of the right hand side via dgl()                            *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* x        final x-value of integration; usually x = xend              *
+!* y        [0..n-1] y-value vector at x                                *
+!* h        final step size; should be used unchanged in the next call  *
+!*          if neu = TRUE; should be redefined for neu = TRUE.          *
+!* aufrufe  number of calls of dgl()                                    *
+!*                                                                      *
+!* Return value :                                                       *
+!* ==============                                                       *
+!* = 0: all ok; after a new setting for xend, the function can be used  *
+!*      again for the same problem, or all inputs may be changed        *
+!* = 1: method has not reached xend after  MAX_FCT right hand side      *
+!*      evaluations; try another call with same parameters or change    *
+!*      error bounds.                                                   *
+!* = 2: step size less than 4 * machine constant.                       *
+!*      For a future call, increase step size and error bounds.         *
+!* = 3: epsabs or epsrel negative, or both zero.                        *
+!* = 4: xend = x                                                        *
+!* = 5: hmax negative.                                                  *
+!* = 6: n <= 0.                                                         *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* extrapol, ext_max, bufol, Double, TRUE, FALSE, MACH_EPS, Min, IMin,  *
+!* Max, boolean, copy_vector, ABS, Exp, Ln.                             *
+!************************************************************************
+  real*8, parameter :: MACH_EPS = 2.25D-16
+
+  real*8 fhilf(0:11,0:n-1)    ! Index 0..7: Matrix for the            
+                              !             extrapolation scheme      
+                              ! Index 8..11: aux vectors              
+  real*8  x0                  ! x-value on call of dgl()              
+  integer row                 ! row of extrapolation scheme           
+  real*8  absh,  &            ! magnitude of step size                
+  absh0,         &            ! magnitude of aux step size  h0        
+  h0,            &            ! aux step size                         
+  hilf                        ! aux variable                          
+  integer count, &            ! Loop variable for mid-point rule      
+  index                       ! Index for the vectors fhilf and bufol 
+  logical ahead               ! Flag indicating acceptance of step    
+
+  real*8 tmp(0:n-1),tmp1(0:n-1)    ! Auxiliary vectors of size n           
+  integer icount
+
+  call Init_bufol
+
+  do i=0, 11
+    do j=0, n-1
+      fhilf(i,j) = 0.d0
+    end do
+  end do
+
+  h0 = 0.d0
+
+  !check input
+  if (epsabs < 0.d0.or.epsrel < 0.d0.or.epsabs + epsrel <= 0.d0) then
+    bul_stoe = 3
+    return
+  else if (xend == x) then
+    bul_stoe = 4
+    return
+  else if (hmax <= 0.d0) then
+    bul_stoe = 5
+    return
+  end if
+
+  if (n <= 0) then
+    bul_stoe = 6
+    return
+  end if
+
+  if (.NOT.neu) then  !new call or repeat call due to excessive evaluations ?
+    x = fhilf(9,0)
+    !copy_vector(y, fhilf(8), n)
+    do i=0, n-1
+	  y(i) = fhilf(8, i)
+    end do
+  else
+    row = -1
+  end if
+
+  aufrufe = 0
+  ahead   = .TRUE.
+  ext_max = int(-DLOG(MACH_EPS) / DLOG(2.d0) / 7.5d0)
+
+  epsrel = Max(epsrel, 10.d0 * MACH_EPS)
+
+  icount = 0
+
+  !main loop
+  Do While (.True.)
+    icount = icount + 1
+    if (neu) then
+      if (ahead) then                                       ! new step ?
+        absh = DABS(h)
+        absh = Min(absh, hmax)
+        h0 = Min(absh, ABS(xend - x))
+        if (xend < x)  h0=-h0
+        absh0 = DABS(h0)
+
+        if (absh0 <= 4.d0 * MACH_EPS * DABS(x)) then
+          bul_stoe = 0
+          return                                            !normal exit
+        end if
+        ahead = .FALSE.
+      end if !ahead
+
+10    Continue
+        row = row + 1                  !find step size for extrapolation
+        h = h0 / bufol(row)
+        x0 = x                         !Euler step; save initial values
+
+        !copy_vector(fhilf(8), y, n)
+        do i=0, n-1
+		  fhilf(8, i) = y(i)
+        end do
+
+        do i=0, n-1
+          tmp(i) = fhilf(8, i)
+          tmp1(i) = fhilf(11, i)
+        end do
+
+        call dgl(0, n, x0, tmp, tmp1)
+
+        do i=0, n-1
+          fhilf(8, i) = tmp(i)
+          fhilf(11, i) = tmp1(i)
+        end do
+
+        do i = 0, n-1
+          fhilf(9,i) = fhilf(8,i) + h * fhilf(11,i)
+        end do
+        x0 = x0 + h
+
+        do i=0, n-1
+          tmp(i) = fhilf(9, i)
+          tmp1(i) = fhilf(11, i)
+        end do
+
+        call dgl(0, n, x0, tmp, tmp1)
+
+        do i=0, n-1
+          fhilf(9, i) = tmp(i)
+          fhilf(11, i) = tmp1(i)
+        end do
+
+        ! use mid-point rule
+        do count = 1, bufol(row) - 1
+          do i = 0, n-1
+            fhilf(10, i) = fhilf(8, i) + 2.d0 * h * fhilf(11, i)
+          end do
+          
+		  x0 = x0 + h
+
+          do i=0, n-1
+            tmp(i) = fhilf(10, i)
+            tmp1(i) = fhilf(11, i)
+          end do
+
+          call dgl(0, n, x0, tmp, tmp1)
+
+          do i=0, n-1
+            fhilf(10, i) = tmp(i)
+            fhilf(11, i) = tmp1(i)
+          end do
+
+          do j = 8, 10                       !store for next step
+            !copy_vector(fhilf(j), fhilf(j + 1), n)
+            do i=0, n-1
+			  fhilf(j, i) = fhilf(j+1, i)
+            end do
+          end do
+        end do
+
+        do i=0, n-1
+          tmp(i) = fhilf(9, i)
+          tmp1(i) = fhilf(11, i)
+        end do
+
+        call dgl(0, n, x0, tmp, tmp1)
+
+        do i=0, n-1
+          fhilf(9, i) = tmp(i)
+          fhilf(11, i) = tmp1(i)
+        end do
+
+        do i = 0, n-1                  !stabilize with trapezoidal rule
+          fhilf(row, i) = 0.5d0 * (fhilf(9, i) + fhilf(8, i) + h * fhilf(11, i))
+        end do
+        
+		aufrufe = aufrufe + bufol(row) + 2
+      
+	  if (row==0) goto 10
+
+      !Extrapolation
+      call extrapol(row, fhilf, y, n, epsabs, epsrel, x, h, h0, ahead, index)
+
+      if (aufrufe >= fmax) then                      ! too many calls ?
+        fhilf(9,0) = x                               ! => stop
+        !copy_vector(fhilf(8), y, n)
+        do i=0, n-1
+		  fhilf(8, i) = y(i)
+        end do
+        x = x0
+        !copy_vector(y, fhilf(index - 2), n)
+        do i=0, n-1
+		  y(i) = fhilf(index-2, i)
+        end do
+        bul_stoe = 1
+        return
+      end if
+
+    end if !neu
+
+    if ((.Not.ahead).or.(.Not.neu)) then    !do we need to repeat step ?
+      neu = .TRUE.                            !set flag for a new call
+      if (row >= Min(7, ext_max - 1)) then
+
+      ! store differently since the extrapolation scheme has at most
+      ! 11 rows, but we allow only 8 extrapolations.
+
+        do j = 0, 6
+          !copy_vector(fhilf(j), fhilf(j + 1), n)
+          do i=0, n-1
+		    fhilf(j, i) = fhilf(j+1, i)
+          end do
+        end do
+      end if 
+
+      ! accuracy could not be reached from the whole extrapolation
+      ! table; repeat step with smaller step size.
+
+      if (row >= ext_max + 2) then
+        hilf = 1.d0*(row - ext_max + 1)
+        h0   = 0.9 * h * (0.6**hilf)
+        if (DABS(h0) <= 4.d0 * MACH_EPS * DABS(x0)) then  !step too small
+          bul_stoe = 2
+          return
+        end if
+        row = -1
+      end if
+    end if
+  end do  !while (true)
+  return
+End Function bul_stoe 
+
+END Module Bulirsch
+
+! -------------------------- END bulirsch.f90 ------------------------

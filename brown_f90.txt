@@ -1,0 +1,402 @@
+! ------------------------ MODULE brown.f90 ----------------------------
+
+!************************************************************************
+!*                                                                      *
+!* Brown's method for nonlinear systems                                 *
+!* -------------------------------------                                *
+!*                                                                      *
+!* Programing language: Fortran                                         *
+!* Compiler:            Digital Fortran 90 for PC                       *
+!* Computer:            IBM Compatible PC, 400 MHz                      *
+!* Literature:          Brown, K. M.:                                   *
+!*                      A quadratically convergent Newton-like method   *
+!*                      based upon Gaussian elimination                 *
+!*                      SIAM J. Numer. Anal. Vol. 6 , (1969), p. 560    *
+!* Source:              QuickBASIC program                              *
+!* Author:              Johannes Karfusehr (FORTRAN)                    *
+!* Adaption:            Juergen Dietel, Computer Center, RWTH Aachen    *
+!*                      for C version                                   *
+!*                      J-P Moreau, Paris for this F90 version          *
+!* Date:                9.20.2002                                       *
+!*                      (www.jpmoreau.fr)                               *
+!* -------------------------------------------------------------------- *
+!* Ref.: "Numerical Algorithms with C by G. Engeln-Mueller and F. Uhlig,*
+!*        Springer-Verlag, 1996"                                        *
+!************************************************************************
+MODULE Brown
+USE TFUNCT
+
+INTEGER ihf(0:SIZE,0:SIZE+1)
+REAL*8  dquot(0:SIZE), rslin(0:SIZE)
+REAL*8  hf(0:SIZE,0:SIZE)
+
+
+CONTAINS
+
+! -----------------------------------------------------------------------
+Subroutine subst (n, k, ihf, hf, rslin, x1)
+integer n, k, ihf(0:SIZE,0:SIZE+1)
+real*8  hf(0:SIZE,0:SIZE), rslin(0:SIZE),x1(0:SIZE)
+!************************************************************************
+!* Solve a linear system of equations                                   *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* n      size of system                                                *
+!* k      Index for coordinates: 0,...,n-1                              *
+!* ihf    [0..n-1,0..n] matrix, register of row and column interchanges *
+!* hf     [0..n-1,0..n-1] matrix, the system matrix                     *
+!* rslin  [0..n-1] right nahd side vector                               *
+!*                                                                      *
+!* Output parameter:                                                    *
+!* =================                                                    *
+!* x1     [0..n-1] solution vector                                      *
+!*                                                                      *
+!* Constants in use :  REAL, ZERO                                       *
+!* ==================                                                   *
+!*                                                                      *
+!************************************************************************
+ real*8 sum              ! aux variable for finding x1[kmax]
+ integer km, &           ! Loop counter
+        kmax, &          ! original row index
+        jsub, &          ! original column index
+        j                ! Loop counter
+  do km = k, 1, -1
+    kmax = ihf(km - 1,n)
+    sum=ZERO
+    do j = km, n-1
+      jsub =  ihf(km,j)
+      sum  = sum + hf(km - 1,jsub) * x1(jsub)
+    end do
+    x1(kmax) = sum + rslin(km - 1)
+  end do
+  return
+End Subroutine subst
+
+
+! -----------------------------------------------------------------------
+Subroutine iter4(n, epsm, xalt, x1, sing, rc)
+real*8 epsm, xalt(0:SIZE), x1(0:SIZE)
+integer sing, rc
+!************************************************************************
+!* Compute one approximation via  Brown's method.                       *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* n     number of equations                                            *
+!* epsm  machine constant                                               *
+!* xalt  previous iterate                                               *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* x1    [0..n-1] vector, the new iterate for the zero                  *
+!* sing  error code, (1=matrix is singular)                             *
+!*                                                                      *
+!* Return code rc:                                                      *
+!* ==============                                                       *
+!* = 0: all ok                                                          *
+!* = 1: error in evaluating function                                    *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* ihf, rslin, dquot, hf, nlgls, REAL, boolean, subst, ABS, FALSE,      *
+!* TRUE, ZERO                                                           *
+!************************************************************************
+!Labels:10, 20
+integer i, &       ! Loop counters
+        j, &
+        k, &       ! index of current function
+        anzahl, &  ! counter for those difference quotients that are 0
+        temp,   &  ! aux variable
+        kmax,   &  ! Index of largest difference quotient
+        jsub       ! aux variable for an index in ihf
+real*8  hold,   &  ! aux variable for x1[temp]
+        h,      &  ! Step size for difference quotient in direction of x1[temp]
+        faktor, &  ! quotient  h / hold
+        dermax, &  ! maximal difference quotient magnitude
+        sum,    &  ! sum in rslin[k]
+        f,      &  ! value of function k at x1
+        fplus      ! value of function k at x1[0],..., x1[temp]+h,...,x1[n-1]
+  ! --------------------- initialize variables --------------------------
+  temp=0; kmax=0
+  do j = 0, n-1
+    ihf(0,j) = j
+  end do
+  x1=xalt
+
+  ! ----------- linearize the kth coordinate function -------------------
+  do k = 0, n-1
+
+    anzahl = 0
+    faktor = 0.001d0
+
+    do j = 0, 2
+      if (k > 0) then
+        call subst(n, k, ihf, hf, rslin, x1)
+      end if
+      call func3(k, x1, f)
+
+      ! ---- find ith diskretization size and difference quotient ----
+      do i = k, n-1
+        temp = ihf(k,i)
+        hold = x1(temp)
+        h    = faktor * hold
+        if (DABS(h) <= epsm) then
+          h = 0.001d0
+        end if
+        x1(temp) = hold + h
+        if (k > 0) then
+          call subst(n, k, ihf, hf, rslin, x1)
+        end if
+        call func3(k, x1, fplus)
+        x1(temp) = hold
+
+        dquot(temp) = (fplus - f) / h
+
+        if (DABS(dquot(temp)) <= epsm) then
+          anzahl = anzahl + 1
+        else if (DABS(f / dquot(temp)) >= 1e20) then
+          anzahl = anzahl + 1
+        end if
+      end do
+
+      if (anzahl < n - k) then
+        sing = 0
+        goto 10
+      else
+        sing   =  1
+        faktor = faktor * TEN
+        anzahl =  0
+      end if
+    end do
+
+10  if (sing==1) then 
+      goto 20
+    else if (k < n - 1) then
+      kmax = ihf(k,k)
+
+      ! --- find largest magnitude difference quotient ------------
+      dermax = DABS(dquot(kmax))
+      do i = k + 1, n-1
+        jsub = ihf(k,i)
+        if (DABS(dquot(jsub)) < dermax) then
+          ihf(k + 1,i) = jsub
+        else
+          ihf(k + 1,i) = kmax
+          kmax         = jsub
+        end if
+      end do
+      if (DABS(dquot(kmax)) <= epsm) then
+        sing = 1
+      end if
+
+      ihf(k,n) = kmax
+
+      if (sing==1) then 
+	    goto 20
+      else
+        ! ---------- solve kth equation for  xmax ------------------
+        sum = ZERO
+        do j = k + 1, n-1
+          jsub       = ihf(k + 1,j)
+          hf(k,jsub) = -dquot(jsub) / dquot(kmax)
+          sum        = sum + dquot(jsub) * x1(jsub)
+        end do
+        rslin(k) = (sum - f) / dquot(kmax) + x1(kmax)
+      end if
+    else
+      ! ----- solve (n-1)th coordinate function via discrete ------- 
+      ! ----- Newton method for one variable -----------------------
+      if (DABS(dquot(temp)) <= epsm) then
+        sing = 1
+	  else
+        kmax     = temp
+        rslin(k) = -f / dquot(kmax) + x1(kmax)
+      end if
+    end if
+20 end do
+
+  if (sing==0) then
+    x1(kmax) = rslin(n - 1)                  ! compute approximation
+    if (n > 1) then                          ! by back substitution
+      call subst(n, n - 1, ihf, hf, rslin, x1)
+    end if
+  end if
+  rc=0
+  return
+End Subroutine iter4
+
+! ---------------------------------------------------------------------
+! Brown's method for nonlinear systems of equations
+Subroutine brown1(n, x0, eps, prot, maxit, x1, itanz, rc)
+integer   n              !number of equations
+real*8    x0(0:SIZE)     !Starting value for iteration
+real*8    eps            !error bound
+integer   prot,  &       !Protocole switch
+          maxit          !maximal number of steps
+real*8    x1(0:SIZE)     !solution vector
+integer   itanz, &       !actual steps performed
+          rc             !error code
+!************************************************************************
+!* find a zero of a nonlinear system of n equations in n unknown using  *
+!* Brown's method                                                       *
+!*                                                                      *
+!* One step of Brown's method is performed by calling iter4().          *
+!* The iteration is continued until the admissable number of iterations *
+!* is reached or one of the following break-off criteria is satisfied : *
+!* 1. the relative change between two successive iterates is less than  *
+!*    eps.                                                              *
+!* 2. The function value has mgnitude less than MACH_EPS at the new x   *
+!* 3. The desired accuracy has been reached.                            *
+!*                                                                      *
+!* If specified in prot, intermediate results are tabulated, see prot   *
+!*                                                                      *
+!* Input parameters:                                                    *
+!* =================                                                    *
+!* n      size of system                                                *
+!* x0     [0..n-1] starting vector for the iteration                    *
+!* eps    desired accuracy; if specified as <= 0, we set                *
+!*        eps = 0.8 * MACH_EPS.                                         *
+!* prot   Protocol flag. If TRUE we tabulate the differenz of successive*
+!*        iterates, the last iterate and the functional value there     *
+!*        after each iteration in the standard output file. If FALSE,   *
+!*        there is no output.                                           *
+!* maxit  Maximal number of iterations                                  *
+!*                                                                      *
+!* Output parameters:                                                   *
+!* ==================                                                   *
+!* x1     [0..n-1] vector, the approximate solution for the zero        *
+!* itanz  number of iterations executed                                 *
+!*                                                                      *
+!* Return value rc:                                                     *
+!* ===============                                                      *
+!* error code.                                                          *
+!* = 0: successsful iteration                                           *
+!* = 1: desired accuracy not achieved after maxit iterations            *
+!* = 2: system matrix singular                                          *
+!* = 3: lack of memory                                                  *
+!* = 4: wrong input : fkt = NULL or n < 1 or maxit < 1                  *
+!* = 5: error in evaluating  fkt()                                      *
+!*                                                                      *
+!* global names used:                                                   *
+!* ==================                                                   *
+!* ihf, rslin, dquot, hf, nlgls, REAL, boolean, MACH_EPS, FALSE,        *
+!* iter4, subst, IMATRIX, MATRIX, writeln, ABS, EIGHT                   *
+!************************************************************************
+!Labels: 30,35,40,50
+integer i,  &        ! Loop variable
+        m,  &        ! iterations counter
+        krit         ! list of causes for stop of program:
+                     ! = 0: too many steps                             
+                     ! = 1: step size too small                        
+                     ! = 2: function value sufficiently small          
+                     ! = 3: desired accuracy reached
+integer sing         ! Flag, indicating whether the linearized system    
+                     ! is singular (sing=1, else 0)
+real*8  relf,   &    ! aux variables
+        fwert,  &
+        delta0, &    ! maximum norm of previous vector
+        delta1, &    ! maximum norm of current vector
+        epsm,   &    ! machine constant
+        xalt(0:SIZE) ! [0..n-1] vector used to store old iterate
+
+real*8, parameter :: MACH_EPS = 1.2d-16   !added 12/11/2009
+
+  relf=ZERO 
+  ! ---------------- catch wrong input ---------------------------------
+  if (n < 1.or.maxit < 1) then
+    rc = 4
+    goto 50  !return
+  end if
+
+  if (eps < MACH_EPS) then         ! desired accuracy rediculously
+    eps = EIGHT * MACH_EPS         ! small ? correct
+  end if
+
+  epsm   = 100*MACH_EPS            ! initialize variables
+  sing   = 0
+  krit   = 0
+  delta0 = 0.01d0
+  xalt   = x0
+
+  if (prot.ne.0) print *,' '
+
+  do m = 1, maxit                  ! start iteration
+
+    call iter4(n, epsm, xalt, x1, sing, rc)
+    if (rc.ne.0) then
+      rc=5
+      goto 50  !return
+    end if
+
+    ! ----------- if desired document each step ------------------------
+    if (prot.ne.0) then
+      print *, ' Iteration step:', m
+      if (sing==0) then
+        print *, '      Difference         Component       Approximation             function value'
+        do i = 0, n-1
+          call func3(i,x1,fwert)
+          print *, x1(i) - xalt(i), i, x1(i), fwert
+        end do
+      else
+        print *, ' Jacobi matrix singular!'
+      end if
+    end if
+
+    if (sing==0) then
+
+      ! ----------------- test break-off criteria ----------------------
+      do i = 0, n-1              ! test relative change in new iterate
+        relf = (x1(i) - xalt(i)) / (xalt(i) + eps)
+        if (DABS(relf) >= eps)  goto 30
+      end do
+30    if (DABS(relf) < eps) then
+        krit = 1                           ! step size too small
+        goto 40
+      end if
+
+      do i = 0, n-1                        ! check function value
+        call func3(i, x1, fwert)
+        if (DABS(fwert) > epsm)  goto 35
+      end do
+
+35    if (DABS(fwert) <= epsm) then
+        krit = 2                           ! function value small enough
+        goto 40
+      end if
+
+      delta1 = DABS(x1(0) - xalt(0))            ! compare with desired
+      do i = 1, n-1                             ! accuracy
+        if (delta1 < DABS(x1(i) - xalt(i))) then
+          delta1 = DABS(x1(i) - xalt(i))
+        end if
+      end do
+      if (delta1 <= 0.001d0) then
+        if (delta0 <= delta1) then
+          krit = 3                         ! desired accuracy reached
+          goto 40
+        end if
+      end if
+      
+	  delta0 = delta1
+
+      if (m < maxit)  xalt = x1
+    else
+      goto 40
+    end if
+  end do !end of m loop
+
+40 itanz = m
+
+  if (sing==1) then
+    rc = 2
+  else if (krit == 0) then
+    rc = 1
+  else
+    rc = 0
+  end if
+50 return
+END Subroutine Brown1
+
+END MODULE Brown
+! -------------------------- END brown.f90 ----------------------------

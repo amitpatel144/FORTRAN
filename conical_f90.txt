@@ -1,0 +1,295 @@
+!*****************************************************
+!*            REDUCTION  OF  CONICALS                *
+!*     of equation: ax^2+2bxy+cy^2+2dx+2ey+f=0       *
+!* ------------------------------------------------- *
+!* The program, knowing the coefficients a, b, c, d, *
+!* e and f of the cartesian equation, finds the      *
+!* caracteristics of the reduction elements:         *
+!* type of conical  (hyperbola,parabola,ellipse or   *
+!* circle) and center position,  focus position(s),  *
+!* axes and excentricity.                            *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!*  REDUCTION OF CONICALS                            *
+!*                                                   *
+!*    a  = 1                                         *
+!*    2b = 2                                         *
+!*    c  = 1                                         *
+!*    2d = -13                                       *
+!*    2e = -11                                       *
+!*    f  = 32                                        *
+!*                                                   *
+!*  Type: Parabola                                   *
+!*                                                   *
+!*  Center:  x=0.999999  y=5.000000                  *
+!*  Symmetry direction:  x=1  y=-1                   *
+!*  Focus:   x=1.124999  y=4.875000                  *
+!*  Parameter:           0.35355339                  *
+!*                                                   *
+!*                       F90 version by J-P Moreau.  *
+!*                           (www.jpmoreau.fr)       *
+!*****************************************************
+PROGRAM Conicals
+
+     !input variables:
+     real*8 a,b,c,d,e,f    ! coefficients of cartesian equation
+
+     !  output variables:
+     !  typ: type of conical (integer)
+     !       1: ellipse
+     !       2: hyperbola
+     !       3: parabola
+     !       4: circle
+     !       5: line
+     !       6: two lines
+     !       7: one point
+     !       8: no conical at all.
+     !  ex: excentricity (or parameter for a parabola),
+     !  xc,yc: coordinates of center,
+     !  la,lb: axis half-length for an ellipse (la, radius for a circle),
+     !  xf1,yf1,xf2,yf2: focus coordinates (only one focus for a parabola),
+     !  xs1,ys1,xs2,ys2: summit coordinates for an hyperbola,
+     !  xv1,yv1,xv2,yv2: vector directions of symmetry axes
+     !                   (only one direction for a parabola). 
+     
+	 real*8 ex,xc,yc,la,lb,xf1,yf1,xf2,yf2,xs1,ys1,xs2,ys2,xv1,yv1,xv2,yv2
+
+     ! other internal variables
+     real*8 delta,u,l,m,x2,y2
+     integer typ
+
+  print *,''
+  print *,'  REDUCTION OF CONICALS'
+  print *,''
+  write(*,200,advance='no'); read *, a
+  write(*,201,advance='no'); read *, b 
+  write(*,202,advance='no'); read *, c
+  write(*,203,advance='no'); read *, d 
+  write(*,204,advance='no'); read *, e 
+  write(*,205,advance='no'); read *, f
+  print *,''
+  b=b/2; d=d/2; e=e/2
+  delta=a*c-b*b
+  if (delta.eq.0) then
+    call Parabola(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xf1,yf1,ex)
+  else
+    xc=(b*e-d*c)/delta
+    yc=(b*d-a*e)/delta
+    f = f + a*xc*xc+2*b*xc*yc+c*yc*yc+2*d*xc+2*e*yc
+    if (f.eq.0) then
+      if (delta>0) then
+	    typ=7 
+	  else 
+	    typ=6  !7=one point, 6=two lines
+        goto 100
+      end if
+    end if
+    u=dsqrt((a-c)*(a-c)+4*b*b)
+    l=(a+c-u)/2; m=(a+c+u)/2
+    if (a.eq.c.and.b.eq.0) then
+      if (f*a>=0) then
+        typ=8;  ! no conical
+        goto 100
+      else
+        typ=4   ! circle
+        la=dsqrt(-f/a)
+        ex=1.d0
+        goto 100
+      end if
+    end if
+    if (a<c.and.b.eq.0) then
+      x2=1.d0; y2=0.d0; xv1=1.d0; yv1=0.d0
+    else
+      xv1=b; yv1=1.d0-a
+      u=sqrt(xv1*xv1+yv1*yv1)
+      x2=xv1/u; y2=yv1/u
+    end if
+    if (delta<0) then
+	  call Hyperbola(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xv2,yv2,xs1,ys1,xs2,ys2, &
+	                 xf1,yf1,xf2,yf2,ex)
+	else 
+	  call Ellipse(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xv2,yv2,la,lb,xf1,yf1,xf2,yf2,ex)
+    end if
+  end if
+
+  ! print results:
+100 SELECT CASE(typ)
+    case (1)
+        print *,'  Type: Ellipse'
+		print *,''
+        write(*,300) xc, yc
+        write(*,301) xv1, yv1
+		write(*,302) xv2, yv2
+		write(*,303) la
+		write(*,304) lb
+		write(*,305) xf1, yf1
+		write(*,306) xf2, yf2
+		write(*,307) ex
+    case (2)
+        if (a+c.eq.0) then
+		  print *,'  Type: Equilateral Hyperbola'
+        else 
+		  print *,'  Type: Hyperbola'
+        end if
+		print *,''
+        write(*,300) xc, yc
+		write(*,310) xv1, yv1
+        write(*,311) xv2, yv2
+		write(*,312) xs1, ys1
+        write(*,313) xs2, ys2
+		write(*,305) xf1, yf1
+		write(*,306) xf2, yf2
+		write(*,307) ex
+    case (3)
+        print *,'  Type: Parabola'
+		print *,''
+		write(*,300) xc, yc
+        write(*,314) xv1, yv1
+		write(*,315) xf1, yf1
+        write(*,316) ex
+    case (4)
+        print *,'  Type: Circle'
+		print *,''
+        write(*,300) xc, yc
+		write(*,320) la
+        write(*,307) ex
+    case (5) 
+	    print *,'  Conical degenerated into a line.'
+    case (6) 
+	    print *,'  Conical degenerated into two lines.'
+    case (7)
+	    print *,'  Conical degenerated into a single point.'
+    case (8) 
+	    print *,'  Not a conical !'
+
+	END SELECT
+
+  print *,''; print *,''
+  stop
+
+200 format('    a = ')
+201 format('   2b = ')
+202 format('    c = ')
+203 format('   2d = ')
+204 format('   2e = ')
+205 format('    f = ')
+
+300 format('   Center                :  x=',F9.6,'  y=',F9.6)
+301 format('   Direction big axis    :  x=',F5.2,'  y=',F5.2)
+302 format('   Direction small axis  :  x=',F5.2,'  y=',F5.2)
+303 format('   Half length big axis  : ',F9.6)
+304 format('   Half length small axis: ',F9.6)
+305 format('   First focus           :  x=',F9.6,'  y=',F9.6)
+306 format('   Second focus          :  x=',F9.6,'  y=',F9.6)
+307 format('   Excentricity          :  ',F10.8)
+
+310 format('   Direction first axis  :  x=',F5.2,'  y=',F5.2)
+311 format('   Direction second axis :  x=',F5.2,'  y=',F5.2)
+312 format('   First summit          :  x=',F9.6,'  y=',F9.6)
+313 format('   Second summit         :  x=',F9.6,'  y=',F9.6)
+314 format('   Symmetry direction    :  x=',F5.2,'  y=',F5.2)
+315 format('   Focus                 :  x=',F9.6,'  y=',F9.6)
+316 format('   Parameter             :  ',F10.8)
+
+320 format('   Radius                : ',F9.6)
+
+END
+
+  Subroutine Parabola(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xf1,yf1,ex)
+    integer typ
+	real*8 a,b,c,d,e,f,l,m,xc,yc,xv1,yv1,xf1,yf1,ex
+    real*8 x,y
+    typ=3
+    if (c.eq.0 .and. a.eq.0) then !the parabola does not exist or is degenerated into a line
+      if (d.eq.0 .and. e.eq.0) then
+	    typ=8
+	  else 
+	    typ=5   !8=no conical, 5=line
+        goto 100
+      end if
+    end if
+    if (a.eq.0) then
+      x2=1; y2=0; l=0; m=1
+    else
+      if (a<0) then
+        f=-f; e=-e; d=-d
+        c=-c; b=-b; a=-a
+      end if
+      l=dsqrt(a); m=dsqrt(c)
+      if (b<0) m=-m
+      u=dsqrt(a+c)
+      x2=m/u; y2=-1.d0/u
+      f=f*u;  c=(a+c)*u
+      u=d*m-e*l; e=d*l+e*m; d=u
+    end if
+    if (d.eq.0) then
+      if (e*e<c*f) then
+	    typ=8
+	  else 
+	    typ=6   !8=no conical, 6=two lines
+        goto 100
+      end if
+    else
+      x=(e*e-c*f)/2.d0/c/d; y=-e/c
+      xc=x*x2-y*y2; yc=y*x2+x*y2
+      ex=-d/c
+      xf1=xc+ex*x2/2.d0; yf1=yc+ex*y2/2.d0
+      xv1=m; yv1=-l
+    end if
+100 return
+end  !Parabola()
+                 
+  
+  Subroutine Hyperbola(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xv2,yv2,xs1,ys1,xs2,ys2, &
+                       xf1,yf1,xf2,yf2,ex)
+    integer typ
+	real*8 a,b,c,d,e,f,l,m,xc,yc,xv1,yv1,xv2,yv2,xs1,ys1,xs2,ys2,xf1,yf1,xf2,yf2,ex
+	real*8 u,la,lb
+    typ=2
+    la=dsqrt(-dabs(f)/l) 
+	lb=dsqrt(dabs(f)/m)
+    if (f<0) then
+      u=la; la=lb; lb=u
+      u=x2; x2=-y2; y2=u
+      u=xv1; xv1=-yv1; yv1=u
+    end if
+    xv2=-yv1; yv2=xv1
+    u=dsqrt(la*la+lb*lb)
+    xs1=xc+x2*la; ys1=yc+y2*la
+    xs2=xc-x2*la; ys2=yc-y2*la
+    xf1=xc+x2*u; yf1=yc+y2*u
+    xf2=xc-x2*u; yf2=yc-y2*u
+    ex=u/la
+	return
+  end
+
+  Subroutine Ellipse(a,b,c,d,e,f,typ,l,m,xc,yc,xv1,yv1,xv2,yv2,la,lb,xf1,yf1,xf2,yf2,ex)
+    integer typ
+	real*8 a,b,c,d,e,f,l,m,xc,yc,xv1,yv1,xv2,yv2,la,lb,xf1,yf1,xf2,yf2,ex
+	real*8 u
+    typ=1
+    if (f*l>0) then
+	  typ=8
+	  return  !8=no conical
+    end if
+    la=dsqrt(-f/l); lb=dsqrt(-f/m)
+    if (l<0) then
+      u=la; la=lb; lb=u
+      u=x2; x2=-y2; y2=u
+      u=xv1; xv1=-yv1; yv1=u
+    end if
+    xv2=-yv1; yv2=xv1
+    u=dsqrt(la*la-lb*lb)
+    xf1=xc+x2*u; yf1=yc+y2*u
+    xf2=xc-x2*u; yf2=yc-y2*u
+    ex=u/la
+	return
+  end
+
+
+! end of file conical.f90

@@ -1,0 +1,160 @@
+!*********************************************************
+!* Calculate the coefficients of the characteristic poly-*
+!* nomial P(l)=A-l*I of a real tridiagonal matrix A(i,j) *
+!* ----------------------------------------------------- *
+!* Ref.: "Algèbre, Algorithmes et programmes en Pascal   *
+!*        By Jean-Louis Jardrin, DUNOD Paris, 1988"      *
+!*        [BIBLI 10].                                    *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!* (Find the caracteristic polynomial of matrix:         *
+!*           4 1 0 0 0 0                                 *
+!*           2 4 1 0 0 0                                 *
+!*      A =  0 2 4 1 0 0                                 *
+!*           0 0 2 4 1 0                                 *
+!*           0 0 0 2 4 1                                 *
+!*           0 0 0 0 2 4   )                             *
+!*                                                       *
+!* Input matrix size (max 100): 6                        *
+!* Input 5 elements of subdiagonal:                      *
+!*   Element 1: 2                                        *
+!*   Element 2: 2                                        *
+!*   Element 3: 2                                        *
+!*   Element 4: 2                                        *
+!*   Element 5: 2                                        *
+!* Input 6 elements of main diagonal:                    *
+!*   Element 1: 4                                        *
+!*   Element 2: 4                                        *
+!*   Element 3: 4                                        *
+!*   Element 4: 4                                        *
+!*   Element 5: 4                                        *
+!*   Element 6: 4                                        *
+!* Input 5 elements of supradiagonal:                    *
+!*   Element 1: 1                                        *
+!*   Element 2: 1                                        *
+!*   Element 3: 1                                        *
+!*   Element 4: 1                                        *
+!*   Element 5: 1                                        *
+!*                                                       *
+!* Chracteristic polynomial P(l):                        *
+!* Coefficient for degree 6:      1.0000                 *
+!* Coefficient for degree 5:    -24.0000                 *
+!* Coefficient for degree 4:    230.0000                 *
+!* Coefficient for degree 3:  -1120.0000                 *
+!* Coefficient for degree 2:   2904.0000                 *
+!* Coefficient for degree 1:  -3776.0000                 *
+!* Coefficient for degree 0:   1912.0000                 *
+!*                                                       *
+!* (The characteristic polynomial of matrix A is:        *
+!*   P(l)=l^6-24*l^5+230*l^4-1120*l^3+2904*l^2-3376*l    *
+!*        +1912   )                                      *
+!*                                                       *
+!*                 F90 version by J-P Moreau, Paris      *
+!*               (with dynamically allocated vectors).   *
+!*                        (www.jpmoreau.fr)              *
+!********************************************************* 
+Program CARPOL
+
+integer ialloc, k,n
+real*8, pointer :: B(:),C(:),D(:),E(:),P(:) 
+
+  print *,' '
+  write(*,10,advance='no'); read *, n
+
+  allocate(B(1:n+1),stat=ialloc)
+  allocate(C(1:n+1),stat=ialloc)
+  allocate(D(1:n+1),stat=ialloc)
+  allocate(E(1:n+1),stat=ialloc)
+  allocate(P(1:n+1),stat=ialloc)
+  
+  call Read_data(n,C,D,E)
+
+  !prepare B vector
+  do k=1, n-1 
+    B(k)=C(k)*E(k)
+  end do
+  !call routine to calculate coefficients
+  call PCTR(n,B,D,P)
+  !print results
+  print *,' '
+  print *,'Characteristic polynomial P(l):'
+  do k=1, n+1
+    if (dabs(P(k))<1.e5) then
+      write(*,20)  n-k+1, P(k)
+    else
+      write(*,30)  n-k+1, P(k)
+	end if
+  end do
+  !exit section
+  print *,' '
+  stop
+
+10 format(' Input size of matrix: ')
+20 format(' Coefficient for degree ',I2,':  ',F11.4)
+30 format(' Coefficient for degree ',I2,':  ',E11.4)
+
+END
+
+
+!*****************************************************
+!* The procedure PCTR calculates the coefficients of *
+!* the characteristic polynomial P(l)=A-l*I of a real*
+!* square tridiagonal matrix A(i,j).                 *
+!*                                                   *
+!* Note: the roots of P(l) are the eigenvalues of    *
+!*       matrix A(i,j).                              *
+!* ------------------------------------------------- *
+!* INPUTS:                                           *
+!*          n: zize of matrix (integer)              *
+!*          B: vector of codiagonal terms products   *
+!*             (see main program).                   *
+!*          D: vector of main diagonal terms         *
+!* OUTPUT:                                           *
+!*          P: vector of coefficients of P(l)        *
+!*                                                   *
+!* The type pV (pointer to a real vector) must be    *
+!* declared and allocated in the calling program.    *
+!*****************************************************
+Subroutine PCTR(n,B,D,P)
+real*8 B(1:n+1), D(1:n+1), P(1:n+1)
+integer n,i,k, ialloc
+real*8, pointer :: T(:)
+  allocate(T(1:n),stat=ialloc)  
+  P(2)=D(1); T(1)=1.d0; P(1)=-T(1)
+  do k=2, n
+    P(k+1)=D(k)*P(k)-B(k-1)*T(k-1)
+    do i=k, 3, -1
+      T(i)=P(i)
+      P(i)=-T(i)+D(k)*P(i-1)-B(k-1)*T(i-2)
+    end do
+    T(2)=P(2); P(2)=-T(2)+D(k)*P(1)
+    T(1)=P(1); P(1)=-T(1)
+  end do
+  return
+End
+
+Subroutine Read_data(n,C,D,E)
+integer n, i
+real*8 C(1:n+1),D(1:n+1),E(1:n+1)
+  print *,' '
+  write(*,20) n-1
+  do i=1, n-1
+    write(*,30,advance='no') i; read *, C(i)
+  end do
+  write(*,40) n
+  do i=1, n
+    write(*,30,advance='no') i; read *, D(i)
+  end do
+  write(*,50) n-1
+  do i=1, n-1
+    write(*,30,advance='no') i; read *, E(i)
+  end do
+
+20 format(' Input ',I2,' elements of subdiagonal:')
+30 format('   Element ',I2,': ')
+40 format(' Input ',I2,' elements of main diagonal:')
+50 format(' Input ',I2,' elements of supradiagonal:')
+
+End
+
+!end of file carpol.f90

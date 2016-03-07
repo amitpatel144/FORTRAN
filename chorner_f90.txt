@@ -1,0 +1,67 @@
+!*************************************************************************
+!*           EVALUATE A COMPLEX POLYNOMIAL BY HORNER'S METHOD            *
+!* --------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                           *
+!*                                                                       *
+!*   EVALUATE A CPMPLEX POLYNOMIAL BY HORNER'S METHOD                    *
+!*                                                                       *
+!*  Example: P(Z) = (1+i) Z^4 + (2-i) Z^3 +(3+0.5i) Z^2 + (4-2i) Z       *
+!*                + (5-0.75i)                                            *
+!*                                                                       *
+!*  For Z = (1.500000,2.000000)                                          *
+!*                                                                       *
+!*  P(Z)  = (-28.93750,-6.937500)                                        *
+!*                                                                       *
+!*                                                                       *
+!*                                F90 Release 1.0 By J-P Moreau, Paris   *
+!*                                         (www.jpmoreau.fr)             *
+!*************************************************************************  
+PROGRAM TEST_CHORNER     !uses intrinsic complex
+
+integer, parameter :: NMAX = 25
+
+
+  COMPLEX A(0:NMAX), Z, Y0
+  integer N
+
+  N = 4      ! ORDER OF POLYNOMIAL
+
+! define complex coefficients
+  A(4) = cmplx(1.0, 1.0)       ! power 4
+  A(3) = cmplx(2.0,-1.0)       ! power 3
+  A(2) = cmplx(3.0, 0.5)       ! power 2
+  A(1) = cmplx(4.0,-2.0)       ! power 1
+  A(0) = cmplx(5.0,-0.75)      ! power 0
+
+  Z= cmplx(1.5, 2.0)   ! complex argument
+
+  print *,' '
+  print *,'  EVALUATE A COMPLEX POLYNOMIAL BY HORNER''S METHOD'
+  print *,' '
+
+  call CHorner(A, N, Z, Y0)
+
+  write(*,10,advance='no'); write(*,*) Z
+  print *,' '
+  write(*,11,advance='no'); write(*,*) Y0
+  print *,' '
+
+10 format('  For Z = ')
+11 format('  P(Z)  = ')
+
+  stop
+
+END
+
+ 
+  Subroutine CHorner(A, N, X0, Y)
+  integer, parameter :: NMAX = 25
+    COMPLEX A(0:NMAX), X0, Y
+    Y = A(N)
+	do i=N-1,0,-1
+      Y = Y*X0 + A(i)
+    end do
+	return
+  end
+
+! end of file chorner.f90

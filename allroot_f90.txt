@@ -1,0 +1,335 @@
+!*****************************************************
+!*    Program to demonstrate the complex domain      *
+!*             Allroot subroutine                    *
+!* ------------------------------------------------- *
+!* Reference: BASIC Scientific Subroutines, Vol. II  *
+!* By F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981 [1]. *
+!*                                                   *
+!*                F90 Version By J-P Moreau, Paris.  *
+!*                       (www.jpmoreau.fr)           *
+!* ------------------------------------------------- *
+!* Example: Find the two complex roots of z²+1 = 0   *
+!*                                                   *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* Input the initial guesses and their bounds:       *
+!*                                                   *
+!*    X0 = 4                                         *
+!*    Bond on X0 = 1                                 *
+!*    Y0 = 4                                         *
+!*    Bond on Y0 = 1                                 *
+!*                                                   *
+!* Convergence criterion: 1e-6                       *
+!* Maximum number of iterations: 30                  *
+!* How many roots are to be sought: 2                *
+!* Is the function defined in 1000 (1)               *
+!* or is it a series (2): 1                          *
+!*                                                   *
+!* The estimated roots are:                          *
+!*                                                   *
+!*      X = 0.001394                                 *
+!*      Y = -1.001165                                *
+!*                                                   *
+!*      X = -0.010215                                *
+!*      Y = -0.310533                                *
+!*                                                   *
+!* (Note: only one root is found)                    *
+!*****************************************************
+PROGRAM DEMO_ALLROOT
+
+real*8  X(0:10), Y(0:10)
+real*8  b1,b2,e,u,v,u1,v1,u2,v2,u3,v3,x0,y0,xx,yy,x4,y4,z1,z2
+integer i,j1,k,m,n,n2,n3
+
+  print *,' '
+  print *,'Input the initial guesses and their bounds:'
+  print *,' '
+  write(*,"('    X0 = ')",advance='no')
+  read *, x0
+  write(*,"('    Bond on X0 = ')",advance='no')
+  read *, b1
+  write(*,"('    Y0 = ')",advance='no')
+  read *, y0
+  write(*,"('    Bond on Y0 = ')",advance='no')
+  read *, b2
+  print *,' '
+  write(*,"(' Convergence criterion: ')",advance='no')
+  read *, e
+  write(*,"(' Maximum number of iterations: ')",advance='no')
+  read *, n
+  write(*,"(' How many roots are to be sought: ')",advance='no')
+  read *, n2
+  print *,'Is the function defined in Eval (1)'
+  write(*,"(' or is it a series (2): ')",advance='no')
+  read *, n3
+
+  call AllRoot(x0,y0,b1,b2,e,n,n2,n3,X,Y,k) !Call complex domain Allroot subroutine
+
+  print *,' '
+  print *,'The estimated roots are:'
+  print *,' '
+  do i=1, n2
+    write(*,50) X(i)
+	write(*,60) Y(i) 
+  end do
+
+  write(*,70)  k
+  stop
+
+50 format('     X = ',f9.6)
+60 format('     Y = ',f9.6/)
+70 format(' The last number of iterations was: ',i3//)
+
+end
+
+! Rectangular to polar conversion
+Subroutine RectPol(x, y, u, v)
+  real*8 x,y,u,v,PI
+  PI=4.d0*datan(1.d0)
+  u=dsqrt(x*x+y*y);
+  !Guard against ambiguous vector
+  if (y.eq.0.d0)  y=1.d-16
+  !Guard against divide by zero
+  if (x.eq.0.d0)  x=1.d-16
+  v=datan(y/x)
+  !Check quadrant and adjust
+  if (x<0.d0) v=v+PI
+  if (v<0.d0) v=v+2.d0*PI
+  return
+end
+
+!Polar to rectangular conversion
+Subroutine PolRect(u, v, x, y)
+  real*8 u,v,x,y
+  x=u*dcos(v)
+  y=u*dsin(v)
+  return
+end
+
+!Polar power
+Subroutine PolPower(n, u, v, u1, v1)
+  integer n,i
+  real*8 u,v,u1,v1,PI
+  PI=4.d0*datan(1.d0)
+  u1=u
+  do i=2, n
+    u1 = u1 * u
+  end do
+  v1=n*v
+  v1=v1-(2.d0*PI)*int(v1/2.d0/PI)
+  return
+end
+
+!Rectangular complex number power
+Subroutine ComplexPower(n, x, y, x1, y1)
+  integer n
+  real*8 x,y,x1,y1,u,v,u1,v1
+  !Rectangular to polar conversion
+  call RectPol(x,y,u,v)
+  !Polar power
+  call PolPower(n,u,v,u1,v1)
+  !Polar to rectangular conversion
+  call PolRect(u1,v1,x1,y1)
+  return
+end
+
+!*****  Function subroutine  *****
+Subroutine Eval(x, y, u, v)
+  real*8 x,y,u,v
+  u=x*x-y*y+1.d0
+  v=2.d0*x*y
+  return
+end
+
+!***********************************************
+!*    Complex series evaluation subroutine     *
+!* ------------------------------------------- *
+!* The series coefficients are A(i), assumed   *
+!* real. The order of the polynomial is m. The *
+!* routine uses repeated calls to the nth      *
+!* power (Z^N) complex number subroutine.      *
+!* INPUTS:    x,y,m and A(i)                   *
+!* OUTPUTS:   z1(real) and z2(imaginary)       *
+!***********************************************
+Subroutine Series(m,A,x,y,z1,z2)
+  integer m,n
+  real*8 A(0:10),x,y,z1,z2,a1,a2,x1,y1
+  z1=A(0); z2=0.d0
+  !Store x and y
+  a1=xx; a2=yy
+  do n=1, m
+    !Recall original x and y
+    xx=a1; yy=a2
+    !Call Z^N routine
+    call ComplexPower(n,xx,yy,x1,y1)
+    !Form partial sum
+    z1=z1+A(n)*x1; z2=z2+A(n)*y1
+  end do
+  !Restore x and y
+  xx=a1; yy=a2
+  return
+end
+
+!***** Supervisor subroutine *****
+Subroutine Supervisor(m,n3,j1,A,X,Y,xx,yy,z1,z2,u,v)
+  ! Label: 100
+  real*8 A(0:10),X(0:10),Y(0:10),xx,yy,z1,z2,u,v
+  integer j1,j2,m,n3,n5
+  real*8 a4,u5,v5
+  n5=n; u5=u1; v5=v1
+  !Function or series ? 
+  if (n3.eq.1)  call Eval(xx,yy,u,v)
+  if (n3.eq.2)  call Series(m,A,x,y,z1,z2)
+  if (n3.eq.1)  goto 100
+  u=z1; v=z2
+  !Restore parameters
+  n=n5; u1=u5; v1=v5
+100 if (j1.eq.0) return
+  !Divide by the j1 roots already found
+  do j2=1, j1
+    u5=u
+    u=(xx-X(j2))*u+(yy-Y(j2))*v
+    v=(xx-X(j2))*v-(yy-Y(j2))*u5
+    a4=(xx-X(j2))*(xx-X(j2))+(yy-Y(j2))*(yy-Y(j2))
+    !Gard against divide by zero
+    if (a4.eq.0.0) a4=1.d-7
+    v=v/a4; u=u/a4
+  end do
+  return 
+end !Supervisor()
+
+!*************************************************
+!* Mueller"s method for complex roots subroutine *
+!* --------------------------------------------- *
+!* This routine uses the parabolic fitting tech- *
+!* nique associated with Mueller"s method, but   *
+!* does it in the complex domain.                *
+!* --------------------------------------------- *
+!* INPUTS:                                       *
+!*   x0, y0 - The initial guess                  *
+!*   b1, b2 - A bound on the error in this guess *
+!*   e - The convergence criteria                *
+!*   n - The maximum number of iterations        *
+!* OUTPUTS:                                      *
+!*   x,y - The value of the complex root found   *
+!*   k - The number of iterations performed,     *
+!*************************************************
+Subroutine ZMueller(x0,y0,b1,b2,e,n,x,y,k)
+  !Labels: 100,200,300
+  integer k, n
+  real*8  x0,y0,b1,b2,e,x,y
+  real*8  d,d1,d2,x1,x2,x3,y1,y2,y3;
+  real*8  u1,u2,u3,v1,v2,v3,xl1,xl2;
+  real*8  a,a1,a2,b,c1,c2,e1,e2;
+  ! Start calculations
+  k=1
+  x3=x0; y3=y0; x1=x3-b1; y1=y3-b2; x2=x3+b1; y2=y3+b2
+100 d=(x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)
+  ! Avoid divide by zero
+  if (d.eq.0.d0) d=1.d-7
+  xl1=(x3-x2)*(x2-x1)+(y3-y2)*(y2-y1)
+  xl1=xl1/d
+  xl2=(x2-x1)*(y3-y2)+(x3-x2)*(y2-y1)
+  xl2=xl2/d
+  d1=(x3-x1)*(x2-x1)+(y3-y1)*(y2-y1)
+  d1=d1/d
+  d2=(x2-x1)*(y3-y1)+(x3-x1)*(y2-y1)
+  d2=d2/d
+  ! Get function values
+  call Eval(x1,y1,u1,v1)
+  call Eval(x2,y2,u2,v2)
+  call Eval(x3,y3,u3,v3)
+  ! Calculate Mueller parameters
+  e1=u1*(xl1*xl1-xl2*xl2)-2.d0*v1*xl1*xl2-u2*(d1*d1-d2*d2)
+  e1=e1+2.d0*v2*d1*d2+u3*(xl1+d1)-v3*(xl2+d2)
+  e2=2.d0*xl1*xl2*u1+v1*(xl1*xl1-xl2*xl2)-2.d0*d1*d2*u2-v2*(d1*d1-d2*d2)
+  e2=e2+u3*(xl2+d2)+v3*(xl1+d1)
+  c1=xl1*xl1*u1-xl1*xl2*v1-d1*xl1*u2+xl1*d2*v2+u3*xl1
+  c1=c1-u1*xl2*xl2-v1*xl1*xl2+u2*xl2*d2+v2*d1*xl2-v3*xl2
+  c2=xl1*xl2*u1+xl1*xl1*v1-d2*xl1*u2-xl1*d1*v2+v3*xl1
+  c2=c2+u1*xl1*xl2-v1*xl2*xl2-u2*xl2*d1+v2*d2*xl2+u3*xl2
+  b1=e1*e1-e2*e2-4.d0*(u3*d1*c1-u3*d2*c2-v3*d2*c1-v3*d1*c2)
+  b2=2.d0*e1*e2-4.d0*(u3*d2*c1+u3*d1*c2+v3*d1*c1-v3*d2*c2)
+  ! Guard against divide by zero
+  if (b1.eq.0.d0) b1=1.d-7
+  a=datan(b2/b1); a=a/2.d0
+  b=dsqrt(dsqrt(b1*b1+b2*b2))
+  b1=b*dcos(a); b2=b*dsin(a)
+  a1=(e1+b1)*(e1+b1)+(e2+b2)*(e2+b2)
+  a2=(e1-b1)*(e1-b1)+(e2-b2)*(e2-b2)
+  if (a1>a2) goto 200
+  a1=e1-b1; a2=e2-b2; goto 300
+200 a1=e1+b1; a2=e2+b2
+300 a=a1*a1+a2*a2
+  xl1=a1*d1*u3-a1*d2*v3+a2*u3*d2+a2*v3*d1
+  ! Guard against divide by zero
+  if (a.eq.0.d0) a=1.d-7
+  xl1=-2.d0*xl1/a
+  xl2=-d1*u3*a2+d2*v3*a2+a1*u3*d2+a1*v3*d1
+  xl2=-2.d0*xl2/a
+  ! Calculate new estimate
+  x=x3+xl1*(x3-x2)-xl2*(y3-y2)
+  y=y3+xl2*(x3-x2)+xl1*(y3-y2)
+  ! Test for convergence
+  if (dabs(x-x0)+dabs(y-y0)<e) return
+  ! Test for number of iterations
+  if (k>=n) return
+  ! Continue
+  k=k+1; x0=x; y0=y; x1=x2; y1=y2; x2=x3; y2=y3; x3=x; y3=y
+  goto 100
+end ! ZMueller()
+
+!***** Coefficients subroutine *****
+Subroutine Coefficients(m,A)
+  integer m
+  real*8 A(0:10)
+  m=5; 
+  A(0)= 0.d0; A(1)= 24.d0; A(2)=-50.d0
+  A(3)=35.d0; A(4)=-10.d0; A(5)=  1.d0
+  return
+end
+
+!****************************************************
+!*     General root determination subroutine        *
+!* ------------------------------------------------ *
+!* This routine attempts to calculate the several   *
+!* roots of a given series or function by repea-    *
+!* tedly using the Zmueller subroutine and removing *
+!* the roots already found by division.             *
+!* ------------------------------------------------ *
+!* INPUTS: X0, Y0 - The initial guess               *
+!*	       b1, b2 - The bounds on this guess    *
+!*	       e - The convergence criteria         *
+!*	       n - The maximum number of iterations *
+!*             for each root                        *
+!*	       n2 - the number of roots to seek     *
+!*         n3 - A flag (1) for a function F(Z)      *
+!*                     (2) for a polynomial.        *
+!* ------------------------------------------------ *
+!* OUTPUTS: The n2 roots found X(i), Y(i)           *
+!* 	        The last number of iterations, k.   *
+!****************************************************
+Subroutine AllRoot(x0,y0,b1,b2,e,n,n2,n3,X,Y,k)
+  !Labels: 100, 200
+  integer n,n2,n3
+  real*8 x0,y0,b1,b2,e,A(0:10),X(0:10),Y(0:10),xx,yy
+  k=0
+  if (n3.eq.1) goto 100
+  if (n3.ne.2) return  !error in n3
+100 j1=0
+  !Save the initial guess
+  x4=x0; y4=y0
+  !If n3=2 get the series coefficients
+  if (n3.eq.2)  call Coefficients(5,A)
+  !Test for completion
+200 if (j1.eq.n2) return
+  !Call Zmueller subroutine
+  call ZMueller(x0,y0,b1,b2,e,n,xx,yy,k)
+  j1=j1+1
+  X(j1)=xx; Y(j1)=yy; x0=x4; y0=y4
+  !Try another pass
+  goto 200
+  return
+end
+
+! End of file allroot.f90

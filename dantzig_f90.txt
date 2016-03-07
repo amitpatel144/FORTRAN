@@ -1,0 +1,221 @@
+!**********************************************************
+!*                  DANTZIG'S  MODEL                      *
+!*                                                        *
+!* LIST OF MAIN VARIABLES:                                *
+!*                                                        *
+!*   NR       : TOTAL NUMBER OF MARKS                     *
+!*   V(NR,NR) : PATH VALUES                               *
+!*   XL(NR)   : USED FOR WEIGHTING OF EACH PATH           *
+!*   IE(NR*2) : SET OF ADOPTED MARKS                      *
+!*   V        : PATH VALUE                                *
+!*   IR       : NUMBER OF MARKS COMING FROM A SAME MARK   *
+!*   RA       : INDEX OF AN ARRIVAL MARK                  *
+!*   R        : = "YES" ON OPTIMAL ROUTE                  *
+!*   XM1,XM2  : USED TO SEEK MINIMUM, MAXIMUM PATH        *
+!*   IASSO    : ARRIVAL MARK ASSOCIATED WITH SET IE       *
+!* ------------------------------------------------------ *
+!* PROBLEM DESCRIPTION:                                   *
+!* A monutaineer wants to climb up a stiff face. He has   *
+!* preliminarily estimated that he can follow different   *
+!* paths from 0 (bottom) to 8 (summit) with different     *
+!* lengths:                                               *
+!*              Path 1:  0 - 1 - 4 - 7 - 8                *
+!*              Path 2:  0 - 3 - 5 - 8                    *
+!*              Path 3:  0 - 2 - 6 - 5 - 8                *
+!*              Path 3a: 0 - 2 - 6 - 7 - 8                *
+!*              Path 4:  0 - 1 - 2 - 4 - 7 - 8            *
+!*              Path 4a: 0 - 1 - 2 - 4 - 6 - 7 - 8        *
+!* The mountaineer wants to know the maximum length rope  *
+!* to take,  knowing the following distance matrix        *
+!* (meters):                                              *
+!*     START/ARR/DIST  START/ARR/DIST  START/ARR/DIST     *
+!*       0    1   5      0    2   11     0    3   10      *
+!*       1    2   4      1    4   6                       *
+!*       2    4   5      2    6   9                       *
+!*       3    5   2      4    7   5                       *
+!*       5    6   4      5    8   15                      *                                                
+!*       6    7   6      7    8   8                       *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*                                                        *
+!* DO YOU WANT THE MINIMUM PATH (Y/N) ? N                 *
+!*                                                        *
+!* NUMBER OF MARKS ? 9                                    *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #0 ? 3                        *
+!* ARRIVAL MARK, VALUE ? 1 5                              *
+!* ARRIVAL MARK, VALUE ? 2 11                             *
+!* ARRIVAL MARK, VALUE ? 3 10                             *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #1 ? 2                        *
+!* ARRIVAL MARK, VALUE ? 2 4                              *
+!* ARRIVAL MARK, VALUE ? 4 6                              *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #2 ? 2                        *
+!* ARRIVAL MARK, VALUE ? 4 5                              *
+!* ARRIVAL MARK, VALUE ? 6 9                              *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #3 ? 1                        *
+!* ARRIVAL MARK, VALUE ? 5 2                              *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #4 ? 1                        *
+!* ARRIVAL MARK, VALUE ? 7 5                              *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #5 ? 2                        *
+!* ARRIVAL MARK, VALUE ? 6 4                              *
+!* ARRIVAL MARK, VALUE ? 8 15                             *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #6 ? 1                        *
+!* ARRIVAL MARK, VALUE ? 7 6                              *
+!*                                                        *
+!* NUMBER OF ARCS FROM MARK #7 ? 1                        *
+!* ARRIVAL MARK, VALUE ? 8 8                              *
+!*                                                        *
+!* RESULTS:                                               *
+!*                                                        *
+!* THE MAXIMUM VALUE PATH IS:                             *
+!*                                                        *
+!*     <- 0 - 2 - 6 - 7 - 8 ->                            *
+!*                                                        *
+!* PATH VALUE =  34.0000                                  *
+!*                                                        *
+!* ------------------------------------------------------ *
+!* REFERENCE:                                             *
+!*  Modèles pratiques de décision Tome 2, By Jean-Pierre  *
+!*  Blanger, PSI Editions, France, 1982.                  *
+!*                                                        *
+!*                 F90 Release 1.0 By J-P Moreau, Paris.  *
+!*                          (www.jpmoreau.fr)             *
+!**********************************************************
+PROGRAM DANTZIG
+
+parameter(NMAX=25)
+
+  character*1 R
+  integer K,NR;
+  real V(NMAX,NMAX)
+  integer IE(0:NMAX)
+  real XM1,XM2,XV
+
+  call Data(R,NR,V)         !INPUT DATA
+  call Dantzig1(R,NR,IE,V)  !DANTZIG MODEL
+  call Results(NR,IE,V)     !EDIT OPTIMAL PATH
+
+  stop
+
+END
+
+Subroutine Data(R,NR,V)   !INPUT DATA
+parameter(NMAX=25)
+  character*1 R
+  real V(NMAX,NMAX)
+  integer RA
+  do I=0, NMAX
+    do J=0, NMAX
+      V(I,J)=0.
+    end do
+  end do
+  print *,' '
+  write(*,10,advance='no'); read *, R
+  print *,' '
+  write(*,20,advance='no'); read *, NR
+  print *,' '
+  do I=0, NR-2
+    write(*,30,advance='no') I
+    read *, IR
+    do J=1, IR
+      write(*,40,advance='no'); read *, RA, XV
+      V(I,RA) = XV
+    end do
+    print *,' '
+  end do
+  print *,' '
+  print *,'RESULTS'
+  print *,' '
+  if (R.EQ.'N'.OR.R.EQ.'n') then
+    print *,'THE MAXIMUM VALUE PATH IS:'
+  else
+    print *,'THE MINIMUM VALUE PATH IS:'
+  end if
+  return
+10 format(' DO YOU WANT THE MINIMUM PATH (Y/N) ? ')
+20 format(' NUMBER OF MARKS ? ')
+30 format(' NUMBER OF ARCS FROM MARK #',I1,' ? ')
+40 format(' ARRIVAL MARK, VALUE ? ') 
+end
+
+Subroutine Dantzig1(R,NR,IE,V)
+parameter(NMAX=25)
+  character*1 R
+  real V(NMAX,NMAX), XL(0:NMAX)
+  integer IE(0:NMAX) 
+  integer F,IASSO,IO,ID,J
+     XL(0) = 0.
+     K = 1; IE(K) = 0
+30   if (R=='N'.OR.R=='n') then
+       XM1 = -999999.; XM2 = -999999.
+     else
+       XM1 = 999999.; XM2 = 999999.
+     end if
+     do IO=1, K
+	   do ID=1, NR
+		 if (R=='N'.OR.R=='n') then
+           if (V(IE(IO),ID) < XM1.OR.V(IE(IO),ID) == 0.) goto 70
+         else
+           if (V(IE(IO),ID) > XM1.OR.V(IE(IO),ID) == 0.) goto 70
+         end if
+         do J=1, K
+		   if (IE(J) == ID) then
+             F = 1
+             goto 50
+           end if
+         end do
+50       if (F == 1)  then
+           F = 0; goto 70
+         end if
+         XM1 = V(IE(IO),ID); IASSO = ID
+70     end do
+       XV = XL(IE(IO)) + XM1
+       if (R=='N'.OR.R=='n') then 
+		 if (XV > XM2) then
+		   XM2 = XV; IE(K + 1) = IASSO
+         end if
+       else
+		 if (XV < XM2) then
+		   XM2 = XV; IE(K + 1) = IASSO
+         end if
+       end if
+     end do
+     XL(IE(K + 1)) = XM2
+     K=K+1; if (IE(K).NE.NR-1) goto 30
+     return
+end
+
+Subroutine Results(NR,IE,V)  !EDIT OPTIMAL PATH
+parameter(NMAX=25)
+    real V(NMAX,NMAX)
+    integer IE(0:NMAX) 
+    integer IO,ID,K
+	real L
+    IO = IE(1); ID = IE(2); K = 1; L=0.
+    write(*,100,advance='no')
+30  if (V(IO,ID).NE.0.) then
+      L = L + V(IO,ID)
+      write(*,110,advance='no') ID
+	  IO = ID; K=K+1; ID = IE(K)
+      goto 50
+    end if
+    K=K+1; ID = IE(K)
+50  if (ID.NE.NR-1) goto 30
+    L = L + V(IO,ID)
+    write(*,120) ID
+	print *,' '
+	write(*,130) L
+	return
+100 format('     <- 0 - ')
+110 format(I1,' - ')
+120 format(I1,' ->')
+130 format(' PATH VALUE = ',F8.4/)
+end
+
+! end of file dantzig.f90

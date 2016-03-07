@@ -1,0 +1,101 @@
+!****************************************************
+!*  Program to demonstrate Bessel Function Series   *
+!* ------------------------------------------------ *
+!* Reference: BASIC Scientific Subroutines, Vol. II *
+!* by F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981.    *
+!*                                                  *
+!*           F90 Version by J.-P. Moreau, Paris.    *
+!*                  (www.jpmoreau.fr)               *
+!* ------------------------------------------------ *
+!* SAMPLE RUN:                                      *
+!*                                                  *
+!*  BESSEL SERIES SUMMATION                         *
+!*                                                  *
+!*  What is the order of the Bessel function ? 2    *
+!*  Argument ? 1                                    *
+!*  Convergence criterion ? 1e-6                    *
+!*                                                  *
+!*  J( 1 ) of order 2 =  0.11490349                 *
+!*                                                  *
+!*  Number of terms used:  4                        *
+!*                                                  *
+!*  <(e)nd to exit> _                               *                             
+!****************************************************
+PROGRAM Besslser
+
+implicit none
+integer m,n
+real*8  e,x,y
+character*3 answ
+
+10 print *,' '
+  print *,'BESSEL SERIES SUMMATION'
+  print *, ' '
+  write(*,'(" What is the order of the Bessel function ? ")',advance='no')
+  read *, n
+  write(*,'(" Argument ? ")',advance='no')
+  read *, x
+  write(*,'(" Convergence criterion ? ")',advance='no')
+  read *, e
+  
+  call Bessel_Series(m,n,e,x,y)
+
+  write(*,50) x,n,y
+  write(*,60) m
+
+  write (*,'(" <(e)nd> to exit ")',advance='no')
+  read *, answ
+
+  
+  if (answ.eq.'e') goto 20
+  if (answ.eq.'end') goto 20
+  goto 10
+
+20 stop
+
+50 format(/' J(',F6.2,') of order ',I2,' = ',F12.8) 
+60 format(/' Number of terms used: ',I2/)
+
+end
+
+!*************************************
+!* Bessel function series subroutine *
+!* The order is n, the argument x.   *
+!* The returned value is in y.       *
+!* The number of terms used is in m. *
+!* e is the convergence criterion    *
+!* Example: e = 1e-6.                *
+!*************************************
+Subroutine Bessel_Series(m,n,e,x,y)  
+!Labels: 100, 200, 210
+  implicit none
+  real*8 a,b0,b1,b2,e,x,y
+  integer i,m,n
+  a = 1.d0
+  if (n <= 1) goto 100
+  ! Calculate N! 
+  do i = 1, n
+    a = a * dfloat(i)
+  end do
+100  a = 1 / a
+  if (n.eq.0) goto 200
+  ! Calculate multiplying term
+  do i = 1, n
+    a = a * x / 2.d0
+  end do
+200 b0 = 1.d0
+  b2 = 1.d0
+  m = 0
+  !Assemble series sum
+210 m = m + 1
+  b1 = -(x * x * b0) / (m * (m + n) * 4.d0)
+  b2 = b2 + b1
+  b0 = b1
+  ! Test for convergence
+  if (dabs(b1) > e)  goto 210
+  ! form final answer
+  y = a * b2
+  return
+end
+
+! End file besslser.f90

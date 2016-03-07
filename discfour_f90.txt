@@ -1,0 +1,129 @@
+!**********************************************************
+!* This program calculates the Fourier coefficients of a  *
+!* periodic discreet function F(x) by using the procedure *
+!* DiscreetFourierHn of unit Fourier.                     *
+!* ------------------------------------------------------ *
+!* SAMPLE RUN:                                            *
+!*                                                        *
+!* F(x) has the following shape:                          *
+!*                                                        *
+!*  1 ---- 2  pi/4                                        *
+!*    !  !                                                *
+!*    !  !                                                *
+!* ------!-------------------------------------------> x  *
+!*  -pi  !    0         ! pi                              *
+!*       !              !                                 *
+!*     3 ---------------- 4 -pi/4                         *
+!*                                                        *
+!* Calculate the Fourier coefficients of a periodic       *
+!* discreet function:                                     *
+!*                                                        *
+!* Number of points:  4                                   *
+!*                                                        *
+!*  x1 = -3.1415927                                       *
+!*  y1 = 0.7853982                                        *
+!*                                                        *
+!*  x2 = -1.5707963                                       *
+!*  y2 = 0.7853982                                        *
+!*                                                        *
+!*  x3 = -1.5707963                                       *
+!*  y3 = -0.7853982                                       *
+!*                                                        *
+!*  x4 = 3.1415927                                        *
+!*  y4 = -0.7853982                                       *
+!*                                                        *
+!* Lowest  harmonic: 0                                    *
+!* Highest harmonic: 10                                   *
+!*                                                        *
+!* a0 = -0.392699087                                      *
+!* b0 =  0.000000000                                      *
+!*                                                        *
+!* a1 = -0.500000023                                      *
+!* b1 = -0.500000048                                      *
+!*                                                        *
+!* a2 = 0.0000000025                                      *
+!* b2 = 0.5000000023                                      *
+!* -----------------                                      *
+!* a9 = -0.055555558                                      *
+!* b9 = -0.055555583                                      *
+!*                                                        *
+!* a10 = -0.000000025                                     *
+!* b10 =  0.100000005                                     *
+!*                                                        *
+!*                     F90 version by J-P Moreau, Paris.  *
+!*                             (www.jpmoreau.fr)          *
+!**********************************************************
+!Uses file: fourier.f90,
+!----------------y-----------------------------------------
+integer  count,h1,h2,i,npoints
+REAL*8, pointer :: Xi(:), Yi(:)
+REAL*8   ai, bi
+
+!see file fourier.f90
+!DiscreetFourierHn(integer, REAL(), REAL(), integer, REAL, REAL)
+
+  print *,' ' 
+  print *,' Calculate the Fourier coefficients of a periodic discreet function:'
+  print *,' '
+  write(*,10,advance='no'); read *, npoints
+  print *,' '
+
+  !allocate vectors Xi, Yi
+  allocate(Xi(1:npoints),stat=ialloc)
+  allocate(Yi(1:npoints),stat=ialloc)
+
+  do i=1, npoints
+	if (i<10) then
+	  write(*,20,advance='no') i
+    else
+	  write(*,21,advance='no') i
+    end if
+	read *, Xi(i)
+    if (i<10) then
+	  write(*,30,advance='no') i
+    else
+
+	  write(*,31,advance='no') i
+    end if
+	read *, Yi(i)
+	print *,' '
+  end do
+  print *,' '
+  write(*,40,advance='no'); read *, h1
+  write(*,41,advance='no'); read *, h2
+  print *,' '
+  count=1
+  do i=h1, h2
+    call DiscreetFourierHn(npoints,Xi,Yi,i,ai,bi)
+	if (i<10) then
+      write(*,50) i, ai
+	  write(*,60) i, bi
+    else
+      write(*,51) i, ai
+	  write(*,61) i, bi	  
+    end if
+    if (MOD(count,5) == 0) then
+      count=0
+      pause 'Press any key to continue'
+    end if
+    count=count+1
+  end do
+  print *,' '
+  print *,' ';
+
+10 format('  Number of points: ')
+20 format('   x',I1,' = ')
+21 format('   x',I2,' = ')
+30 format('   y',I1,' = ')
+31 format('   y',I2,' = ')
+40 format('  Lowest  harmonic: ')
+41 format('  Highest harmonic: ')  
+
+50 format('   a',I1,' = ',F12.9)
+51 format('   a',I2,' = ',F12.9)
+60 format('   b',I1,' = ',F12.9)
+61 format('   b',I2,' = ',F12.9)
+
+END
+
+! end of file discfour.f90

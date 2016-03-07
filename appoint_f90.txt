@@ -1,0 +1,286 @@
+!*********************************************************
+!*                 APPOINTMENT METHOD                    *
+!*                 ------------------                    *
+!*                                                       *
+!* LIST OF MAIN VARIABLES:                               *
+!*                                                       *
+!*  NP:         NUMBER OF JOBS                           *
+!*  C(NP,NP):   APPOINTMENT COST MATRIX                  *
+!*  M(NP,NP):   JOB/APPLICANT MATRIX                     *
+!*  IF1:        FLAG=1 IF OPTIMAL APPOINTMENT IS FOUND   *
+!*  IZ:         FLAG TO MARK A ZERO                      *
+!*  XMIN:       MINIMUM VALUE                            *
+!*  XCASE:      APPOINTMENT OF A ZERO IN RELATION WITH   *
+!*              THE ZEROES' MINIMUM                      *
+!*  NZ:         NUMBER OF ZEROES                         *
+!*  ZI,ZJ:      COORDINATES OF CURRENT CASE              *
+!*  M,N:        COORDINATES OF A MARKED ZERO             *
+!*  A,B:        AUXILIARY VARIABLES TO CHANGE            *
+!*              APPOINTMENTS.                            *
+!* ----------------------------------------------------- *
+!* PROBLEM DESCRIPTION                                   *
+!* An employer receives four applicants for four avail-  *
+!* able jobs. They must give a mark from 1 to 100 to     *
+!* each job (1=very poor preference, 100=very good).     *
+!* See table below:                                      *
+!*                    J O B S                            *
+!*                 J1  J2  J3  J4                        *
+!*              A1 90  80  20  40                        *
+!*  APPLICANTS  A2 90  70  30  80                        *
+!*              A3 40  70  20  80                        *
+!*              A4 50  40  20  60                        *
+!* The employer's purpose is to appoint the four jobs so *
+!* as to maximize the applicants' satisfaction.          *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!* (appoint four jobs with the following regrets matrix: *
+!*                    J O B S                            *
+!*                 J1  J2  J3  J4                        *
+!*              A1 10  20  80  60                        *
+!*  APPLICANTS  A2 10  30  70  20                        *
+!*              A3 60  30  80  20                        *
+!*              A4 50  60  80  40   )                    *
+!*                                                       *
+!* LINEAR PROGRAMMING                                    *
+!*                                                       *
+!* APPOINTMENT METHOD                                    *
+!*                                                       *
+!* NUMBER OF JOBS ? 4                                    *
+!*                                                       *
+!* INPUT APPOINTMENT COSTS/REGRETS OF APPLICANTS:        *
+!*                                                       *
+!* APPLICANT #1:                                         *
+!*    JOB #1 ? 10                                        *
+!*    JOB #2 ? 20                                        *
+!*    JOB #3 ? 80                                        *
+!*    JOB #4 ? 60                                        *
+!*                                                       *
+!* APPLICANT #2:                                         *
+!*    JOB #1 ? 10                                        *
+!*    JOB #2 ? 30                                        *
+!*    JOB #3 ? 70                                        *
+!*    JOB #4 ? 20                                        *
+!*                                                       *
+!* APPLICANT #3:                                         *
+!*    JOB #1 ? 60                                        *
+!*    JOB #2 ? 30                                        *
+!*    JOB #3 ? 80                                        *
+!*    JOB #4 ? 20                                        *
+!*                                                       *
+!* APPLICANT #4:                                         *
+!*    JOB #1 ? 50                                        *
+!*    JOB #2 ? 60                                        *
+!*    JOB #3 ? 80                                        *
+!*    JOB #4 ? 40                                        *
+!*                                                       *
+!* APPOINTMENTS:                                         *
+!*                                                       *
+!*      APPLICANT #1 => JOB #2                           *
+!*      APPLICANT #2 => JOB #1                           *
+!*      APPLICANT #3 => JOB #4                           *
+!*      APPLICANT #4 => JOB #3                           *
+!*                                                       *
+!* ----------------------------------------------------- *
+!* REFERENCE:                                            *
+!* Modèles pratiques de décision Tome 2, By Jean-Pierre  *
+!* Blanger, PSI Editions, France, 1982.                  *
+!*                                                       *
+!*                 F90 Release 1.0 By J-P Moreau, Paris. *
+!*                          (www.jpmoreau.fr)            *
+!*********************************************************
+PROGRAM APPOINTMENT
+
+parameter(NMAX=10)
+
+REAL C(0:NMAX,0:NMAX)
+INTEGER MP(0:NMAX,0:NMAX)
+INTEGER NP
+
+  CALL DATA1(NP,C)           !INPUT COST/APPOINT
+  CALL SUBMAIN(NP,C,MP)      !HUNGARIAN ALGORITHM
+  CALL RESULTS(NP,MP)        !PRINT RESULTS
+  STOP
+END
+
+SUBROUTINE DATA1(NP,C)     !INPUT COST/APPOINT
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+  PRINT *,' '
+  PRINT *,' LINEAR PROGRAMMING'
+  PRINT *,' '
+  PRINT *,' APPOINTMENT METHOD'
+  PRINT *,' '
+  WRITE(*,10,advance='no'); read *, NP
+  PRINT *,' '
+  PRINT *,' INPUT APPOINTMENT COSTS/REGRETS OF APPLICANTS:'
+  DO I = 1, NP
+    PRINT *,' '
+    WRITE(*,20) I
+    DO J = 1, NP
+      WRITE(*,30,advance='no') J
+      READ *, C(I, J)
+    END DO
+  END DO
+  PRINT *,' '
+  PRINT *,' APPOINTMENTS:'
+  PRINT *,' '
+  RETURN
+10 FORMAT('  NUMBER OF JOBS ? ')
+20 FORMAT('  APPLICANT #',I1,':')
+30 FORMAT('     JOB #',I1,' ? ')
+END
+
+SUBROUTINE SUBMAIN(NP,C,MP)  !HUNGARIAN ALGORITHM
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+INTEGER MP(0:NMAX,0:NMAX)
+10 CALL ZEROES(NP,C)
+   CALL APPOINT(NP,C,MP,IF1)
+   CALL MARK(NP,C,MP)
+   CALL SUBADD(NP,C)
+   CALL APPOINT(NP,C,MP,IF1)
+   IF (IF1.NE.NP) GOTO 10
+RETURN
+END
+
+SUBROUTINE ZEROES(NP,C)
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+     IZ = 0
+     DO I = 1, NP
+       XMIN = C(I, 1)
+       DO J = 1, NP
+	     IF (C(I, J).EQ.0.) IZ = 1
+	     IF (C(I, J) < XMIN)  XMIN = C(I, J)
+       END DO
+       IF (IZ.EQ.1) THEN
+         IZ = 0; GOTO 100
+       END IF
+       DO J = 1, NP
+	     C(I, J) = C(I, J) - XMIN
+       END DO
+100  END DO
+     DO J = 1, NP
+       XMIN = C(1, J)
+       DO I = 1, NP
+	     IF (C(I, J).EQ.0.)  IZ = 1
+	     IF (C(I, J) < XMIN) XMIN = C(I, J)
+       END DO
+       IF (IZ.EQ.1) THEN
+	     IZ = 0; GOTO 200
+       END IF
+       DO I = 1, NP
+	     C(I, J) = C(I, J) - XMIN
+       END DO
+200  END DO
+RETURN
+END
+
+SUBROUTINE APPOINT(NP,C,MP,IF1)
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+INTEGER MP(0:NMAX,0:NMAX)
+INTEGER ZI, ZJ
+     DO I = 1, NP
+       DO J = 1, NP
+	     MP(I, J) = 0; C(0, J) = 0.
+       END DO
+       C(I, 0) = 0.
+     END DO
+     DO I = 1, NP
+       XCASE = 999999.
+       DO J = 1, NP
+	     IF (C(I, J).NE.0..OR.MP(I, J).NE.0)  GOTO 10
+	     NZ = 0
+	     DO K = 1, NP
+	       IF (C(K, J).EQ.0.)  NZ = NZ + 1
+	     END DO
+	     IF (1.0*NZ < XCASE) THEN
+	       XCASE = 1.0*NZ; ZI = I; ZJ = J
+	     END IF
+10     END DO
+       MP(ZI, ZJ) = 1
+       DO K = 1, NP
+	     IF (C(K, ZJ).EQ.0..AND.MP(K, ZJ).EQ.0)  MP(K, ZJ) = -1
+       END DO
+       DO K = 1, NP
+	     IF (C(ZI, K).EQ.0..AND.MP(ZI, K).EQ.0)  MP(ZI, K) = -1
+       END DO
+     END DO
+     IF1 = 0
+     DO I = 1, NP
+       DO J = 1, NP
+	     IF (MP(I, J).EQ.1)  IF1 = IF1 + 1
+       END DO
+     END DO
+     RETURN
+END
+
+SUBROUTINE MARK(NP,C,MP)
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+INTEGER MP(0:NMAX,0:NMAX)
+10   DO I = 1, NP
+       N = 0
+       DO J = 1, NP
+	     IF (MP(I, J).EQ.1)  N = 1
+       END DO
+       IF (N.EQ.0.AND.C(I, 0).EQ.0.) THEN
+	     C(I, 0) = 1.; M = 1
+       END IF
+     END DO
+     DO J = 1, NP
+       DO I = 1, NP
+	     IF (MP(I, J).EQ.-1.AND.C(I, 0).EQ.1..AND.C(0, J).EQ.0.) THEN
+	       C(0, J) = 1.; M = 1
+	     END IF
+       END DO
+     END DO
+     DO I = 1, NP
+       DO J = 1, NP
+	     IF (MP(I, J).EQ.1.AND.C(0, J).EQ.1..AND.C(I, 0).EQ.0.) THEN
+	       C(I, 0) = 1.; M = 1
+	     END IF
+       END DO
+     END DO
+     IF (M.EQ.1) THEN
+       M = 0; GOTO 10
+     END IF
+     RETURN
+END
+
+SUBROUTINE SUBADD(NP,C)
+parameter(NMAX=10)
+REAL C(0:NMAX,0:NMAX)
+     XMIN = 999999.
+     DO I = 1, NP
+       DO J = 1, NP
+	     A = C(I, 0); B = C(0, J)
+	     IF (A.EQ.1..AND.B.EQ.0..AND.C(I, J) < XMIN)  XMIN = C(I, J)
+       END DO
+     END DO
+     DO I = 1, NP
+       DO J = 1, NP
+	     A = C(I, 0); B = C(0, J)
+	     IF (A.EQ.1..AND.B.EQ.0.)  C(I, J) = C(I, J) - XMIN
+	     IF (A.EQ.0..AND.B.EQ.1.)  C(I, J) = C(I, J) + 2. * XMIN
+       END DO
+     END DO
+     RETURN
+END
+
+SUBROUTINE RESULTS(NP,MP)
+parameter(NMAX=10)
+INTEGER MP(0:NMAX,0:NMAX)
+   DO I = 1, NP
+     DO J = 1, NP
+	   IF (MP(I, J).NE.1) GOTO 10
+	   WRITE(*,20) I, J
+10   END DO
+   END DO
+   PRINT *,' '
+   RETURN
+20 FORMAT('       APPLICANT #',I2,' => JOB #',I2)
+END
+
+!END OF FILE APPOINT.F90

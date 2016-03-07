@@ -1,0 +1,97 @@
+!*********************************************************
+!* Program to demonstrate Bessel Coefficients Subroutine *
+!* ----------------------------------------------------- *
+!*    Reference: BASIC Scientific Subroutines, Vol. II   *
+!*    by F.R. Ruckdeschel, BYTE/McGRAWW-HILL, 1981.      *
+!*                                                       *
+!*               F90 Version by J.-P. Moreau, Paris.     *
+!*                       (www.jpmoreau.fr)               *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!*                                                       *
+!* BESSEL COEFFICIENTS                                   *
+!* What is the order of the Bessel function ?  0         *
+!* What degree is desired ? 41                           *
+!* The coefficients are:                                 ***************
+!* A( 0) =  0.100000E+01  A( 1) =  0.000000E+00  A( 2) = -0.250000E+00 *
+!* A( 3) =  0.000000E+00  A( 4) =  0.156250E-01  A( 5) =  0.000000E+00 *
+!* A( 6) = -0.434028E-03  A( 7) =  0.000000E+00  A( 8) =  0.678168E-05 *
+!* A( 9) =  0.000000E+00  A(10) = -0.678168E-07  A(11) =  0.000000E+00 *
+!* A(12) =  0.470950E-09  A(13) =  0.000000E+00  A(14) = -0.240281E-11 *
+!* A(15) =  0.000000E+00  A(16) =  0.938597E-14  A(17) =  0.000000E+00 *
+!* A(18) = -0.289690E-16  A(19) =  0.000000E+00  A(20) =  0.724226E-19 *
+!* A(21) =  0.000000E+00  A(22) = -0.149633E-21  A(23) =  0.000000E+00 *
+!* A(24) =  0.259780E-24  A(25) =  0.000000E+00  A(26) = -0.384290E-27 *
+!* A(27) =  0.000000E+00  A(28) =  0.490166E-30  A(29) =  0.000000E+00 *
+!* A(30) = -0.544629E-33  A(31) =  0.000000E+00  A(32) =  0.531864E-36 *
+!* A(33) =  0.000000E+00  A(34) = -0.460090E-39  A(35) =  0.000000E+00 *
+!* A(36) =  0.355008E-42  A(37) =  0.000000E+00  A(38) = -0.245850E-45 *
+!* A(39) =  0.000000E+00  A(40) =  0.153657E-48  A(41) =  0.000000E+00 *
+!* Argument ?  1                                                       *
+!* Y=  0.765198                                                        *
+!***********************************************************************
+PROGRAM Bessel
+implicit none
+integer, parameter :: SIZE=100
+real*8  A(0:SIZE)
+real*8  x,y
+integer i, m, n
+
+  print *, 'BESSEL COEFFICIENTS'
+  write(*,'(" What is the order of the Bessel function ? ")',advance='no')
+  read *, n
+  write(*,'(" What degree is desired ? ")',advance='no')
+  read *, m
+  print *, ' '
+    
+  call Bessel_coeff(m,n,A)
+
+  print *, 'The coefficients are:'
+  write(*,50) ((i,A(i)),i=0,m)
+  write(*,'(" Argument ? ")',advance='no')
+  read *, x
+  y = A(0) + A(1) * x;
+  if (m > 1)  y = y + A(2) * x * x;
+  if (m > 2)  y = y + A(3) * x * x * x;
+  if (m > 3)  y = y + A(4) * x**4
+  do i = 4, m
+    if (m > i)  y = y + A(i + 1) * x**(i+1)
+  end do
+  write(*,60) y
+   
+stop
+50 format(3('  A(',i2,') = ',e13.6))
+60 format(' Y=',f10.6/)
+end
+
+!*************************************************************
+!* Bessel function series coefficient evaluation subroutine  *
+!* m+1 is the number of coefficients desired, n is the order *
+!* of the Bessel function. The coefficients are returned in  *
+!* A(i).                                                     *
+!*************************************************************
+subroutine Bessel_coeff(m,n,A)
+  implicit none
+  integer i,m,n
+  real*8 A(0:m+n), B(0:m+n)  
+  real*8 a1,b1;
+  a1 = 1.d0; b1 = 1.d0;
+  do i = 1, n
+    B(i - 1) = 0.d0; b1 = b1 * i; a1 = a1 / 2.d0
+  end do
+  b1 = a1 / b1; a1 = 1.d0
+  i = 0
+  do while (i <= m)  
+    A(i) = a1 * b1; A(i + 1) = 0
+    a1 = -a1 / ((i + 2) * (n + n + i + 2))
+    i = i + 2
+  end do
+  a1 = a1 / 2.d0;
+  do i = 0, m
+    B(i + n) = A(i)
+  end do
+  A = B
+  return
+end
+
+! End file bessel.f90

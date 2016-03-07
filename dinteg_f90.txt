@@ -1,0 +1,124 @@
+!*************************************************************
+!*    Integration of a discreet function by the weighting    *
+!*    coefficients Method                                    *
+!* --------------------------------------------------------- *
+!* SAMPLE RUN:                                               *
+!*                                                           *
+!* Number of points: 7                                       *
+!*                                                           *
+!* Input the 7 points, example: 1.5, 0.666666                *
+!*                                                           *
+!* 0  ?  1, 1                                                *
+!* 1  ?  1.5, 0.666666                                       *
+!* 2  ?  2, 0.5                                              *
+!* 3  ?  2.5, 0.4                                            *
+!* 4  ?  3, 0.333333                                         *
+!* 5  ?  3.5, 0.285714                                       *
+!* 6  ?  4, 0.25                                             *
+!*                                                           *
+!* Coefficients A(I):                                        *
+!* A( 0 ) =  0.146428E+00                                    *
+!* A( 1 ) =  0.771429E+00                                    *
+!* A( 2 ) =  0.964289E-01                                    *
+!* A( 3 ) =  0.971428E+00                                    *
+!* A( 4 ) =  0.964289E-01                                    *
+!* A( 5 ) =  0.771429E+00                                    *
+!* A( 6 ) =  0.146429E+00                                    *
+!*                                                           *
+!* Integral of F(X) from  1.00 to   4.00                     *
+!*   I = 0.138666E+01                                        *
+!*                                                           *
+!* --------------------------------------------------------- *
+!* Reference: "Methodes de calcul numerique - Tome 1         *
+!*             By Claude Nowakowski, PS1 1981" [BIBLI07].    *
+!*                                                           *
+!*                       F90 Release By J-P Moreau, Paris.   *
+!*                              (www.jpmoreau.fr)            *
+!*************************************************************
+! See explanations in file dinteg.txt
+! -----------------------------------
+Program weighting_Coeffs
+
+integer, parameter :: SIZE = 25 
+
+real*8 X(0:SIZE), Y(0:SIZE), A(0:SIZE), T(0:SIZE, 0:SIZE), B(0:SIZE)
+
+PRINT *,' '
+WRITE(*,10,advance='no'); READ *, N
+
+PRINT *,' '
+WRITE(*,20)  N
+PRINT *,' '
+
+N = N - 1
+
+DO K = 0, N
+  WRITE(*,30,advance='no')  K
+  READ *, X(K), Y(K)
+END DO
+
+! Calculate the coefficients of the linear system
+DO J=0, N
+  T(0, J) = 1.d0
+  DO I = 1, N
+    T(I, J) = T(I - 1, J) * X(J)
+  END DO
+END DO
+
+! right side coefficients
+AA = 1.d0; BB = 1.d0
+DO I = 0, N
+  AA = AA * X(0); BB = BB * X(N)
+  B(I) = (BB - AA) / (I + 1)
+END DO
+
+! Calculate coefficients A(I) and triangularize
+DO K = 0, N - 1
+  DO I = K + 1, N
+    B(I) = B(I) - T(I, K) / T(K, K) * B(K)
+    DO J = K + 1, N
+      T(I, J) = T(I, J) - T(I, K) / T(K, K) * T(K, J)
+    END DO
+  END DO
+END DO
+
+! Solve triangular linear system T * A = B
+A(N) = B(N) / T(N, N)
+DO I = N - 1, 0, -1
+  S = 0.d0
+  DO K = I + 1, N
+    S = S + T(I, K) * A(K)
+  END DO
+  A(I) = (B(I) - S) / T(I, I)
+END DO
+
+PRINT *,' '
+PRINT *,' Coefficients A(I):'
+DO I = 0, N
+  WRITE(*,40) I, A(I)
+END DO
+
+! Calculate Integral of discreet F(X)
+S = 0.d0
+DO I = 0, N
+  S = S + A(I) * Y(I)
+END DO
+
+! Print final result
+PRINT *,' '
+WRITE(*,50) X(0), X(N)
+WRITE(*,60) S
+PRINT *,' '
+
+10 format(' Number of points: ')
+20 format(' Input the',I2,' points, example: 1.5, 0.666666')
+30 format(' ', I2,'  ?  ')
+40 format(' A(',I2,') = ', E12.6)
+50 format(' Integral of F(X) from ', F5.2,' to ',F5.2)
+60 format('   I = ',E12.6)
+
+pause
+
+END
+
+!end of file dinteg.f90

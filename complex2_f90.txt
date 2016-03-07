@@ -1,0 +1,315 @@
+!**********************************************
+!* Elementary operations with complex numbers *
+!* ------------------------------------------ *
+!* See demo program tcomplex.f90.             *
+!*                                            *
+!*          F90 version by J-P Moreau, Paris. *
+!*                  (www.jpmoreau.fr)         *
+!**********************************************
+MODULE COMPLEX2
+
+  !complex number
+  TYPE ZCOMPLEX
+    REAL*8  a	  ! algebraic form
+    REAL*8  b	  !
+    REAL*8  r	  ! polar form
+    REAL*8  t	  !
+  END TYPE ZCOMPLEX
+
+CONTAINS
+
+  ! define complex number by x and y
+  Subroutine AssignXY(Z, x, y)
+    type(ZCOMPLEX) Z
+	real*8 x,y,PI
+	PI=4.d0*datan(1.d0)
+    Z%a=x; Z%b=y
+    Z%r=dsqrt(x*x+y*y)
+    if (x==0) then
+      if (y>0.d0) then
+	    Z%t=PI/2
+      else if (y==0) then 
+	    Z%t=-PI/2 
+	  else 
+	    Z%t=0.d0
+      end if
+    else
+      Z%t=datan(y/x)
+      if (x<0) then
+        if (y>=0) then
+		  Z%t=Z%t+PI 
+		else 
+		  Z%t=Z%t-PI
+        end if
+      end if
+      if (Z%t>PI)  Z%t=Z%t-2*PI
+      if (Z%t<-PI) Z%t=Z%t+2*PI
+    end if
+	return
+  End Subroutine AssignXY
+
+  ! define complex number by r and t in radians
+  Subroutine AssignRT(Z, r, t)
+    type(ZCOMPLEX) Z
+	real*8 r,t, PI
+    PI=4.d0*datan(1.d0)
+    Z%r=r; Z%t=t
+    if (Z%t>PI)  Z%t=Z%t-2*PI
+    if (Z%t<-PI) Z%t=Z%t+2*PI
+    Z%a=r*cos(t)
+    Z%b=r*sin(t)
+	return
+  End Subroutine AssignRT
+
+  ! display complex number with x and y
+  Subroutine DisplayComplex(Z)
+    type(ZCOMPLEX) Z
+    write(*,10)  Z%a, Z%b
+	return
+10  format('(',F10.6,',',F10.6,')')  
+  End Subroutine DisplayComplex 
+
+  ! display complex number with radius and phase in radians
+  Subroutine DisplayComplexR(Z)
+    type(ZCOMPLEX) Z
+    write(*,10)  Z%r, Z%t
+	return
+10  format('(',F10.6,',',F10.6,')')  
+  End Subroutine DisplayComplexR 
+
+  ! add two complex numbers: Z2=Z+Z1
+  Subroutine AddComplex(Z2, Z, Z1)
+    type(ZCOMPLEX) Z,Z1,Z2
+    Z2%a=Z%a+Z1%a; Z2%b=Z%b+Z1%b
+    call AssignXY(Z2,Z2%a,Z2%b)
+	return
+  End Subroutine AddComplex
+
+  ! substract two complex numbers: Z2=Z-Z1
+  Subroutine SubComplex(Z2, Z, Z1)
+    type(ZCOMPLEX) Z,Z1,Z2
+    Z2%a=Z%a-Z1%a; Z2%b=Z%b-Z1%b
+    call AssignXY(Z2,Z2%a,Z2%b)
+	return
+  End Subroutine SubComplex  
+
+  ! change sign of a complex number
+  Subroutine ChsComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1
+    Z1%a=-Z%a; Z1%b=-Z%b
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ChsComplex
+
+  ! multiply two complex numbers: Z2=Z*Z1
+  Subroutine MulComplex(Z2, Z, Z1)
+    type(ZCOMPLEX) Z,Z1,Z2
+    Z2%r=Z%r*Z1%r; Z2%t=Z%t+Z1%t
+    call AssignRT(Z2,Z2%r,Z2%t)
+	return
+  End Subroutine MulComplex
+
+  ! divide two complex numbers: Z2=Z/Z1
+  Subroutine DivComplex(Z2, Z, Z1)
+    parameter(XINF=1.2d16,TINY=1.d-16)
+    type(ZCOMPLEX) Z,Z1,Z2
+    if (Z1%r < TINY) then
+	  Z2%r = XINF
+    else 
+	  Z2%r = Z%r/Z1%r
+    end if
+    Z2%t=Z%t-Z1%t
+    call AssignRT(Z2,Z2%r,Z2%t)
+	return
+  End Subroutine DivComplex
+
+  ! exponential complex function: Z1=Exp(Z)
+  Subroutine ExpComplex(Z1, Z)
+    parameter(XINF=1.2d16,TINY=1.d-16)
+    type(ZCOMPLEX) Z,Z1
+    real*8 temp
+    if (exp(Z%a) > XINF) then
+	  temp=XINF
+    else if (exp(Z%a) < TINY) then
+	  temp=TINY
+	else 
+	  temp=exp(Z%a)
+	end if   
+    Z1%a=temp*cos(Z%b); Z1%b=temp*sin(Z%b)
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ExpComplex
+
+  ! Z1=LN(Z)
+  Subroutine LnComplex(Z1, Z)
+    parameter(XINF=1.2d16,TINY=1.d-16)
+    type(ZCOMPLEX) Z,Z1
+    if (Z.r<=0) then
+	  Z1%a=-XINF
+    else 
+	  Z1%a=log(Z.r)
+    end if
+    Z1%b=Z%t
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine LnComplex
+
+  ! Z2=Z^Z1
+  Subroutine PowerComplex(Z2, Z, Z1)
+    type(ZCOMPLEX) Z,Z1,Z2, temp
+    call LnComplex(temp,Z)
+    call MulComplex(temp,Z1,temp)
+    call ExpComplex(Z2,temp)
+	return
+  End Subroutine PowerComplex
+
+  ! Z1=COS(Z)
+  Subroutine CosComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1
+    Z1%a=(exp(-Z%b)*cos(Z%a) + exp(Z%b)*cos(-Z%a))/2.d0
+    Z1%b=(exp(-Z%b)*sin(Z%a) + exp(Z%b)*sin(-Z%a))/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine CosComplex
+
+  ! Z1=SIN(Z)
+  Subroutine SinComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1
+    Z1%a= (exp(-Z%b)*sin(Z%a) - exp(Z%b)*sin(-Z%a))/2.d0
+    Z1%b=-(exp(-Z%b)*cos(Z%a) - exp(Z%b)*cos(-Z%a))/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine SinComplex
+
+  ! Z1=TAN(Z)
+  Subroutine TanComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, z2,z3
+    call SinComplex(z2,Z)
+    call CosComplex(z3,Z)
+    call DivComplex(Z1,z2,z3)
+	return
+  End Subroutine TanComplex
+
+  ! Z1=CH(Z)
+  Subroutine ChComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1
+    Z1%a=(exp(Z%a)*cos(Z%b) + exp(-Z%a)*cos(-Z%b))/2.d0
+    Z1%b=(exp(Z%a)*sin(Z%b) + exp(-Z%a)*sin(-Z%b))/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ChComplex
+
+  ! Z1=SH(Z)
+  Subroutine ShComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1
+    Z1%a= (exp(Z%a)*cos(Z%b) - exp(-Z%a)*cos(-Z%b))/2.d0
+    Z1%b=-(exp(Z%a)*sin(Z%b) - exp(-Z%a)*sin(-Z%b))/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ShComplex
+
+  ! Z1=TH(Z)
+  Subroutine ThComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, z2,z3
+    call ShComplex(z2,Z)
+    call ChComplex(z3,Z)
+    call DivComplex(Z1,z2,z3)
+	return
+  End Subroutine ThComplex
+
+  ! Z1=ARCCOS(Z)
+  Subroutine ArcCosComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, temp,u
+    temp%a=1.d0-Z%a*Z%a+Z%b*Z%b
+    temp%b=-2.d0*Z%a*Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call AssignXY(u,0.5d0,0.d0)
+    call PowerComplex(temp,temp,u)
+    temp%a=Z%a-temp%b
+    temp%b=Z%b+temp%a
+    call AssignXY(temp,temp%a,temp%b)
+    call LnComplex(temp,temp)
+    Z1%a=temp%b; Z1%b=-temp%a
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ArcCosComplex
+
+  ! Z1=ARCSIN(Z)
+  Subroutine ArcSinComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, temp,u
+    temp%a=1.d0-Z%a*Z%a+Z%b*Z%b
+    temp%b=-2.d0*Z%a*Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call AssignXY(u,0.5d0,0.d0)
+    call PowerComplex(temp,temp,u)
+    temp%a=temp%a-Z%b
+    temp%b=temp%b+Z%a
+    call AssignXY(temp,temp%a,temp%b)
+    call LnComplex(temp,temp)
+    Z1%a=temp%b; Z1%b=-temp%a
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ArcSinComplex
+
+  ! Z1=ARCTAN(Z)
+  Subroutine ArcTanComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, z2,z3
+    z2%a=-Z%a; z2%b=1.d0-Z%b
+    z3%a= Z%a; z3%b=1.d0+Z%b
+    call AssignXY(z2,z2%a,z2%b)
+    call AssignXY(z3,z3%a,z3%b)
+    call DivComplex(z3,z2,z3)
+    call LnComplex(z3,z3)
+    Z1%a=z3%b/2.d0; Z1%b=-z3%a/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ArcTanComplex
+
+  ! Z1=ARGCH(Z)
+  Subroutine ArgChComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, temp,u
+    temp%a=-1.d0+Z%a*Z%a-Z%b*Z%b
+    temp%b=2.d0*Z%a*Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call AssignXY(u,0.5d0,0.d0)
+    call PowerComplex(temp,temp,u)
+    temp%a=temp%a+Z%a
+    temp%b=temp%b+Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call LnComplex(Z1,temp)
+	return
+  End Subroutine ArgChComplex
+
+  ! Z1=ARGSH(Z)
+  Subroutine ArgShComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, temp,u
+    temp%a=1.d0+Z%a*Z%a-Z%b*Z%b
+    temp%b=2.d0*Z%a*Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call AssignXY(u,0.5d0,0.d0)
+    call PowerComplex(temp,temp,u)
+    temp%a=temp%a+Z%a
+    temp%b=temp%b+Z%b
+    call AssignXY(temp,temp%a,temp%b)
+    call LnComplex(Z1,temp)
+	return
+  End Subroutine ArgShComplex
+
+  ! Z1=ARGTH(Z)
+  Subroutine ArgThComplex(Z1, Z)
+    type(ZCOMPLEX) Z,Z1, z2,z3
+    z2%a=1.d0+Z%a; z2%b=Z%b
+    z3%a=1.d0-Z%a; z3%b=-Z%b
+    call AssignXY(z2,z2%a,z2%b)
+    call AssignXY(z3,z3%a,z3%b)
+    call DivComplex(z3,z2,z3)
+    call LnComplex(z3,z3)
+    Z1%a=z3%a/2.d0; Z1%b=z3%b/2.d0
+    call AssignXY(Z1,Z1%a,Z1%b)
+	return
+  End Subroutine ArgThComplex
+
+
+END MODULE COMPLEX2
+
+! end of file complex2.f90

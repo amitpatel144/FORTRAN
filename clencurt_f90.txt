@@ -1,0 +1,171 @@
+!************************************************************************
+!* This program computes the value of the integral of func(x) over the  *
+!* interval (a,b) by using the summed Clenshaw-Curtis formula           *
+!* -------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                          *
+!* (Integrate function func(x) = cos(x) - x*sin(x) from x=0 to x=PI)    *
+!*                                                                      *
+!* Here parameters m=4 (number of subintervals in [0, PI]),             *
+!*                 n=6 (number of nodes for Clenshaw-Curtis quadrature) *
+!*                                                                      *
+!* Integral =   -3.14159265357197                                       *
+!* Error code =            0                                            *
+!*                                                                      *
+!* (Exact value is -PI).                                                *
+!* -------------------------------------------------------------------- *
+!* REF.: "Numerical Algorithms with C, By Gisela Engeln-Muellges        *
+!*        and Frank Uhlig, Springer-Verlag, 1996" [BIBLI 11].           *
+!*                                                                      *
+!*                                  F90 Release By J-P Moreau, Paris.   *
+!*                                         (www.jpmoreau.fr)            *
+!************************************************************************
+Program Test_Clencurt
+
+real*8, parameter :: ONE = 1.d0
+real*8, parameter :: ZERO = 0.d0
+integer, parameter :: SIZE = 10
+
+integer error, m, n, ClenCurt
+real*8 t(0:SIZE), Tk(0:SIZE), Ak(0:SIZE)
+real*8 PI, Res
+
+  PI = 4.d0*datan(ONE)
+
+  m=4; n=6
+
+  t(0)=ZERO; t(1)=PI/4.d0; t(2)=PI/2.d0; t(3)=3.d0*PI/4.d0; t(4)=PI
+
+  call ClenCurtStGew(n,Tk,Ak)
+
+  error = ClenCurt(m,t,n,Tk,Ak,Res)
+
+  print *,' '
+  print *,' Integral = ', Res
+  print *,' Error code = ', error
+  print *,' '
+
+  stop '  End of program.'
+
+END
+
+!Function to integrate
+real*8 Function func(x)
+  real*8 x
+  func = dcos(x)-x*dsin(x)
+  return
+End
+
+Integer Function ClenCurtStGew(n, StStelle, Gewicht)
+integer n; real*8 StStelle(0:n), Gewicht(0:n)
+!************************************************************************
+!* Computes the nodes and weights of a Clenshaw-Curtis quadrature       *
+!* formula of local error order  n+3 for the reference interval [-1,1]. *
+!* -------------------------------------------------------------------- *
+!* Parameters:                                                          *
+!*   integer n            n+1 is the number of nodes and weights:       *
+!*                        n > 1, n odd                                  *
+!*   real*8 StStelle[]    computed nodes                                *
+!*   real*8 Gewicht[]     computed weights                              *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:                   all ok                                        *
+!*   1:                   n too small or odd                            *
+!*                                                                      *
+!* Author:                Uli Eggermann,  9.24.1990                     *
+!************************************************************************
+  integer k, j, m
+  real*8 p, f, g, h, i, d, PI
+
+  PI = 4.d0*datan(1.d0)
+
+  i=1.d0
+  if (n < 2.or.Mod(n,2).ne.0) then                  ! n - Test
+    ClenCurtStGew = 1
+    return
+  end if
+  m = n / 2
+  d = 1.d0*(n * n - 1)
+  h = 2.d0 / (n * d)
+  f = 4.d0 / n
+  p = PI/n
+
+  Gewicht(0) = 1.d0/d; Gewicht(n) = 1.d0/d          !  left end point
+  StStelle(0) = -1.d0; StStelle(n) = 1.d0           ! right end point
+
+  do k = 1, m                                       ! Interval [-1,0]
+    g = 0.d0
+    do j = 1, m-1
+      g = g + dcos(2.d0 * j * k * p) / (4.d0 * j * j - 1.d0)
+    end do
+    Gewicht(k) = h * (d + i) - f * g
+    StStelle(k) = - dcos(k * p)
+    i = -i
+  end do
+
+  StStelle(m) = 0.d0                             ! center of interval
+
+  do k = m+1, n-1                                ! Interval [0, 1]
+    Gewicht(k) =  Gewicht(n - k)
+    StStelle(k) = -StStelle(n - k)
+  end do
+  ClenCurtStGew = 0
+  return
+End !ClenCurtStGew
+
+Integer Function ClenCurt(m, t, n, Tk, Ak, Res)
+integer m,n; real*8 t(0:m),Tk(0:n),Ak(0:n),Res
+!************************************************************************
+!* Computes the value of the integral of func (x) over the interval     *
+!* (a,b) with the partition                                             *
+!*              t: a = t[0] < t[1] < .. < t[m] = b                      *
+!* by using the summed  Clenshaw-Curtis formula.                        *
+!* This program uses precomputed [0..n] weight vectors and Chebyshev    *
+!* nodes.                                                               *
+!*                                                                      *
+!* Parameter:                                                           *
+!*   integer m             number of subintervals                       *
+!*   real*8  t(0:n)        partition                                    *
+!*   integer n             n + 1 = number of nodes, n > 1, n even       *
+!*                                   (n + 2 = global error order)       *
+!*   real*8 Tk(0:n)        Chebyshev nodes                              *
+!*   real*8 Ak(0:n)        Weights                                      *
+!*                           Tk and Ak must be made available before    *
+!*                           calling this function by the procedure     *
+!*                           ClenCurtStGew for example                  *
+!*   real*8 Res            Compute integral value                       *
+!*                                                                      *
+!* Return value :                                                       *
+!*   0:                    o.k.                                         *
+!*   1:                    improper number of nodes                     *
+!*   2:                    improper number of sub intervals             *
+!*                                                                      *
+!* Author:                 Uli Eggermann, 10.3.1991                     *
+!************************************************************************
+  integer j, k
+  real*8 func, v, h, sum
+
+  if (n < 2.or.Mod(n,2).ne.0) then           ! n positive ? n even  ?
+    ClenCurt = 1
+    return
+  end if
+  if (m < 1) then                            ! partition
+    ClenCurt = 2
+    return
+  end if
+
+  Res = 0.d0
+  do j = 0, m-1                              ! loop over intervals
+    v = 0.5d0 * (t(j+1) - t(j))              ! half the interval size
+    h = 0.5d0 * (t(j+1) + t(j))              ! Interval center
+
+    sum = 0.d0
+    do k = 0, n                              ! Chebyshev loop
+      sum = sum + Ak(k)*func(v*Tk(k) + h)
+    end do
+    Res = Res + v * sum
+  end do
+  ClenCurt =  0
+  return
+End
+
+! ------------------------- END clencurt.f90 --------------------------

@@ -1,0 +1,207 @@
+!*********************************************************
+!* Calculate the coefficients of the characteristic poly-*
+!* nomial P(l)=A-l*I of a square complex matrix A(i,j)   *
+!* ----------------------------------------------------- *
+!* Ref.: "Algèbre, Algorithmes et programmes en Pascal   *
+!*        By Jean-Louis Jardrin, DUNOD Paris, 1988"      *
+!*        [BIBLI 10].                                    *
+!* ----------------------------------------------------- *
+!* SAMPLE RUN:                                           *
+!* (Find the characteristic polynomial of matrix:        *
+!*           1 -1  3                                     *
+!*      A = -1  i -1-2i                                  *
+!*           i  1 -2+i   )                               *
+!*                                                       *
+!* Input matrix size (max 20): 3                         *
+!*                                                       *
+!* Line 1                                                *
+!*  Column 1                                             *
+!*   Real  part: 1                                       *
+!*   Imag. part: 0                                       *
+!*  Column 2                                             *
+!*   Real  part: -1                                      *
+!*   Imag. part: 0                                       *
+!*  Column 3                                             *
+!*   Real  part: 3                                       *
+!*   Imag. part: 0                                       *
+!* Line 2                                                *
+!*  Column 1                                             *
+!*   Real  part: -1                                      *
+!*   Imag. part: 0                                       *
+!*  Column 2                                             *
+!*   Real  part: 0                                       *
+!*   Imag. part: 1                                       *
+!*  Column 3                                             *
+!*   Real  part: -1                                      *
+!*   Imag. part: -2                                      *
+!* Line 3                                                *
+!*  Column 1                                             *
+!*   Real  part: 0                                       *
+!*   Imag. part: 1                                       *
+!*  Column 2                                             *
+!*   Real  part: 1                                       *
+!*   Imag. part: 0                                       *
+!*  Column 3                                             *
+!*   Real  part: -2                                      *
+!*   Imag. part: 1                                       *
+!*                                                       *
+!* Characteristic polynomial P(l):                       *
+!* Coefficient for degree 3:                             *
+!* -1.0000000000E+000 + 0.0000000000E+000 i              *
+!* Coefficient for degree 2:                             *
+!* -1.0000000000E+000 + 2.0000000000E+000 i              *
+!* Coefficient for degree 1:                             *
+!*  3.0000000000E+000 + 1.0000000000E+000 i              *
+!* Coefficient for degree 0:                             *
+!*  0.0000000000E+000 + 0.0000000000E+000 i              *
+!*                                                       *
+!* (The characteristic polynomial of matrix A is:        *
+!*   P(l)=-l^3+(-1+2i)l^2+(3+i)l                         *
+!*                                                       *
+!*                 F90 version by J-P Moreau, Paris      *
+!*               (with dynamically allocated vectors).   *
+!*                        (www.jpmoreau.fr)              *
+!*********************************************************
+Program CARPOL1
+Use UComplex
+
+integer  ialloc,k,n
+type(ZCOMPLEX), pointer :: A(:,:), P(:) 
+
+  print *,' '
+  write(*,10,advance='no'); read *, n
+
+  allocate(A(1:n,1:n),stat=ialloc)
+  allocate(P(1:n+1),stat=ialloc)  
+
+  call Read_data(n, A)
+! call routine to calculate coefficients
+  call PCCS(n,A,P)
+! print results
+  print *,' '
+  print *,' Characteristic polynomial P(l):'
+  do k=1, n+1
+    write(*,20) n-k+1
+    write(*,30,advance='no') P(k)%r
+    if (P(K)%i.ge.0) then 
+      write(*,40,advance='no')
+    else 
+      write(*,50,advance='no')
+    end if
+    write(*,60) dabs(P(k)%i)              
+  end do
+
+10 format(' Input matrix size: ')
+20 format(' Coefficient for degree ',I2,': ')
+30 format(F10.6)
+40 format(' +')
+50 format(' -')
+60 format(F10.6,' i'//)
+
+END
+
+Subroutine Read_data(n, A)
+USE UCOMPLEX
+integer n
+TYPE(ZCOMPLEX) A(1:n,1:n)
+  do i=1, n
+    print *,' ' 
+	write(*,10) i
+    do j=1, n
+      write(*,20) j
+      write(*,30,advance='no'); read *, A(i,j)%r
+      write(*,40,advance='no'); read *, A(i,j)%i
+    end do
+  end do
+  return
+
+10 format(' Line ',I2)
+20 format('  Column ',I2)
+30 format('   real  part: ')
+40 format('   imag. part: ')
+
+End 
+
+Subroutine TRC(n, C, t0)
+USE UCOMPLEX
+  integer n
+  TYPE(ZCOMPLEX) C(1:n,1:n), t0
+  integer i
+  TYPE(ZCOMPLEX) c0
+  t0%r=0.d0; t0%i=0.d0;
+  do i=1, n
+    c0=t0
+    call CADD(c0,C(i,i),t0)
+  end do
+  return
+End
+
+!******************************************************
+!* The subroutine PCCS calculates the complex coeffi- *
+!* cients of the characteristic polynomial P(l)=A-l*I *
+!* of a complex square matrix A(i,j).                 *
+!*                                                    *
+!* Note: the roots of P(l) are the complex eigenvalues*
+!*       of matrix A(i,j).                            *
+!* -------------------------------------------------- *
+!* INPUTS:                                            *
+!*          n: zize of matrix (integer)               *
+!*          A: complex square matrix of size (n,n)    *
+!*             (see main program).                    *
+!* OUTPUT:                                            *
+!*          P: vector of complex coefficients of P(l) *
+!******************************************************
+Subroutine PCCS(n, A, P)
+USE UCOMPLEX
+  integer n
+  TYPE(ZCOMPLEX) A(1:n,1:n), P(1:n+1)
+  integer i,j,k,l;
+  TYPE(ZCOMPLEX) c0,c1,s,t0,z0,z1
+  TYPE(ZCOMPLEX), pointer :: B(:,:), C(:,:)
+  allocate(B(1:n,1:n),stat=ialloc)
+  allocate(C(1:n,1:n),stat=ialloc)
+  z0%r=0.d0; z0%i=0.d0
+  z1%r=1.d0; z1%i=0.d0
+  if (MOD(n,2).ne.0)  then   !n is odd
+    call CPRO(-1.d0,z1,P(1))
+  else 
+    P(1)=z1
+  end if
+  do l=1, n
+    if (l==1) then
+	  C = A
+    else
+      do i=1, n
+        do j=1, n
+		  s = z0
+          do k=1, n
+			c0 = s
+            call CMUL(B(i,k),A(k,j),c1)
+            call CADD(c0,c1,s)
+          end do
+          C(i,j) = s
+        end do
+      end do
+    end if
+    call TRC(n,c,c0)
+    call CPRO(1.d0/l,c0,t0)
+    call CMUL(t0,P(1),c0)
+    call CPRO(-1.d0,c0,P(l+1))
+    if (l<n) then
+      do i=1, n
+        do j=1, n
+          if (j==i) then 
+		    call CDIF(C(i,j),t0,B(i,j))
+          else 
+		    B(i,j)=C(i,j)
+          end if
+        end do
+      end do
+    end if
+  end do
+  return
+End
+
+!end of file carpol1.f90
+
+

@@ -1,0 +1,165 @@
+!**********************************************
+!* This program converts a number in base a   *
+!* into a number in base b (a and b must be   *
+!* between 2 and 36).                         * 
+!* ------------------------------------------ *
+!* Ref.: "Mathématiques en Turbo-Pascal by    *
+!*        M. Ducamp and A. Reverchon (2),     *
+!*        Eyrolles, Paris, 1988".             *
+!* ------------------------------------------ *
+!* Sample runs:                               *
+!*                                            *
+!* BASE CONVERSION                            *
+!*                                            *
+!* Start  Base (2 to 36): 5                   *
+!* Arival Base (2 to 36): 3                   *
+!*                                            *
+!* Enter number in start base: 3421           *
+!* In base 3: 200000                          *
+!* Enter number in start base: 3420           *
+!* In base 3: 122222                          *
+!*                                            *
+!*                                            *
+!* BASE CONVERSION                            *
+!*                                            *
+!* Start  Base (2 to 36): 10                  *
+!* Arival Base (2 to 36): 16                  *
+!*                                            *
+!* Enter number in start base: 65535          *
+!* In base 3: FFFF                            *
+!* Enter number in start base: 100            *
+!* In base 3: 64                              *
+!*                                            *
+!* BASE CONVERSION                            *
+!*                                            *
+!* Start  Base (2 to 36): 16                  *
+!* Arival Base (2 to 36): 2                   *
+!*                                            *
+!* Enter number in start base: FF             *
+!* In base 3: 11111111                        *
+!* Enter number in start base: 3A             *
+!* In base 3: 111010                          *
+!* Enter number in start base: E2             *
+!* In base 3: 11100010                        *
+!*                                            *
+!* Note: Enter 0 to exit.                     *
+!*                                            *
+!*                  F90 Version By J-P Moreau *
+!*                      (www.jpmoreau.fr)     *
+!**********************************************
+!Explanations:
+!------------
+!The letters A,B,...,Z  represent 10,11,...,36
+!in the base > 10.
+
+!The number is first converted from base a to
+!base 10 by Function DecodeBase, then  converted
+!from base 10 to base b by Function CodeBase.
+!-----------------------------------------------
+PROGRAM BASE
+
+implicit none
+integer       ba,bd
+character*40  x,y
+real*4        r
+
+integer CodeBase, DecodeBase
+
+  print *,''
+  print *,' BASE CONVERSION'
+  print *,''
+  write(*,10,advance='no'); read *, bd
+  write(*,20,advance='no'); read *, ba
+  x='1'
+  do while (x.ne.'0')
+    print *,''
+    write(*,30,advance='no'); read *, x
+    if (x.ne.'0') then
+      if (DecodeBase(x,bd,r).ne.0) then
+        if (CodeBase(r,ba,y).ne.0) then
+          write(*,50)  ba, y
+        else
+          print *,' Error in coding number.'
+        end if
+      else
+        print *,' Error in decoding number.'
+      end if
+    end if 
+  end do
+
+  print *,''
+  stop
+  
+10 format('  Start  Base (2 to 36): ')
+20 format('  Arival Base (2 to 36): ')
+30 format('  Enter number in start base: ')
+
+50 format('  In base ',I2,': ',A20) 
+
+END
+
+!Convert a number from base b to base 10. The function returns
+!FALSE if b not in [2..36] or if string x contains invalid
+!characters in base b or if result y is too big}
+integer Function DecodeBase(x,b,y)
+implicit none
+character*(*) x
+integer b, long, i, j, k
+real*4  y, mult
+character*1 ch
+real*4, parameter :: XMAXREAL=1.E30
+
+  DecodeBase=0
+  if (b<2.or.b>36) then
+    print *,' Base must be between 2 and 36 !'
+    return
+  end if
+  y=0.; mult=1.
+  long=LEN_TRIM(x)
+  do i=1, long
+    k=long+1-i
+    ch=x(k:k)
+    if (ch<'0'.or.ch>'Z'.or.(ch>'9'.and.ch<'A')) return
+    if (ch<='9') then
+	  j=IACHAR(ch)-IACHAR('0')
+    else 
+	  j=IACHAR(ch)-IACHAR('A')+10
+    end if 
+    if (j>=b) return
+    y=y+mult*j
+    if (mult>XMAXREAL/b) return
+    mult=mult*b
+  end do
+  DecodeBase=1
+  return
+End
+
+!Convert a number from base 10 to base b. The function returns
+!FALSE if b not in [2..36] or if string x contains invalid
+!characters in base 10 or if number x is too big
+integer Function CodeBase(x,b,y)
+implicit none
+real*4 x
+integer b, n
+character*(*) y
+  CodeBase=0
+  if (b<2.or.b>36) then
+    print *,' Base must be between 2 and 36 !'
+    return
+  end if
+  y=''
+  do while (x>0.)
+    n=INT(x-b*INT(x/b))
+    if (n<10) then 
+	  y=ACHAR(IACHAR('0')+n)//y
+    else 
+	  y=ACHAR(IACHAR('A')+n-10)//y
+    end if
+    x=INT(x/b)           
+  end do
+  CodeBase=1
+  return
+End
+
+
+!end of file base.f90

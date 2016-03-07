@@ -1,0 +1,98 @@
+!****************************************************************
+!* Integration of a discreet function F(x) by Simpson's method  *
+!* ------------------------------------------------------------ *
+!* SAMPLE RUN                                                   *
+!*                                                              *
+!* (Find integral of digitalized function sin(x) from x=0 to    *
+!*  x=1).                                                       *
+!*                                                              *
+!* Integration of a discreet real function F(x)                 *
+!*             by Simpson's Method                              *
+!*                                                              *
+!* Number of points: 25                                         *
+!* Begin x         : 0                                          *
+!* End x           : 1                                          *
+!*                                                              *
+!* Value of integral: 0.4596978                                 *
+!*                                                              *
+!*                                                              *
+!*                               F90 version by J-P Moreau.     *
+!*                                   (www.jpmoreau.fr)          *
+!****************************************************************
+PROGRAM Test_Discreet_Simpson
+
+parameter(NSIZE=100)
+
+
+real    Xi(NSIZE), Yi(NSIZE)
+integer i, npoints
+real    dx,result,x,x1,x2
+
+  print *,'    Integration of a discreet real function F(x)'
+  print *,'                by Simpson''s Method'
+  print *,' '
+  write(*,10,advance='no'); read *, npoints
+  write(*,20,advance='no'); read *, x1
+  write(*,21,advance='no'); read *, x2
+  ! build up test discreet curve F(x)=sin(x)
+  dx=(x2-x1)/(npoints-1)
+  x=x1-dx
+  do i=0, npoints-1
+    x = x + dx
+    Xi(i)=x; Yi(i)=sin(x)
+  end do
+
+  ! call integration function
+  result = DiscreetIntegral(npoints,Xi,Yi)
+
+  ! print value of integral
+  print *,' '
+  print *,' '
+  print *,' Value of integral: ', result
+  print *,' '  
+
+10 format('  Number of points: ')
+20 format('  Begin x         : ')
+21 format('  End x           : ')
+
+END
+
+
+!***********************************************************
+!* This function returns the integral value of a discreet  *
+!* real function F(x) defined by n points from x1 to xn.   *
+!* ------------------------------------------------------- *
+!* INPUTS:                                                 *
+!*          n      Number of points (xi, yi)               *
+!*          X      Table of n xi values in ascending order *
+!*          Y      Table of n yi values                    *
+!*                                                         *
+!* OUTPUT          The function returns the integral of    *
+!*                 F(x) from x1 to xn.                     *
+!* ------------------------------------------------------- *
+!* Ref.: "Mathematiques en Turbo Pascal by Alain Reverchon *
+!*        and Marc Ducamp, Armand Colin Editor, Paris,     *
+!*        1990".                                           *
+!***********************************************************
+real Function DiscreetIntegral(n, X, Y)
+  parameter(NSIZE=100)
+  real X(NSIZE), Y(NSIZE)
+  real h,k,j,r
+  r=0.
+  i=0
+  do while (i<=n-3)
+    i1=i+1; i2=i+2; h=X(i1)-X(i)
+    k=X(i2)-X(i1); j=h+k
+    if (h==0) then
+	  DiscreetIntegral=0.
+	  return
+    end if
+    r = r + ((h+h-k)*Y(i)+(j*j*Y(i1)+h*(k+k-h)*Y(i2))/k)*j/6/h
+    i=i2
+  end do
+  if (MOD(n,2)==0)  &
+    r = r + (X(n-1)-X(n-2))*(Y(n-1)+Y(n-2))/2.
+  DiscreetIntegral = r
+end
+
+! end of file disinteg.f90

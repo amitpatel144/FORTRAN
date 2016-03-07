@@ -1,0 +1,131 @@
+!********************************************************
+!*    Collection of Chebyshev approximation routines    *
+!* ---------------------------------------------------- *
+!* REFERENCE: "Numerical Recipes, The Art of Scientific *
+!*             Computing By W.H. Press, B.P. Flannery,  *
+!*             S.A. Teukolsky and W.T. Vetterling,      *
+!*             Cambridge University Press, 1986"        *
+!*             [BIBLI 08].                              *             
+!*                                                      *
+!*                F90 Release 1.1 By J-P Moreau, Paris. *
+!*                        (www.jpmoreau.fr)             *
+!* ---------------------------------------------------- *
+!* Release 1.1: added subroutines CHINT and CHDER.      *
+!********************************************************
+
+subroutine CHEBFT(A,B,C,N)
+real*8 A,B,C(N)
+external FUNC
+!********************************************************
+!* Chebyshev fit: Given a real function FUNC(X), lower  *
+!* and upper limits of the interval [A,B] for X, and a  *
+!* maximum degree N, this routine computes the N Cheby- *
+!* shev coefficients Ck, such that FUNC(X) is approxima-*
+!* ted by:  N                                           *
+!*         [Sum Ck Tk-1(Y)] - C1/2, where X and Y are   *
+!*         k=1                                          *
+!* related by:     Y = (X - 1/2(A+B)) / (1/2(B-A))      *
+!* This routine is to be used with moderately large N   *
+!* (e.g. 30 or 50), the array of C's subsequently to be *
+!* truncated at the smaller value m such that Cm+1 and  *
+!* subsequent elements are negligible.                  *
+!********************************************************
+parameter(NMAX=50,HALF=0.5d0,TWO=2.d0,ZERO=0.d0)
+real*8 PI,SUM,F(NMAX)
+real*8 BMA,BPA,FAC, Y
+real*8 FUNC
+PI=4.d0*datan(1.d0)
+BMA=HALF*(B-A); BPA=HALF*(B+A)
+do K=1,N
+  Y=DCOS(PI*(K-HALF)/N)
+  F(K)=FUNC(Y*BMA+BPA)
+end do
+FAC=TWO/N
+do J=1,N
+  SUM=ZERO
+  do K=1,N
+    SUM=SUM+F(K)*DCOS((PI*(J-1))*((K-HALF)/N))
+  end do
+  C(J)=FAC*SUM
+end do
+return
+end
+
+real*8 function CHEBEV(A,B,C,M,X)
+!**********************************************************
+!* Chebyshev evaluation: All arguments are input. C is an *
+!* array of Chebyshev coefficients, of length M, the first*
+!* M elements of Coutput from subroutine CHEBFT (which    *
+!* must have been called with the same A and B). The Che- *
+!* byshev polynomial is evaluated at a point Y determined *
+!* from X, A and B, and the result FUNC(X) is returned as *
+!* the function value.                                    *
+!**********************************************************
+parameter(HALF=0.5d0,TWO=2.d0,ZERO=0.d0)
+real*8 A,B,C(M),X
+real*8 D,DD,SV,Y,Y2
+if ((X-A)*(X-B).gt.ZERO) pause ' X not in range.'
+D=ZERO; DD=ZERO
+Y=(TWO*X-A-B)/(B-A)  !change of variable
+Y2=TWO*Y
+do J=M,2,-1
+  SV=D
+  D=Y2*D-DD+C(J)
+  DD=SV
+end do
+CHEBEV=Y*D-DD+HALF*C(1)
+return
+end
+
+subroutine CHINT(A,B,C,CINT,N)
+!**********************************************************
+!* Given A,B,C, as output from routine CHEBFT, and given  *
+!* N, the desired degree of approximation (length of C to *
+!* be used), this routine returns the array CINT, the Che-*
+!* byshev coefficients of the integral of the function    *
+!* whose coefficients are C. The constant of integration  *
+!* is set so that the integral vanishes at A.             *
+!**********************************************************
+real*8 A,B,C(N),CINT(N)
+parameter(ONE=1.d0,QUART=0.25d0,TWO=2.d0,ZERO=0.d0)
+real*8 CON,FAC,SUM
+CON=QUART*(B-A)
+SUM=ZERO
+FAC=ONE
+do J=2, N-1
+  CINT(J)=CON*(C(J-1)-C(J+1))/(J-1)
+  SUM=SUM+FAC*CINT(J)
+  FAC=-FAC
+end do
+CINT(N)=CON*C(N-1)/(N-1)
+SUM=SUM+FAC*CINT(N)
+CINT(1)=TWO*SUM  !set the constant of integration
+return
+end
+
+subroutine CHDER(A,B,C,CDER,N)
+!**********************************************************
+!* Given A,B,C, as output from routine CHEBFT, and given  *
+!* N, the desired degree of approximation (length of C to *
+!* be used), this routine returns the array CDER, the Che-*
+!* byshev coefficients of the derivative of the function  *
+!* whose coefficients are C.                              *
+!********************************************************** 
+real*8 A,B,C(N),CDER(N)
+parameter(TWO=2.d0,ZERO=0.d0)
+real*8 CON
+CDER(N)=ZERO
+CDER(N-1)=TWO*(N-1)*C(N)
+if (N.ge.3) then
+  do J=N-2, 1, -1
+    CDER(J)=CDER(J+2)+TWO*J*C(J+1)
+  end do
+end if
+CON=TWO/(B-A)
+do J=1,N                !normalize to interval B - A
+  CDER(J)=CDER(J)*CON
+end do
+return
+end
+
+!end of file Chebyshe.f90

@@ -1,0 +1,200 @@
+!**************************************************************************
+!*                  CHI2 AND INVERSE CHI2 FUNCTIONS                       *
+!* ---------------------------------------------------------------------- *
+!*  Reference:                                                            *
+!*                                                                        *
+!*  http://www.fourmilab.ch/rpkp/experiments/analysis/chiCalc.html        *
+!*                                                                        *
+!* The following JavaScript functions for calculating chi-square probabi- *
+!* lities and critical values were adapted by John Walker from C imple-   *
+!* mentations written by Gary Perlman of Wang Institute, Tyngsboro.       *
+!* Both the original C code and the JavaScript edition are in the public  *
+!* domain.                                                                *
+!* ---------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                            *
+!*                                                                        *
+!*    CHI2 Law:                                                           *
+!*    ========                                                            *
+!*  Value of variable: 100                                                *
+!*  Degree of freedom: 100                                                *
+!*                                                                        *
+!*  Probability = 0.481191684527957                                       *
+!*                                                                        *
+!*  Verify Inverse Law:                                                   *
+!*    X = 99.9999999178790                                                *
+!*                                                                        *
+!*                                   F90 Version By J-P Moreau, Paris.    *
+!*                                          (www.jpmoreau.fr)             *
+!**************************************************************************
+PROGRAM TEST_CHI2
+
+   real*8  P,X,Y, chi2, invchi2
+   integer df
+
+   print *,' '
+   print *,'  CHI2 Law:'
+   print *,'  ======== '
+   write(*,10,advance='no'); read *, df
+   write(*,20,advance='no'); read *, X
+   P = chi2(X, df)
+   print *,' '
+   print *,' Probability = ', P
+   print *,' Verify Inverse Law:'
+   Y = invchi2(P, df)
+   print *,'   X = ', Y
+   print *,' '
+   stop
+
+10 format('  Degree of freedom: ')
+20 format('  Value of variable: ')
+
+END
+
+
+real*8 Function poz (z)
+real*8 z
+!--------------------------------------------------------------------------
+! POZ  --  probability of standard normal z value
+!
+! Adapted from a polynomial approximation in:
+! Ibbetson D, Algorithm 209
+! Collected Algorithms of the CACM 1963 p. 616
+!
+! Note:
+! This routine has six digits accuracy, so it is only useful for absolute
+! z values < 6.  For z values >=  6.0, poz() returns 0.0.                 
+!--------------------------------------------------------------------------
+    real*8 Y, X, w, zmax
+    zmax = 6.d0
+    if (z == 0.0) then
+      X = 0.d0
+    else
+      Y = 0.5 * dabs(z)
+      if (Y >= zmax * 0.5d0) then
+        X = 1.d0
+      else if (Y < 1.d0) then
+        w = Y * Y
+        X = ((((((((0.000124818987*w -0.001075204047)*w + 0.005198775019)*w -0.019198292004)*w + 0.059054035642)*w &
+             -0.151968751364)*w + 0.319152932694) * w - 0.5319230073)*w + 0.7978845605929999)*Y*2.d0
+      else
+        Y = Y - 2.d0
+        X = (((((((((((((-0.000045255659*Y + 0.00015252929)*Y -0.000019538132)*Y - 6.769049860000001E-04)*Y  &
+             +0.001390604284)*Y-0.00079462082)*Y -0.002034254874)*Y + 0.006549791214)*Y - 0.010557625006)*Y  &
+             +0.011630447319)*Y-9.279453341000001E-03)*Y + 0.005353579108)*Y - 0.002141268741)*Y             &
+             +0.000535310849)*Y + 0.999936657524;
+      end if
+    end if
+    if (z > 0.d0) then
+      poz = (X + 1.d0) * 0.5d0
+    else
+      poz = (1.d0 - X) * 0.5d0
+    end if
+    return    
+    end
+
+
+real*8 Function chi2(X, df)
+real*8 X
+integer df
+!--------------------------------------------------------- 
+! Adapted From:
+! Hill, I. D. and Pike, M. C. Algorithm 299
+! Collected Algorithms for the CACM 1967 p. 243
+! Updated for rounding errors based on remark in
+! ACM TOMS June 1985, page 185   
+!---------------------------------------------------------
+    integer even   ! parity of df
+    real*8  a,bigx,c,e,lnpi, ipi,s,Y,z, PI, poz
+	PI = 4.d0*datan(1.d0)
+    bigx = 200.d0
+    lnpi = dlog(dsqrt(PI))
+    ipi = 1.d0 / dlog(PI)
+    if (X <= 0.d0.or.df < 1)  then
+	  chi2 = 1.d0
+	  return
+    end if
+    a = 0.5d0 * X
+    if (2*(df/2) == df) then
+      even = 1
+    else
+      even = 0
+    end if
+    if (df > 1)  Y = dexp(-a)
+    if (even==1) then
+      s = Y
+    else
+      s = 2.d0 * poz(-dsqrt((X)))
+    end if
+    if (df > 2) then
+        X = 0.5d0 * (df - 1.d0)
+        if (even==1) then
+          z = 1.d0
+        else
+          z = 0.5d0
+        end if
+        if (a > bigx) then
+            if (even==1) then
+              e = 0.d0
+            else
+              e = lnpi
+            end if
+            c = log(a)
+            do while (z <= X)
+              e = log(z) + e
+              s = s + dexp(c * z - a - e)
+              z = z + 1.d0
+            end do
+			chi2 = s
+            return
+        else
+            if (even==1) then
+              e = 1.d0
+            else
+              e = ipi / dsqrt(a)
+            end if
+            c = 0.d0
+            do while (z <= X)
+              e = e * (a / z)
+              c = c + e
+              z = z + 1.d0
+            end do
+			chi2 = c*Y + s
+            return
+        end if
+    else
+      chi2=s
+    end if
+    return
+    end
+
+real*8 Function invchi2 (P, idf)
+    real*8 P
+    real*8 chimax,chisave,chisqval,epsilon,minchisq,maxchisq,chi2
+    epsilon = 1.d-6
+    chimax  = 1.d6
+    minchisq = epsilon
+    maxchisq = chimax
+    if (P <= 0.d0) then
+      invchi2 = maxchisq
+	  return
+    else
+      if (P >= 1.d0)  then
+	    invchi2 = 0.d0
+		return
+      end if
+    end if
+    chisqval = (1.d0*idf) / dsqrt(P)
+    do while (maxchisq - minchisq > epsilon)
+	  chisave=chisqval !chisqval is modified by call to chi2 
+      if (chi2(chisqval, idf) < P) then
+		maxchisq = chisave
+      else
+        minchisq = chisave
+      end if
+      chisqval = (maxchisq + minchisq)/2.d0
+    end do
+	invchi2 = chisqval
+    return
+	end
+
+! end of file chi2.f90

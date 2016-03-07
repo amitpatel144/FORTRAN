@@ -1,0 +1,127 @@
+!**************************************************************************
+!*          Encoding an ASCII text using a random encoding table          *
+!* ---------------------------------------------------------------------- *
+!* The text to encode is in file codage.dat.                              *
+!* The random encoding table is in file code.lst.                         *
+!* The output encoded text is in file codage.lst.                         *
+!*                                                                        *
+!* The text can be decoded by  decodage.exe that must have access to      *
+!* code.lst and codage.lst files.                                         *
+!* ---------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                            *
+!* File codage.dat contains:                                              *
+!*                                                                        *
+!* Program ASCII;                                                         *
+!* Uses WincrtMy;                                                         *
+!*                                                                        *
+!* VAR                                                                    *
+!*     i: word;                                                           *
+!*                                                                        *
+!* BEGIN                                                                  *
+!*   for i:=160 to 255 do                                                 *
+!*     write(i:4,' ',chr(i));                                             *
+!*   Readkey;                                                             *
+!*   DoneWinCrt                                                           *
+!* END.                                                                   *
+!*                                                                        *
+!* The output file code.lst contains:                                     *
+!*                                                                        *
+!* t!="1#h$y%X&''<(Q)?*W+7,g-Y.s/c061;2K3/425F6i758E9@:.;}<L=!>0?w@(ATBHC *
+!* uDpE[FZGRHVInJkK#LfMaNGOJP+QvR]S\TAUrVIWeXOY>Z4["\$]j^B_l`8amb{c,dSe|f *
+!* %gUhxi*jMkDl_mzndoop9q&r`s3t-uNv~wqxCy:z^{)|P}b~                       *
+!*                                                                        *
+!* (! is coded t, " is coded =, # is coded 1, etc.)                       *
+!*                                                                        *
+!* The output file codage.lst contains;                                   *
+!*                                                                        *
+!* J&d%&8_ (]HVV.                                                         *
+!* A`S` Ixz{&3fC.                                                         *
+!*                                                                        *
+!* r(v                                                                    *
+!*     x@ ~d&,.                                                           *
+!*                                                                        *
+!* TpZVa                                                                  *
+!*   |d& x@L6Fc 3d ;22 ,d                                                 *
+!*     ~&x3S<x@/7' '7{U&<xQQ.                                             *
+!*   vS8,MSC.                                                             *
+!*   udzSIxzH&3                                                           *
+!* pauY                                                                   *
+!*                                                                        *
+!*                                    F90 Release By J-P Moreau, Paris.   *
+!*                                           (www.jpmoreau.fr)            *
+!**************************************************************************
+Program Codage
+
+integer, parameter :: MINCAR=33     !ASCII characters from 33 to 126 only 
+integer, parameter :: MAXCAR=126
+integer, parameter :: MAXSTR=80     !lines of length 80 
+
+
+  character*1 A(MINCAR:MAXCAR), Z(MINCAR:MAXCAR)
+  integer alea,fait,i,j, Count(1)  
+  character*MAXSTR ligne, codee
+  real x
+
+! initialize random generator
+  Call System_Clock(Count(1))
+  Call Random_Seed(Put=Count)
+
+! open text files
+  open(unit=1, file='codage.dat', action='read')
+  open(unit=2, file='codage.lst', status='unknown')
+  open(unit=3, file='code.lst', status='unknown')
+    
+  do i=MINCAR, MAXCAR 
+    A(i) = ACHAR(i)
+  end do	  
+  
+! generate a random encoding table
+  Call Random_Number(x)        
+  alea = INT((MAXCAR-MINCAR+1)*x)
+
+  Z(MINCAR) = ACHAR(MINCAR+alea)  
+  do i=MINCAR+1, MAXCAR
+    fait=0 
+    do while(fait==0)
+      Call Random_Number(x)        
+      alea = INT((MAXCAR-MINCAR+1)*x)	  
+      Z(i) = ACHAR(MINCAR+alea)
+      fait=1
+      do j=MINCAR, i-1
+	    ic1 = IACHAR(Z(j))
+	    ic2 = IACHAR(Z(i))
+        if (ic1==ic2)  fait=0
+      end do
+    end do
+  end do
+
+! encode input text line by line and save
+10 Read(1,30,end=20) ligne
+     codee = ligne
+     do i=1, MAXSTR
+       do j=MINCAR, MAXCAR
+       	 if (IACHAR(ligne(i:i))==IACHAR(A(j)))  codee(i:i)=Z(j)
+       end do
+     end do
+     write(2,30) codee
+   goto 10
+20 close(unit=1)                     
+  write(2,*) ' '
+  close(unit=2)
+
+! Print random encoding table in file code.lst 
+  write(3,50)  (Z(i),A(i),i=MINCAR,MAXCAR)
+  write(3,*) ' '  
+  close(unit=3)
+
+  print *,' '
+  print *,' Program terminated. Results in file codage.lst'
+  print *,' '
+
+50 format(70A1)
+30 format(A80)
+
+END
+
+! end of file codage.f90
+

@@ -1,0 +1,1302 @@
+!***************************************************************************
+!*                  Symbolic Parser with Polynomials                       *
+!*                 Example : '(A+B)^2' ==> A^2+2AB+B^2                     *
+!*                 F90 release 2.1 By J-P Moreau, Paris                    *
+!*                 (translated from F77 2.0 release)                       *
+!*                         (www.jpmoreau.fr)                               *
+!* ----------------------------------------------------------------------- *
+!* SAMPLE RUN:                                                             *
+!*                                                                         *
+!*                   SYMBOLIC PARSER for POLYNOMIALS                       *
+!*                                                                         *
+!*                   Example: (A+B)^2 ==> A^2+2AB+B^2                      *
+!*                                                                         *
+!* Inputs (0=SCREEN  1=algebra.dat file): 0                                *
+!* Input string to evaluate:                                               *
+!* (A+B+C)^3                                                               *
+!*                                                                         *
+!* Detail analysis (0=NO  1=YES): 1                                        *
+!* Outputs (0=SCREEN  1=algebra.lst file): 0                               *
+!*                                                                         *
+!* SIMPLIFICATION:                                                         *
+!* (A+B+C)^3                                                               *
+!* POWER:                                                                  *
+!* (A^3+3A^2B+3A^2C+3AB^2+6ABC+3AC^2+B^3+3B^2C+3BC^2+C^3)                  *
+!* ADDITION:                                                               *
+!* A^3+3A^2B+3A^2C+3AB^2+6ABC+3AC^2+B^3+3B^2C+3BC^2+C^3                    *
+!*                                                                         *
+!* FINAL SIMPLIFICATION AND RESULT:                                        *
+!*                                                                         *
+!* A^3+3A^2B+3A^2C+3AB^2+6ABC+3AC^2+B^3+3B^2C+3BC^2+C^3                    *
+!*                                                                         *
+!* Evaluate another string (0=NO  1=YES): 1                                *
+!*                                                                         *
+!* (Assuming the input file algabra.dat contains the line:                 *
+!* (A+B+C+D)^4+(A+B+C-D)^4 )                                               *
+!*                                                                         *
+!* Inputs (0=SCREEN  1=algebra.dat file): 1                                *
+!* Input string to evaluate:                                               *
+!* (A+B+C+D)^4+(A+B+C-D)^4                                                 *
+!*                                                                         *
+!* Detail analysis (0=NO  1=YES): 1                                        *
+!* Outputs (0=SCREEN  1=algebra.lst file): 1                               *
+!*                                                                         *
+!* The file algebra.lst contains:                                          *
+!*                                                                         *
+!* STRING TO EVALUATE:                                                     *
+!*  (A+B+C+D)^4+(A+B+C-D)^4                                                *
+!*                                                                         *
+!* SIMPLIFICATION:                                                         *
+!*  (A+B+C+D)^4+(A+B+C-D)^4                                                *
+!* POWER:                                                                  *
+!*  (A^4+4A^3B+4A^3C+4A^3D+6A^2B^2+12A^2BC+12A^2BD+6A^2C^2+12A^2CD+6A^2D^2 *
+!*  +4AB^3+12AB^2C+12AB^2D+12ABC^2+24ABCD+12ABD^2+4AC^3+12AC^2D+12ACD^2+4A *
+!*  D^3+B^4+4B^3C+4B^3D+6B^2C^2+12B^2CD+6B^2D^2+4BC^3+12BC^2D+12BCD^2+4BD^ *
+!*  3+C^4+4C^3D+6C^2D^2+4CD^3+D^4)+(A+B+C-D)^4                             *
+!* ADDITION:                                                               *
+!*  A^4+4A^3B+4A^3C+4A^3D+6A^2B^2+12A^2BC+12A^2BD+6A^2C^2+12A^2CD+6A^2D^2+ *
+!*  4AB^3+12AB^2C+12AB^2D+12ABC^2+24ABCD+12ABD^2+4AC^3+12AC^2D+12ACD^2+4AD *
+!*  ^3+B^4+4B^3C+4B^3D+6B^2C^2+12B^2CD+6B^2D^2+4BC^3+12BC^2D+12BCD^2+4BD^3 *
+!*  +C^4+4C^3D+6C^2D^2+4CD^3+D^4+(A+B+C-D)^4                               *
+!* POWER:                                                                  *
+!*  A^4+4A^3B+4A^3C+4A^3D+6A^2B^2+12A^2BC+12A^2BD+6A^2C^2+12A^2CD+6A^2D^2+ *
+!*  4AB^3+12AB^2C+12AB^2D+12ABC^2+24ABCD+12ABD^2+4AC^3+12AC^2D+12ACD^2+4AD *
+!*  ^3+B^4+4B^3C+4B^3D+6B^2C^2+12B^2CD+6B^2D^2+4BC^3+12BC^2D+12BCD^2+4BD^3 *
+!*  +C^4+4C^3D+6C^2D^2+4CD^3+D^4+(A^4+4A^3B+4A^3C-4A^3D+6A^2B^2+12A^2BC-12 *
+!*  A^2BD+6A^2C^2-12A^2CD+6A^2D^2+4AB^3+12AB^2C-12AB^2D+12ABC^2-24ABCD+12A *
+!*  BD^2+4AC^3-12AC^2D+12ACD^2-4AD^3+B^4+4B^3C-4B^3D+6B^2C^2-12B^2CD+6B^2D *
+!*  ^2+4BC^3-12BC^2D+12BCD^2-4BD^3+C^4-4C^3D+6C^2D^2-4CD^3+D^4)            *
+!* ADDITION:                                                               *
+!*  A^4+4A^3B+4A^3C+4A^3D+6A^2B^2+12A^2BC+12A^2BD+6A^2C^2+12A^2CD+6A^2D^2+ *
+!*  4AB^3+12AB^2C+12AB^2D+12ABC^2+24ABCD+12ABD^2+4AC^3+12AC^2D+12ACD^2+4AD *
+!*  ^3+B^4+4B^3C+4B^3D+6B^2C^2+12B^2CD+6B^2D^2+4BC^3+12BC^2D+12BCD^2+4BD^3 *
+!*  +C^4+4C^3D+6C^2D^2+4CD^3+D^4+A^4+4A^3B+4A^3C-4A^3D+6A^2B^2+12A^2BC-12A *
+!*  ^2BD+6A^2C^2-12A^2CD+6A^2D^2+4AB^3+12AB^2C-12AB^2D+12ABC^2-24ABCD+12AB *
+!*  D^2+4AC^3-12AC^2D+12ACD^2-4AD^3+B^4+4B^3C-4B^3D+6B^2C^2-12B^2CD+6B^2D^ *
+!*  2+4BC^3-12BC^2D+12BCD^2-4BD^3+C^4-4C^3D+6C^2D^2-4CD^3+D^4              *
+!*                                                                         *
+!* FINAL SIMPLIFICATION AND RESULT:                                        *
+!*                                                                         *
+!*  2A^4+8A^3B+8A^3C+12A^2B^2+24A^2BC+12A^2C^2+12A^2D^2+8AB^3+24AB^2C+24AB *
+!*  C^2+24ABD^2+8AC^3+24ACD^2+2B^4+8B^3C+12B^2C^2+12B^2D^2+8BC^3+24BCD^2+2 *
+!*  C^4+12C^2D^2+2D^4                                                      *
+!*                                                                         *
+!* ----------------------------------------------------------------------- *
+!* Reference: "Calcul symbolique et informatique. Du calcul numérique au   *
+!*             calcul littéral (programmes en BASIC de A. DESHAYES),       *
+!*             Masson Paris, 1985" [BIBLI 02].                             *
+!***************************************************************************
+!LIMITATION: integer coefficients must be between -99999 and 99999
+!            (see subroutine STR$).
+!-----------------------------------------------------------------
+      PROGRAM ALGEBRE
+      CHARACTER*500 RR$
+      CHARACTER*80 CH$
+      CHARACTER*1 C$,SU$,MM,CP1,ALFAA(26)
+      CHARACTER*3 E1$,VL$
+      CHARACTER*40 CP$(150),E$(26),R$(50),D$
+      CHARACTER*40 EC$,T$,Y$,IE$
+      CHARACTER*40 PR$,NB$,EN$,M$,M1$
+      CHARACTER*40 P$(150),SI$(150)
+      DIMENSION T(100),R(50),SI(150),P(50)
+      DIMENSION PO$(50),IE(26)
+      INTEGER RE,RT,PU
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+      COMMON /K/ RR$
+      ALFAA(1)='A'
+      ALFAA(2)='B'
+      ALFAA(3)='C'
+      ALFAA(4)='D'
+      ALFAA(5)='E'
+      ALFAA(6)='F'
+      ALFAA(7)='G'
+      ALFAA(8)='H'
+      ALFAA(9)='I'
+      ALFAA(10)='J'
+      ALFAA(11)='K'
+      ALFAA(12)='L'
+      ALFAA(13)='M'
+      ALFAA(14)='N'
+      ALFAA(15)='O'
+      ALFAA(16)='P'
+      ALFAA(17)='Q'
+      ALFAA(18)='R'
+      ALFAA(19)='S'
+      ALFAA(20)='T'
+      ALFAA(21)='U'
+      ALFAA(22)='V'
+      ALFAA(23)='W'
+      ALFAA(24)='X'
+      ALFAA(25)='Y'
+      ALFAA(26)='Z'
+!
+	  print *, ' '
+      print *,'            SYMBOLIC PARSER for POLYNOMIALS'
+	  print *,' '
+	  print *,'            Example: (A+B)^2 ==> A^2+2AB+B^2'
+      print *,' '
+	  write(*,5,advance='no'); read *, RT
+    5 FORMAT(//' Inputs (0=SCREEN  1=algebra.dat file): ')
+	  if (RT.EQ.0) then
+        write(*,6); read *, CH$
+      else
+        OPEN(UNIT=1,FILE='algebra.dat',STATUS='OLD')
+		read(1,*) CH$
+		close(1)
+      end if
+    6 FORMAT(//' Input string to evaluate:')
+      write(*,7,advance='no'); read *, RE
+    7 FORMAT(' Detail analysis (0=NO  1=YES): ')
+	  write(*,8,advance='no'); read *, RT
+    8 FORMAT(' Outputs (0=SCREEN  1=algebra.lst file): ')       
+!
+      CALL LEN(CH$,LCH)
+!
+      if(RT.EQ.1) then
+	    OPEN(UNIT=2,FILE='algebra.lst',STATUS='UNKNOWN')
+	    write(2,*) ' String to evaluate:'
+		write(2,*) CH$
+      end if
+      print *, ' '
+!
+!     preliminary loop to add a * sign between
+!     two parentheses )( or a digit and (.
+!
+      do IC=1, LCH-3
+        C$=CH$(IC:IC); SU$=CH$(IC+1:IC+1)
+        if (C$.EQ.')'.and.SU$.EQ.'(') then
+		  M$=CH$(IC+1:LCH)
+          CALL LEN(M$,LM)
+		  CH$=CH$(1:IC)//'*'//M$(1:LM)
+		  LCH=LCH+1
+        end if
+        if (C$.GE.'0'.and.C$.LE.'9'.and.SU$.EQ.'(') then
+		  M$=CH$(IC+1:LCH)
+          CALL LEN(M$,LM)
+		  CH$=CH$(1:IC)//'*'//M$(1:LM)
+		  LCH=LCH+1
+        end if
+      end do
+!
+      NL=0
+      DO I=1,26
+        IE(I)=0
+      ENDDO
+      DO I=1,150
+        CP(I)=0.0
+        DO J=1,40
+          CP$(I)(J:J)=' '
+        ENDDO
+      ENDDO
+      IC=1
+      C$=CH$(IC:IC)
+      NC=0
+!
+      CALL OPERA(CH$,IC,C$,NC,D$)
+!
+! string analysis main loop
+  130 IF (IC>LCH) GO TO 1000
+      if (C$.EQ.'-') then
+        ISI=-1
+      else
+        ISI=1
+      end if
+      if (C$.EQ.'+'.or.C$.EQ.'-') then
+        IC=IC+1;
+        C$=CH$(IC:IC)
+      end if
+      if (C$.EQ.'(') goto 220
+      if (C$.NE.'£') goto 250
+! opening parenthesis
+  220 PR$=CH$(IC-1:IC-1)
+      NC=NC+1
+      CP$(NC)=PR$
+!
+      CALL OPERA(CH$,IC,C$,NC,D$)
+!
+      GO TO 130
+  250 IF (C$.NE.')') GO TO 460
+! closing parenthesis
+  290 IF (C$.NE.')') GO TO 300
+      NC=NC+1
+      CP$(NC)=')'
+      IC=IC+1
+      C$=CH$(IC:IC)
+      GO TO 290
+  300 SU$=CH$(IC+1:IC+1)
+      IF (SU$.EQ.'(') GO TO 305
+      IF (SU$.EQ.'£') GO TO 305
+      GO TO 310
+  305 IC=IC+1
+      C$=SU$
+      GO TO 220
+  310 IF (C$.NE.'^') GO TO 370
+! power
+      NC=NC+1
+      CP$(NC)='^'
+      EX=1.
+  340 IF (C$.NE.'^') GO TO 350
+        NC=NC-1
+! seek 1 digit or 2 digits exponant
+      IF(CH$(IC+2:IC+2).GE.'0'.AND.CH$(IC+2:IC+2).LE.'9') THEN
+        E1$=CH$(IC+1:IC+2)//' '
+	    LE1=2
+      ELSE
+        E1$=CH$(IC+1:IC+1)//' '
+	    LE1=1
+      END IF
+      CALL VAL(E1$,IE1)
+      EX=EX*IE1
+      IC=IC+LE1
+      C$=CH$(IC:IC)
+      GO TO 340
+!
+  350 NC=NC+1
+      CP(NC)=EX
+      SU$=CH$(IC+1:IC+1)
+      IF (SU$.EQ.'(') GOTO 360
+      IF (SU$.EQ.'£') GOTO 360
+      GO TO 370
+!
+  360 IC=IC+1
+      C$=SU$
+      GO TO 220
+!
+  370 IF (C$.NE.'*') GOTO 130
+! MULT. MONOMS
+      NC=NC+1
+      CP$(NC)='*'
+      NC=NC+1
+      CP$(NC)=' '
+      CP(NC)=1.
+      GOTO 470
+! end MULT. MONOMS
+  460 NC=NC+1
+      CP(NC)=ISI
+      CP$(NC)=' '
+! CONVERT/COMPACT MONOM
+  470 IF (C$.LT.'0') GO TO 510
+      IF (C$.GT.'9') GO TO 510
+! modif. for release 2.0 (2 digits exponant)
+      if (LE1.EQ.2) then
+        IC1=IC-1
+      else
+        IC1=IC
+      end if    
+      NB$(1:4)=CH$(IC1:IC1+3)
+      CALL VAL(NB$,NB)
+      IF (NB.GT.9) GO TO 474
+      LNB=1
+      GO TO 480
+  474 IF (NB.GT.99) GO TO 476
+      LNB=2
+      GO TO 480
+  476 LNB=3
+  480 IC=IC+LNB
+      C$=CH$(IC:IC)
+  490 IF (C$.NE.'^') GO TO 500
+      IC=IC+1
+      EN$=CH$(IC:IC)
+      CALL VAL(EN$,IEN)
+      NB=NB**IEN
+      IC=IC+1
+      C$=CH$(IC:IC)
+      GO TO 490
+  500 CP(NC)=CP(NC)*NB
+      IF (CP(NC).GE.0.) GO TO 510
+  510 IF (C$.LT.'A') GO TO 560
+      IF (C$.GT.'Z') GO TO 560
+      DO 515 I=1,26
+        IF (C$.NE.ALFAA(I)) GO TO 515
+        NL=I
+        GO TO 520
+  515 CONTINUE
+  520 IE(NL)=IE(NL)+1
+      IC=IC+1
+      C$=CH$(IC:IC)
+      IEX=1
+!
+  540 IF (C$.NE.'^') GO TO 550
+        IC=IC+1
+        if (CH$(IC+1:IC+1).GE.'0'.and.CH$(IC+1:IC+1).LE.'9') then
+          VL$=CH$(IC:IC+1)//' '
+          LV=2
+        else
+          VL$=CH$(IC:IC)//' '
+          LV=1
+        end if
+        CALL VAL(VL$,IVL)
+        IEX=IEX*IVL
+        IC=IC+LV
+        C$=CH$(IC:IC)
+      GO TO 540
+!
+  550 IE(NL)=IE(NL)+IEX-1
+  560 IF(C$.EQ.'*') GO TO 564
+      GO TO 580
+  564 IC=IC+1
+      C$=CH$(IC:IC)
+      IF (C$.NE.'-') GO TO 580
+      CP(NC)=-CP(NC)
+      IC=IC+1
+      C$=CH$(IC:IC)
+  580 IF (C$.GE.'A') GOTO 582
+      GO TO 585
+  582 IF (C$.LE.'Z') GOTO 470
+  585 IF (C$.GE.'0') GOTO 587
+      GO TO 590
+  587 IF (C$.LE.'9') GOTO 470
+  590 DO 640 I=1,26
+        IF (IE(I).EQ.0) GOTO 640
+        CALL LEN(CP$(NC),LCP)
+        IF(LCP.LT.1) THEN
+          CP$(NC)=ALFAA(I)
+        ELSE
+          CP$(NC)=CP$(NC)(1:LCP)//ALFAA(I)
+        ENDIF
+        IF (IE(I).GT.1) GO TO 610
+        GO TO 620
+  610   print *, ' 610: I=',I
+        CALL LEN(CP$(NC),LCP)
+        Y$=CP$(NC)(1:LCP)
+        CALL STR$(IE(I),IE$)
+        CALL LEN(IE$,LIE)
+        CP$(NC)=Y$(1:LCP)//'^'//IE$(1:LIE)
+  620   IE(I)=0
+  640 CONTINUE
+! end closing par.
+      GO TO 130
+! end of string analysis main loop
+!
+! simplify monoms if necessary
+ 1000 IDI=NC+2
+      IH=0
+      INO=0
+      LE=INT(IDI/2)
+!
+      DO 1100 NC=1,LE
+        EC$=CP$(NC)
+        CP$(NC)=CP$(IDI-NC+1)
+        CP$(IDI-NC+1)=EC$
+        EC=CP(NC)
+        CP(NC)=CP(IDI-NC+1)
+        CP(IDI-NC+1)=EC
+ 1100 CONTINUE
+!
+      DO 1140 I=3,IDI
+        IF (CP$(I).EQ.')') GO TO 1110
+        GO TO 1120
+ 1110   IH=IH+1
+        IPI(IH)=I
+        INO=INO+1
+        IPO(INO)=I
+ 1120   IF (CP$(I).EQ.'(') GO TO 1130
+        GO TO 1140
+ 1130   IHO=IPO(INO)
+        CP(IHO)=I
+        CP(I)=IHO
+        INO=INO-1
+ 1140 CONTINUE
+!
+      IF (RE.NE.1) GO TO 1455
+ 1150 if (RT.EQ.0) THEN
+        WRITE(*,1151)
+      else
+	    WRITE(2,1151)
+	  end if	 
+ 1151 FORMAT(/5X,'SIMPLIFICATION:')
+      CALL IMPR
+! operations on monoms
+ 1455 IHP=IH
+      IHC=IH
+      EC=0.
+ 1465 IF (IHP.EQ.0) GO TO 12000
+ 1470 IPF=IPI(IHC)
+      JPO=INT(CP(IPF))
+      IDM=JPO-1
+      IFM=IPF+1
+      IPP=IPF-1
+      IAP=JPO+1
+      IF (CP$(IPP).NE.'^') GO TO 1510
+      IF (CP$(IPP-1).NE.'(') GO TO 1510
+      IHC=IHC-1
+      GO TO 1470
+ 1510 IF (CP$(IPP).NE.'^') GO TO 1520
+      CALL PUIS
+ 1520 IF (CP$(IAP).NE.'^') GO TO 1530
+      EX=0.
+      DO 1525 I4=IFM,IDM
+ 1525 EX=EX+CP(I4)
+      IFM=IAP+2
+      IDM=INT(CP(IAP+1))-1
+      IO1=INT(CP(IAP+1))
+      IHP=IHP-1
+      EC=1.
+      CALL PUIS
+ 1530 C$=CP$(IAP)(1:1)
+      IF (C$.NE.'£') GO TO 1540
+      CALL DERI
+ 1540 M$=' '
+      IM=1
+      IMG=0
+      IMD=0
+      IF (CP$(IAP).NE.'*') GO TO 1560
+      IF (CP$(IAP+1).EQ.')') GO TO 1560
+      IF (CP$(IAP+1).EQ.'*') GO TO 1560
+      IMG=1
+ 1560 IF (CP$(IPP).NE.'*') GO TO 1570
+      IF (CP$(IPP-1).EQ.'(') GO TO 1570
+      C$=CP$(IPP-1)(1:1)
+      IF (C$.EQ.'£') GO TO 1570
+      IMD=1
+ 1570 IF (IMG.NE.0) GO TO 1575
+      IF (IMD.NE.0) GO TO 1575
+      GO TO 1580
+ 1575 GO TO 8000
+ 1580 IF (CP$(IAP).NE.'*') GO TO 1590
+      CALL PARE
+ 1585 IHP=IHP-1
+ 1590 IF (CP$(IPP).NE.'*') GO TO 1600
+      IHC=IHC-1
+      GO TO 1470
+ 1600 IF (CP$(IAP).NE.'-') GO TO 1610
+      CALL SOUS
+      IHP=IHP-1
+      IHC=IHC-1
+      GO TO 1465
+ 1610 CALL ADDI
+      IHP=IHP-1
+      IHC=IHC-1
+      GO TO 1465
+!
+!MULTIPLY MONOMS
+!
+ 8000 IF (IMG.NE.1) GO TO 8010
+      CALL LEN(M$,LM1)
+      CALL LEN(CP$(IAP+1),LCPI)
+      M1$=M$(1:LM1)
+      IF(LM1.LT.1) THEN
+        IF(LCPI.GT.0) M$=CP$(IAP+1)(1:LCPI)
+      ELSE IF(LCPI.GT.0) THEN
+        M$=M1$(1:LM1)//CP$(IAP+1)(1:LCPI)
+      ENDIF
+      IM=IM*INT(CP(IAP+1))
+      CP$(IAP)='$'
+      CP(IAP)=0.
+      CP$(IAP+1)='$'
+      CP(IAP+1)=0.
+      IAP=IAP+2
+!
+ 8010 IF (IMD.NE.1) GO TO 8030
+      CALL LEN(M$,LM1)
+      CALL LEN(CP$(IPP-1),LCPI)
+      M1$=M$(1:LM1)
+      IF(LM1.LT.1) THEN
+        IF(LCPI.GT.0) M$=CP$(IPP-1)(1:LCPI)
+      ELSE IF(LCPI.GT.0) THEN
+        M$=M1$(1:LM1)//CP$(IPP-1)(1:LCPI)
+      ENDIF
+      IM=IM*INT(CP(IPP-1))
+      CP$(IPP)='$'
+      CP(IPP)=0.
+      CP$(IPP-1)='$'
+      CP(IPP-1)=0.
+      IPP=IPP-2
+!
+ 8030 DO 8065 I=IDM,IFM,-1
+        IF (CP(I).EQ.0.) GO TO 8065
+        CP(I)=CP(I)*IM
+	  CALL LEN(CP$(I),LCPI)
+	  CALL LEN(M$,LM1) 
+        T$=CP$(I)(1:LCPI)//M$(1:LM1)
+        CALL MONOME(T$)
+        CP$(I)=T$
+ 8065 CONTINUE
+      IF (RE.NE.1) GO TO 8070
+      if (RT.EQ.0) then
+	    WRITE(*,8066)
+      else
+	    WRITE(2,8066)
+      end if
+ 8066 FORMAT(/5X,'MULTIPLICATION:')
+      CALL IMPR
+ 8070 GO TO 1580
+!
+12000 if (RT.EQ.0) then 
+        WRITE(*,12010)
+      else
+	    WRITE(2,12010)
+      end if
+12010 FORMAT(/5X,'FINAL SIMPLIFICATION AND RESULT:'/)
+      ISL=IDI-1
+      DO 12140 I=3,ISL
+        IF (CP(I).EQ.0.) GO TO 12140
+        DO 12120 KS=I+1,IDI
+          IF(CP$(KS).EQ.CP$(I)) THEN
+            CP(I)=CP(I)+CP(KS)
+            CP(KS)=0
+          ENDIF
+12120   CONTINUE
+12140 CONTINUE
+      CALL IMPR
+	  IF (RT.EQ.1) CLOSE(2)
+      STOP
+      END
+!
+      SUBROUTINE PARE
+!
+!MULTIPLICATION PARENTHESES
+!
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      DIMENSION SI(150)
+      INTEGER RE
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+!
+      DO I=1,150
+        DO J=1,40
+          SI$(I)(J:J)=' '
+        ENDDO
+      ENDDO
+      IO2=JPO
+      IF2=IPF
+      IF1=IAP+1
+!
+ 5010 IF (CP$(IF1)(1:1).NE.'$') GOTO 5020
+        IF (IF1.GE.IDI) GOTO 5020
+        IF1=IF1+1
+      GO TO 5010
+!
+ 5020 IO1=CP(IF1)
+      ID1=IO1-1
+      L1=IF1+1
+      ID2=IO2-1
+      L2=IF2+1
+      IF (ID1.NE.L1) GO TO 5045
+      N1=1
+      GO TO 5054
+ 5045 IUM=0
+      DO 5047 I=ID1,L1,-1
+        IUM=IUM+1
+        SI$(IUM)=CP$(I)
+        SI(IUM)=CP(I)
+ 5047 CONTINUE
+!
+      IS1=IUM
+      CALL SIMPLI(IS1)
+      N1=NS
+      IUM=L1-1
+      DO 5050 I=N1,1,-1
+        IUM=IUM+1
+        CP$(IUM)=SI$(I)
+        CP(IUM)=SI(I)
+ 5050 CONTINUE
+!
+ 5054 IF (ID2.NE.L2) GO TO 5056
+      N2=1
+      GO TO 5075
+ 5056 IUM=0
+      DO 5058 I=ID2,L2,-1
+        IUM=IUM+1
+        SI$(IUM)=CP$(I)
+        SI(IUM)=CP(I)
+ 5058 CONTINUE
+!
+      IS1=IUM
+      CALL SIMPLI(IS1)
+      N2=NS
+      IUM=L2-1
+      DO 5072 I=N2,1,-1
+        IUM=IUM+1
+        CP$(IUM)=SI$(I)
+        CP(IUM)=SI(I)
+ 5072 CONTINUE
+!
+ 5075 MA=N1+L1-1
+      MB=N2+L2-1
+      NM=0
+      DO 5200 I=MA,L1,-1
+      DO 5200 J=MB,L2,-1
+        DO 5078 K=1,40
+ 5078     T$(K:K)=' '
+        CALL LEN(CP$(I),LCP1)
+        CALL LEN(CP$(J),LCP2)
+        IF(LCP1.LT.1) THEN
+          IF(LCP2.GT.0) T$=CP$(J)(1:LCP2)
+        ELSE IF(LCP2.LT.1) THEN
+          T$=CP$(I)(1:LCP1)
+        ELSE
+          T$=CP$(I)(1:LCP1)//CP$(J)(1:LCP2)
+        ENDIF
+ 5105   CALL MONOME(T$)
+        NM=NM+1
+        SI$(NM)=T$
+        SI(NM)=CP(I)*CP(J)
+ 5200 CONTINUE
+!
+      IS1=NM
+      CALL SIMPLI(IS1)
+      IR=IF2
+      IDC=NS-IO1+L2
+      CALL COPIE
+      IF (RE.NE.1) GO TO 5250
+      if (RT.EQ.0) then
+	    WRITE(*,5210)
+      else
+	    WRITE(2,5210)
+      end if
+ 5210 FORMAT(/5X,'MULTIPLICATION PARENTHESES:')
+      CALL IMPR
+ 5250 RETURN
+      END
+!
+! Integer power of a polynomial
+      SUBROUTINE PUIS
+!
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      DIMENSION SI(150),P(50)
+      INTEGER RE,RT
+!
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+!
+! Current exponant is put in EX
+      IF (EC.NE.0.) GO TO 8510
+      EX=CP(IPP-1)
+      IO1=JPO
+ 8510 IF (EX.NE.0.) GO TO 8520
+      DO I=1,40
+        SI$(1)(I:I)=' '
+      ENDDO
+      SI(1)=1.
+      NS=1
+      GO TO 9480
+ 8520 IF (EX.NE.1.) GO TO 8550
+      IF (EC.EQ.0) GO TO 9485
+      IUP=0
+      DO 8535 I=IDM,IFM,-1
+        IUP=IUP+1
+        SI$(IUP)=CP$(I)
+        SI(IUP)=CP(I)
+ 8535 CONTINUE
+!
+      NS=IDM-IFM+1
+      GO TO 9480
+ 8550 ITP=IDM-IFM+1
+      IF (ITP.NE.1) GO TO 8555
+      NS=1
+      P$(1)=CP$(IFM)
+      P(1)=CP(IFM)
+      GO TO 9080
+ 8555 I=0
+      DO 8558 JP=IDM,IFM,-1
+        I=I+1
+        SI$(I)=CP$(JP)
+        SI(I)=CP(JP)
+ 8558 CONTINUE
+!
+      IS1=ITP
+      CALL SIMPLI(IS1)
+      IX1=IFM+NS-1
+      IUP=IX1+1
+      DO 8590 I=1,NS
+        IUP=IUP-1
+        CP$(IUP)=SI$(I)
+        CP(IUP)=SI(I)
+        P$(I)=SI$(I)
+        P(I)=SI(I)
+ 8590 CONTINUE
+!
+ 9080 IEX=INT(EX)-1.
+      DO 9460 KP=1,IEX
+        IZP=0
+        DO 9200 I=IX1,IFM,-1
+        DO 9200 IU=1,NS
+          IZP=IZP+1
+          CALL LEN(CP$(I),LCPI)
+          CALL LEN(P$(IU),LPI)
+          T$=CP$(I)(1:LCPI)//P$(IU)(1:LPI)
+!
+          CALL MONOME(T$)
+!
+          SI$(IZP)=T$
+          SI(IZP)=CP(I)*P(IU)
+ 9200   CONTINUE
+!
+        IS1=IZP
+        CALL SIMPLI(IS1)
+        DO 9460 I=1,NS
+        DO 9450 J=1,40
+ 9450     P$(I)(J:J)=SI$(I)(J:J)
+          P(I)=SI(I)
+ 9460 CONTINUE
+!
+ 9480 IDC=NS-IO1+IPF+1
+      IR=IPF
+      CALL COPIE
+      IF (EC.EQ.1.) IFM=IPF+1
+ 9485 IF (EC.NE.0.) GO TO 9490
+        CP$(IPP)='$'
+        CP(IPP)=0.
+        CP$(IPP-1)='$'
+        CP(IPP-1)=0.
+        IPP=IPP-2
+ 9490 IF (RE.NE.1) GO TO 9495
+      if (RT.EQ.0) then
+        WRITE(*,9491)
+      else
+	    WRITE(2,9491)
+      end if
+ 9491 FORMAT(/5X,'POWER:')
+      CALL IMPR
+ 9495 EC=0.
+      RETURN
+      END
+!
+! simplify monom (Example: AAB ==> A^2B)
+      SUBROUTINE MONOME(T$)
+      CHARACTER*1 ALFAA(26)
+      CHARACTER*40 T$,T1$,IE$(26)
+      CHARACTER*1 SC$
+      CHARACTER*2 SS$
+      INTEGER IE(26),LIE,RE,RT
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      DO 5 I=1,40
+    5 T1$(I:I)=' '
+      DO 10 I=1,26
+   10 IE(I)=0
+      I2=1
+      SC$=T$(I2:I2)
+   80 IF (SC$.EQ.' ') GO TO 200
+      DO 14 I=1,26
+        IF (SC$.NE.ALFAA(I)) GO TO 14
+        NL=I
+   14 CONTINUE
+      IE(NL)=IE(NL)+1
+      I2=I2+1
+      SC$=T$(I2:I2)
+!
+      IF (SC$.NE.'^') GO TO 80
+        I2=I2+1
+        SS$=T$(I2:I2+1)
+        CALL VAL(SS$,IVL)
+        IE(NL)=IE(NL)+IVL-1
+        CALL STR$(IVL,IE$(NL))
+        CALL LEN(IE$(NL),LIE)
+        I2=I2+LIE
+        SC$=T$(I2:I2)
+      GO TO 80
+!
+  200 DO 201 K=1,40
+  201  T$(K:K)=' '
+      DO 280 I2=1,26
+        IF (IE(I2).EQ.0) GO TO 280
+        CALL LEN(T$,LT1)
+        T1$=T$(1:LT1)
+        IF(LT1.LT.1) THEN
+          T$=ALFAA(I2)//' '
+        ELSE
+          T$=T1$(1:LT1)//ALFAA(I2)//' '
+        ENDIF
+        IF (IE(I2).LE.1) GO TO 270
+        CALL LEN(T$,LT1)
+        T1$=T$(1:LT1)
+        CALL STR$(IE(I2),IE$(I2))
+        CALL LEN(IE$(I2),LIE)
+        IF(LT1.GT.0) THEN
+          T$=T1$(1:LT1)//'^'//IE$(I2)(1:LIE)
+        ENDIF
+  270   IE(I2)=0
+  280 CONTINUE
+      RETURN
+      END
+!
+! Simplify polynomial
+      SUBROUTINE SIMPLI(IS1)
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      DIMENSION SI(150),P(50)
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+!
+      IF (IS1.NE.1) GO TO 11000
+      NS=1
+      GOTO 11300
+!
+11000 IS2=IS1-1
+      DO 11090 NB=1,IS2
+        IF (ABS(SI(NB)).LT.1.E-15) GO TO 11090
+        DO 11080 KS=NB+1,IS1
+          IF(SI$(KS).EQ.SI$(NB)) THEN
+            SI(NB)=SI(NB)+SI(KS)
+            SI(KS)=0.
+          ENDIF
+11080   CONTINUE
+11090 CONTINUE
+!
+      NS=0
+      DO 11250 I=1,IS1
+        IF (ABS(SI(I)).LT.1.E-15) GO TO 11250
+        NS=NS+1
+        SI$(NS)=SI$(I)
+        SI(NS)=SI(I)
+11250 CONTINUE
+!
+      IF (NS.NE.0) GO TO 11300
+      NS=1
+      SI$(1)=' '
+11300 RETURN
+      END
+!
+      SUBROUTINE COPIE
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      DIMENSION SI(150),P(50)
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+!
+      IF (IDC.GT.0.) GOTO 9700
+      DO 9600 I=NS,1,-1
+        IR=IR+1
+        CP$(IR)=SI$(I)
+        CP(IR)=SI(I)
+ 9600 CONTINUE
+      JPO=IR+1
+      CP$(JPO)='('
+      CP(JPO)=IPF
+      CP(IPF)=JPO
+      IDM=JPO-1
+      IAP=IO1+1
+ 9620 IF (CP$(IAP).NE.'$') GO TO 9630
+      IAP=IAP+1
+      GO TO 9620
+ 9630 IF (IO1.EQ.IDI) IDI=IDI+IDC
+      IF (IDC.EQ.0.) GO TO 9880
+      DO 9670 I=JPO+1,IO1
+      CP$(I)='$'
+ 9670 CP(I)=0.
+      GO TO 9880
+ 9700 IF (IO1.EQ.IDI) GO TO 9855
+      IZZ=IO1+1
+      IHR=IHC-1
+      DO 9820 I=1,IHR
+        CO=CP(IPI(I))
+        IF (CO.GT.JPO) CP(IPI(I))=CO+IDC
+ 9820 CONTINUE
+      DO 9840 I=IDI,IZZ,-1
+      CP$(I+IDC)=CP$(I)
+      IF (CP$(I).NE.')') GO TO 9837
+      CP(I+IDC)=CP(I)+IDC
+      GO TO 9840
+ 9837 IF (CP$(I).NE.'(') GO TO 9838
+      IF (CP(I).LE.IPF) GO TO 9838
+      CP(I+IDC)=CP(I)+IDC
+      GO TO 9840
+ 9838 CP(I+IDC)=CP(I)
+ 9840 CONTINUE
+ 9855 IDI=IDI+IDC
+      DO 9860 I=NS,1,-1
+        IR=IR+1
+        CP$(IR)=SI$(I)
+        CP(IR)=SI(I)
+ 9860 CONTINUE
+      JPO=IR+1
+      CP$(JPO)='('
+      CP(JPO)=IPF
+      CP(IPF)=JPO
+      IDM=JPO-1
+      IAP=JPO+1
+ 9874 IF (CP$(IAP).NE.'$') GO TO 9880
+      IAP=IAP+1
+      GO TO 9874
+ 9880 RETURN
+      END
+!
+      SUBROUTINE ADDI
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      DIMENSION SI(150),P(50)
+      INTEGER RE
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+      CP(JPO)=0.
+      CP(IPF)=0.
+      CP$(JPO)='$'
+      CP$(IPF)='$'
+      IF (CP$(IAP).NE.'+') GO TO 10
+      CP$(IAP)='$'
+      CP(IAP)=0.
+   10 IF (RE.NE.1) GO TO 20
+      if (RT.EQ.0) then
+        WRITE(*,30)
+      else
+	    WRITE(2,30)
+      end if
+   30 FORMAT(/5X,'ADDITION: ')
+      CALL IMPR
+   20 RETURN
+      END
+!
+      SUBROUTINE SOUS
+      CHARACTER*40 CP$(150)
+      CHARACTER*40 T$
+      CHARACTER*40 P$(150),SI$(150)
+      CHARACTER*1 ALFAA(26)
+      INTEGER RE
+      DIMENSION SI(150),P(50)
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /C/ SI$,SI
+      COMMON /D/ RE,RT
+      COMMON /F/ ALFAA
+      COMMON /G/ IDI
+      COMMON /H/ IPO(50),IPF,IDM,IFM,IAP,JPO
+      COMMON /I/ IR,IDC,NS,IO1,IHC,IPI(50)
+      COMMON /J/ P$,IPP,EC
+      DO 10 I=IDM,IFM,-1
+   10 CP(I)=-CP(I)
+      CP(JPO)=0.
+      CP(IPF)=0.
+      CP$(JPO)='$'
+      CP$(IPF)='$'
+      CP$(IAP)='$'
+      CP(IAP)=0.
+      IF (RE.NE.1) GO TO 20
+      if (RT.EQ.0) then
+        WRITE(*,30)
+      else
+	    WRITE(2,30)
+      end if      
+   30 FORMAT(/5X,'SUBSTRACTION: ')
+      CALL IMPR
+   20 RETURN
+      END
+!
+      SUBROUTINE DERI
+!       Not implemented here.
+      RETURN
+      END
+!
+! seek actual length of string Z (stop at first blank)
+      SUBROUTINE LEN(Z,L)
+      CHARACTER*(*) Z
+      CHARACTER*1 Z1
+      L=0
+      DO 10 I=1,500
+      Z1=Z(I:I)
+      IF (Z1.EQ.' ') GO TO 20
+      L=I
+   10 CONTINUE
+   20 RETURN
+      END
+!
+! transform a string into an integer
+      SUBROUTINE VAL(Z$,K)
+      PARAMETER(ICODE0=48)
+      CHARACTER*(*) Z$
+      CHARACTER*1 AA
+      K=0; ISGN=1; J=1
+	  IF(Z$(1:1).EQ.'-') THEN
+	    ISGN=-1
+		J=2
+      END IF
+      DO 10 I=J,LEN(Z$)
+        AA=Z$(I:I)
+        J=ICHAR(AA)
+        IF (AA.LT.'0') GO TO 20
+        IF (AA.GT.'9') GO TO 20
+        K=10*K+J-ICODE0
+   10 CONTINUE
+   20 IF(ISGN.EQ.-1) K=-K
+      RETURN
+      END
+!
+! Transform an integer (between -99999 and 99999) into a string
+      SUBROUTINE STR$(CP,Y$)
+	  PARAMETER(ICODE0=48)
+      INTEGER CP
+      CHARACTER*(*) Y$
+      CHARACTER*5 Y1$
+      DO 5 I=1,40
+        Y$(I:I)=' '
+    5 CONTINUE
+      ICP=ABS(CP)
+      IF (ICP.GT.9) GO TO 10
+      IC=ICP+ICODE0
+      Y1$=CHAR(IC)
+      Y$=Y1$//' '
+      IF (CP.GE.0.) GO TO 100
+      Y1$=Y$(1:2)
+      Y$='-'//Y1$(1:2)
+      GO TO 100
+!
+   10 IF (ICP.GT.99) GO TO 20
+      IC=INT(ICP/10)
+      IC1=(ICP-IC*10)
+      Y$=CHAR(IC+ICODE0)//CHAR(IC1+ICODE0)//' '
+      IF (CP.GE.0.) GO TO 100
+      Y1$=Y$(1:3)
+      Y$='-'//Y1$(1:3)
+      GO TO 100
+!
+   20 IF (ICP.GT.999) GO TO 30
+      IC=INT(ICP/100)
+      IC1=ICP-IC*100
+      IC2=INT(IC1/10)
+      IC3=(ICP-IC*100-IC2*10)
+      Y$=CHAR(IC+ICODE0)//CHAR(IC2+ICODE0)//CHAR(IC3+ICODE0)//' '
+      IF (CP.GE.0.) GO TO 100
+      Y1$=Y$(1:4)
+      Y$='-'//Y1$(1:4)
+      GO TO 100
+!
+   30 IF (ICP.GT.9999) GO TO 40
+	  IC=INT(ICP/1000)
+      IC1=(ICP-IC*1000)
+	  IC2=INT(IC1/100)
+	  IC3=(ICP-IC*1000-IC2*100)
+	  IC4=INT(IC3/10)
+	  IC5=(ICP-IC*1000-IC2*100-IC4*10)
+      Y$=CHAR(IC+ICODE0)//CHAR(IC2+ICODE0)//CHAR(IC4+ICODE0)//CHAR(IC5+ICODE0)//' '
+      IF (CP.GE.0.) GO TO 100
+      Y1$=Y$(1:5)
+      Y$='-'//Y1$(1:5)
+	  GO TO 100
+!
+   40 IF (ICP.GT.99999) GO TO 50
+	  IC=INT(ICP/10000)
+      IC1=(ICP-IC*10000)
+	  IC2=INT(IC1/1000)
+	  IC3=(ICP-IC*10000-IC2*1000)
+	  IC4=INT(IC3/100)
+	  IC5=(ICP-IC*10000-IC2*1000-IC4*100)
+	  IC6=INT(IC5/10)
+	  IC7=(ICP-IC*10000-IC2*1000-IC4*100-IC6*10)
+      Y$=CHAR(IC+ICODE0)//CHAR(IC2+ICODE0)//CHAR(IC4+ICODE0)//CHAR(IC6+ICODE0)//  &
+	  CHAR(IC7+ICODE0)//' '
+      IF (CP.GE.0.) GO TO 100
+      Y1$=Y$(1:5)
+      Y$='-'//Y1$(1:5)
+	  GO TO 100
+   50 WRITE(*,51)
+   51 FORMAT(/5X,'Sorry, STR$ implemented for ABS(CP)<100000')
+      PRINT *,' '
+      STOP
+  100 RETURN
+      END
+!
+! seek operator '(' or '£'
+      SUBROUTINE OPERA(CH$,IC,C$,NC,D$)
+      CHARACTER*1 C$
+      CHARACTER*40 CP$(150),D$
+      CHARACTER*80 CH$
+      COMMON /A/ CP$
+      IF (C$.NE.'£') GOTO 700
+  670 D$=' '
+  680 IF (C$.EQ.'(') GO TO 690
+      IF (D$.NE.' ') GO TO 685
+      D$=C$
+      GO TO 686
+  685 CALL LEN(D$,ILD)
+      D$=D$(1:ILD)//C$
+  686 IC=IC+1
+      C$=CH$(IC:IC)
+      GO TO 680
+  690 NC=NC+1
+      CP$(NC)=D$
+  700 IF (C$.NE.'(') GOTO 710
+      NC=NC+1
+      CP$(NC)='('
+      IC=IC+1
+      C$=CH$(IC:IC)
+      GO TO 700
+  710 IF (C$.EQ.'£') GOTO 670
+      RETURN
+      END
+!
+! print intermediate or final result
+      SUBROUTINE IMPR
+      CHARACTER*40 CP$(150)
+      CHARACTER*500 RR$,Y$,Z$
+      CHARACTER*1 SC$
+      INTEGER RE,RT
+      COMMON /A/ CP$
+      COMMON /B/ CP(150)
+      COMMON /D/ RE,RT
+      COMMON /G/ IDI
+      COMMON /K/ RR$
+      NN=200
+      ISP=0
+      DO 2 I=1,NN
+      Y$(I:I)=' '
+      Z$(I:I)=' '
+    2 RR$(I:I)=' '
+!
+      DO 500 I=IDI,3,-1
+! This line only for debugging
+!       if (RT.NE.0)  write(2,*) ' I=',I,' CP=',CP(I),' CP$=',CP$(I)
+        SC$=CP$(I)(1:1)
+        IF (SC$.EQ.'$') GO TO 500
+        IMO=0
+        IF (SC$.LT.'A') GO TO 10
+        IF (SC$.LE.'Z') GO TO 20
+   10   IF (SC$.NE.' ') GO TO 30
+   20   IMO=1
+   30   IF (ISP.NE.1) GO TO 100
+        IF (IMO.NE.1) GO TO 50
+        IF (CP(I).LT.0.) GO TO 50
+        IF(ABS(CP(I)).LT.1.E-15) GOTO 50
+        CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        IF(IR.GT.0) RR$=Y$(1:IR)//'+'
+!
+   50   IF (SC$.NE.'(') GO TO 100
+        CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        IF(IR.GT.0) RR$=Y$(1:IR)//'+'
+!
+  100   IF (IMO.NE.1) GO TO 200
+        IF (ABS(CP(I)).NE.1.) GO TO 120
+        GO TO 200
+!
+  120   IF(ABS(CP(I)).LT.1.E-15) GOTO 200
+        CALL STR$(INT(CP(I)),Z$)
+        CALL LEN(Z$,LCPI)
+        CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        IF(LCPI.GT.0) THEN
+          IF(IR.LT.1) THEN
+            RR$=Z$(1:LCPI)
+          ELSE
+            RR$=Y$(1:IR)//Z$(1:LCPI)
+          ENDIF
+        ENDIF
+!
+  200   IF (CP(I).EQ.-1.) GO TO 210
+        GO TO 220
+  210   CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        IF(IR.LT.1) THEN
+          RR$='-'
+        ELSE
+          RR$=Y$(1:IR)//'-'
+        ENDIF
+!
+  220   IF (ABS(CP(I)).NE.1.) GO TO 300
+        IF (SC$.NE.' ') GO TO 300
+        CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        IF(IR.GT.0) THEN
+          RR$=Y$(1:IR)//'1'
+        ELSE
+          RR$='1'
+        ENDIF
+!
+  300   IF(ABS(CP(I)).LT.1.E-15) GOTO 350
+        CALL LEN(RR$,IR)
+        Y$=RR$(1:IR)
+        CALL LEN(CP$(I),LCPI)
+        IF(LCPI.GT.0) THEN
+          IF(IR.LT.1) THEN
+            RR$=CP$(I)(1:LCPI)
+          ELSE
+            RR$=Y$(1:IR)//CP$(I)(1:LCPI)
+          ENDIF
+        ENDIF
+!
+  350   ISP=0
+!       only for intermediate results
+        if (SC$.EQ.'*'.or.SC$.EQ.'+'.or.SC$.EQ.'-') then
+          CALL LEN(CP$(I),LCPI)
+		  CALL LEN(RR$,IR)
+          RR$=RR$(1:IR)//CP$(I)(1:LCPI)
+        end if
+        IF (IMO.EQ.1) GO TO 400
+        IF (SC$.EQ.')') GO TO 400
+        GO TO 500
+  400   ISP=1
+  500 CONTINUE
+
+      CALL LEN(RR$,LR)
+	  if (RT.EQ.0) then
+        WRITE(*,*) '  ',RR$(1:70)
+        IF(LR.GT.70)  WRITE(*,*) '  ',RR$(71:140)
+        IF(LR.GT.140) WRITE(*,*) '  ',RR$(141:210)
+        IF(LR.GT.210) WRITE(*,*) '  ',RR$(211:280)
+        IF(LR.GT.280) WRITE(*,*) '  ',RR$(281:350)
+        IF(LR.GT.350) WRITE(*,*) '  ',RR$(351:420)
+        IF(LR.GT.420) WRITE(*,*) '  ',RR$(421:490)
+        IF(LR.GT.490) WRITE(*,*) '  RESULT STRING TOO BIG !'
+	    print *,' '
+      else
+        WRITE(2,*) '  ',RR$(1:70)
+        IF(LR.GT.70)  WRITE(2,*) '  ',RR$(71:140)
+        IF(LR.GT.140) WRITE(2,*) '  ',RR$(141:210)
+        IF(LR.GT.210) WRITE(2,*) '  ',RR$(211:280)
+        IF(LR.GT.280) WRITE(2,*) '  ',RR$(281:350)
+        IF(LR.GT.350) WRITE(2,*) '  ',RR$(351:420)
+        IF(LR.GT.420) WRITE(2,*) '  ',RR$(421:490)
+        IF(LR.GT.490) WRITE(2,*) '  RESULT STRING TOO BIG !'
+	    write(2,*) ' '
+	  end if
+      RETURN
+      END
+
+! end of file algebra.f90 (Fortran 90)

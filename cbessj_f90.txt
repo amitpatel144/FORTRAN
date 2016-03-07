@@ -1,0 +1,117 @@
+!******************************************************************
+!*    Complex Bessel Function of the 1st Kind of integer order    *
+!* -------------------------------------------------------------- *
+!* SAMPLE RUN:                                                    *
+!*                                                                *
+!* Complex Bessel Function of the 1st Kind of integer order       *
+!*                                                                * 
+!* Input complex argument (real imaginary): 1 2                   *
+!* Input integer order: 1                                         *
+!*                                                                *
+!* Function value:  (1.291847,1.010488)                           *
+!*                                                                *
+!*                                                                *
+!*                          F90 Release 1.1 By J-P Moreau, Paris. *
+!*                                  (www.jpmoreau.fr)             *
+!*                                                                *
+!* Release 1.1: MAXK=20 (15 before).                              *  
+!******************************************************************
+Program Test_CBESSJ
+
+integer nu
+complex z,z1
+real*8  x,y
+
+  print *,' '
+  print *,' Complex Bessel Function of the 1st Kind of integer order'
+  print *,' '
+  write(*,10,advance='no'); read *, x, y
+  z = CMPLX(x,y)
+  write(*,20,advance='no'); read *, nu
+  print *,' '
+
+  call CBESSJ(z,nu,z1)
+
+  print *,' Function value: ', z1
+  print *,' '
+
+10 format('  Input complex argument (real imaginary): ')
+20 format('  Input integer order: ')
+
+END
+
+  real*8 Function Fact(K)
+  Integer i
+  Real*8  f
+    F=1.d0
+    do i=2, k 
+	  f=f*dfloat(i)
+    end do
+    Fact=f
+  return
+  End
+
+!*******************************************
+!*           FUNCTION  GAMMA(X)            *
+!* --------------------------------------- *
+!* Returns the value of Gamma(x) in double *
+!* precision as EXP(LN(GAMMA(X))) for X>0. *
+!*******************************************
+real*8 Function Gamma(xx)
+parameter(ONE=1.d0,FPF=5.5d0,HALF=0.5d0)
+  real*8 xx
+  real*8 cof(6)
+  real*8 stp,x,tmp,ser
+  integer j
+  cof(1)=76.18009173d0
+  cof(2)=-86.50532033d0
+  cof(3)=24.01409822d0
+  cof(4)=-1.231739516d0
+  cof(5)=0.120858003d-2
+  cof(6)=-0.536382d-5
+  stp=2.50662827465d0
+  
+  x=xx-ONE
+  tmp=x+FPF
+  tmp=(x+HALF)*LOG(tmp)-tmp
+  ser=ONE
+  do j=1, 6
+    x=x+ONE
+    ser=ser+cof(j)/x
+  end do
+  Gamma = EXP(tmp+LOG(stp*ser))
+return
+End
+
+
+Subroutine CBESSJ(z, nu, z1)
+!---------------------------------------------------
+!                       inf.     (-z^2/4)^k
+!   Jnu(z) = (z/2)^nu x Sum  ------------------
+!                       k=0  k! x Gamma(nu+k+1)
+!  (nu must be >= 0).
+!---------------------------------------------------
+  Parameter(MAXK=20,ZERO=0.d0)
+  Complex z,z1
+  Integer k
+  Complex sum,tmp
+  Real*8 Fact, Gamma
+  sum = CMPLX(ZERO,ZERO)
+  do k=0, MAXK
+    !calculate (-z**2/4)**k
+	tmp = (-z*z/4.d0)**k
+    !divide by k!
+	tmp = tmp / Fact(k)
+    !divide by Gamma(nu+k+1)
+    tmp = tmp / Gamma(dfloat(nu+k+1))
+    !actualize sum
+	sum = sum + tmp
+  end do
+  !calculate (z/2)**nu
+  tmp = (z/2)**nu
+  !multiply (z/2)**nu by sum
+  z1 = tmp*sum
+return
+End
+
+!end of file cbessj.f90

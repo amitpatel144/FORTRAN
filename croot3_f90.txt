@@ -1,0 +1,151 @@
+!***********************************************************
+!*          Solve complex equation of degree 3:            *
+!*             a z^3 + b z^2 + c z + d = 0                 *
+!* ------------------------------------------------------- *
+!* SAMPLE RUN:                                             *
+!*             a = (1,0) b = (2,-10) c = (-4,1) d = (5,2)  *
+!*                                                         *
+!*  Equation az**3 + bz**2 + c*z + d = 0                   *
+!*  Solutions z:                                           *
+!*  z =  (-0.4702985,0.6684887)                            *
+!*  F(z) =  (3.4763884E-06,-6.9430839E-06)                 *
+!*  z =  (0.6017774,-0.2911127)                            *
+!*  F(z) =  (1.1284958E-05,-2.6326748E-06)                 *
+!*  z =  (-2.131480,9.622624)                              *
+!*  F(z) =  (5.7570851E-05,5.4173665E-06)                  *
+!*                                                         *
+!*                                     J-P Moreau, Paris.  *
+!*                                     (www.jpmoreau.fr)   *
+!***********************************************************
+! NOTE:
+! z = Z - (b/3a)
+! p = (c/a) - (b²/3a²)
+! q = (2b^3/27a^3) + (d/a) - (bc)/3a²)!
+!
+! Now the equation is reduced to Z^3 + pZ + q = 0
+!
+! with the roots:
+!
+! Z[1..3] = cubroot(-q/2 + sqrt(q²/4 + p^3/27)) + cubroot(-q/2 - sqrt(q²/4 + p^3/27))
+!------------------------------------------------------------------------------------
+Program CRoot3
+
+Complex a,b,c,d, det, p, q, sdet, u, u1, u2, v, v1, v2, w, z1
+Complex z(9)
+
+! seek three complex roots of complex equation:
+!   a z**3 + b z**2 + c*z + d = 0 
+
+  a = CMPLX(1.0,0.0)
+  b = CMPLX(2.0,-10.0)
+  c = CMPLX(-4.0,1.0)
+  d = CMPLX(5.0,2.0)
+
+! calculate p = c/a - b²/3a²
+  p = (c/a) - (b*b/(3*a*a))
+
+! calculate q = 2b**3/27a**3 + d/a - bc/3a²
+  q = (2*b*b*b/(27*a*a*a)) + (d/a) - (b*c/(3*a*a))
+
+! calculate det = q²/4 + p^3/27
+  det = (q*q/4.) + (p*p*p/27.)
+
+  sdet = SQRT(det)   !now sdet contains sqrt(q²/4 + p**3/27
+
+  v = -q/2. + sdet
+
+  call CUBRT(v,u,u1,u2)   !3 cubic roots
+
+! print *, u, u1, u2
+
+  w = -q/2. - sdet
+
+! print *,' w=', w
+
+  call CUBRT(w,v,v1,v2)   !3 cubic roots
+
+! print *, v, v1, v2
+
+  z(1) = u + v
+  z(2) = u + v1
+  z(3) = u + v2
+  z(4) = u1 + v
+  z(5) = u1 + v1
+  z(6) = u1 + v2
+  z(7) = u2 + v
+  z(8) = u2 + v1
+  z(9) = u2 + v2
+
+! Note: only 3 z(i) are correct solutions.
+
+  do i=1, 9
+    z(i) = z(i) - (b/(3*a))
+  end do
+
+  print *,' '
+  print *,' Equation az**3 + bz**2 + c*z + d = 0'
+  print *,' Solutions z:'
+
+  do i=1, 9
+    call F(a,b,c,d,z(i),z1)
+    if (ABS(z1) < 0.001) then  !detect if solution is correct
+      write(*,*) ' z = ', z(i);
+      write(*,*) ' F(z) = ', z1
+    end if
+  end do
+
+  print *,' '
+  stop
+
+END
+
+Function ATAN1(xnumerator, denominator)
+! Return a phase between -PI and +PI
+  PI = 4.0*atan(1.0)
+  if (abs(denominator) < 1E-15) then
+    if (xnumerator < 0.0) then 
+	  ATAN1 = -PI/2.0
+    else 
+	  ATAN1 = PI/2.0
+    end if 
+  else
+    phase=atan(xnumerator/denominator)
+    if (denominator < 0.0)  phase = phase + PI
+	ATAN1 =  phase
+  end if
+  return
+End  !ATAN1
+
+! z1, z2, z3 = z**(1/3)
+Subroutine CUBRT(z, z1, z2, z3)
+  Complex z,z1,z2,z3  
+  PI = 4.0*atan(1.0)
+  r=abs(z)
+  r=r**(1./3.)
+  if (ABS(REAL(z))<1.E-15) then
+    if (AIMAG(z) < 0.) then 
+	  t = -PI/2.
+    else 
+	  t = PI/2.
+    end if
+  else	    
+!   return t between -pi and +pi
+    t=ATAN1(AIMAG(z),REAL(z))
+  end if
+  t=t/3.
+  z1=CMPLX(r*cos(t),r*sin(t))
+  tt=t-(2*PI/3.)
+  z2=CMPLX(r*cos(tt),r*sin(tt))
+  tt=t+(2*PI/3);
+  z3=CMPLX(r*cos(tt),r*sin(tt))
+  return
+End
+
+! z1 = a*z^3 + b*z2 + c*z + d
+Subroutine F(a,b,c,d,z,z1)
+  Complex a,b,c,d,z,z1
+  z1 = a*z*z*z + b*z*z + c*z + d
+  return
+End
+
+!end of file croot3.f90

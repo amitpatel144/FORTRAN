@@ -1,0 +1,211 @@
+!**********************************************
+!* This program allows to make arithmetic     *
+!* operations in any base  between 2 and 36.  *
+!* ------------------------------------------ *
+!* Ref.: "Mathématiques en Turbo-Pascal by    *
+!*        M. Ducamp and A. Reverchon (2),     *
+!*        Eyrolles, Paris, 1988".             *
+!* ------------------------------------------ *
+!* Sample runs:                               *
+!*                                            *
+!* ARITHMETIC OPERATIONS IN ANY BASE          *
+!* BETWEEN 2 AND 36                           *
+!*                                            *
+!* Enter base (2 to 36): 25                   *
+!* Enter 1st number : AM3G                    *
+!*                                            *
+!* Enter next number: 28                      *
+!* Operator (+-*/^) : +                       *
+!* Result           : AM50                    *
+!* Enter next number: J                       *
+!* Operator (+-*/^) : '*'                     *
+!* Result           : 86MD6                   *
+!* Enter next number: 2B                      *
+!* Operator (+-*/^) : '/'                     *
+!* Result           : 39JM                    *
+!*                                            *
+!* ARITHMETIC OPERATIONS IN ANY BASE          *
+!* BETWEEN 2 AND 36                           *
+!*                                            *
+!* Enter base (2 to 36): 2                    *
+!* Enter 1st number : 11001010                *
+!*                                            *
+!* Enter next number: 1100                    *
+!* Operator (+-*/^) : -                       *
+!* Result           : 10111110                *
+!* Enter next number: 1110                    *
+!* Operator (+-*/^) : -                       *
+!* Result           : 10110000                *
+!* Enter next number: 10101                   *
+!* Operator (+-*/^) : +                       *
+!* Result           : 11000101                *
+!* Enter next number: 10                      *
+!* Operator (+-*/^) : '/'                     *
+!* Result           : 1100010                 *
+!* Enter next number: 11                      *
+!* Operator (+-*/^) : '*'                     *
+!* Result           : 100100110               *
+!*                                            *
+!* ARITHMETIC OPERATIONS IN ANY BASE          *
+!* BETWEEN 2 AND 36                           *
+!*                                            *
+!* Enter base (2 to 36): 16                   *
+!* Enter 1st number : FEAA                    *
+!*                                            *
+!* Enter next number: FF                      *
+!* Operator (+-*/^) : +                       *
+!* Result           : FFA9                    *
+!* Enter next number: 1799                    *
+!* Operator (+-*/^) : -                       *
+!* Result           : E810                    *
+!* Enter next number: 2                       *
+!* Operator (+-*/^) : '/'                     *
+!* Result           : 7408                    *
+!*                                            *
+!* Note: Enter 0 to exit.                     *
+!*                                            *
+!*                  F90 Version By J-P Moreau *
+!*                     (www.jpmoreau.fr)      *
+!**********************************************
+!Explanations:
+!------------
+!The letters A,B,...,Z  represent 10,11,...,36
+!in the base > 10.
+
+!The numbers are first converted from base b to
+!base 10 by Function Decodebase, then  operation
+!is made in base 10 and result is converted from
+!base 10 to base b by Function Codebase.
+
+!Note: assuming that a real number has a mantissa of
+!      40 digits in base 2, the number of useful
+!      digits udg in base b is given by formula:
+
+!	   udg = integer(40*log(2)/log(b))
+
+!      b=10: udg = 12
+!	   b=16: udg = 10
+!      b=36: udg = 7
+
+!---------------------------------------------------
+PROGRAM BASEOP
+
+implicit none
+integer       b
+character*40  x,y
+character*1   op
+real*4        r1,r2, r10
+
+integer CodeBase, DecodeBase
+
+  print *,''
+  print *,' ARITHMETIC OPERATIONS IN ANY BASE BETWEEN 2 AND 36'
+  print *,''
+
+10 write(*,100,advance='no'); read *, b
+  write(*,110,advance='no'); read *, x
+  if (DecodeBase(x,b,r1).eq.0) goto 10
+
+20 print *,''
+  write(*,120,advance='no'); read *, x
+  if (x.ne.'0') then
+    if (DecodeBase(x,b,r2).ne.0) then
+      write(*,130,advance='no'); read *, op
+      Select Case (op)
+        Case ('+')
+		  r1=r1+r2
+        Case ('-')
+		  r1=ABS(r1-r2)
+        Case ('*')
+		  r1=r1*r2
+        Case ('/')
+		  r1=INT(r1/r2)
+        Case ('^')
+		  r1=INT(EXP(r2*LOG(r1)))
+      End Select
+	  r10=r1 !r1 modified by CodeBase
+      if (CodeBase(r10,b,y).ne.0) then 
+	    print *,' Result           : ', y
+      else 
+	    print *,' Error in coding result.'
+      end if
+    else
+      print *,' Number not valid or decoding error.'
+    end if
+  end if	                             
+  if (x.ne.'0') goto 20
+
+  print *,''
+  stop
+
+100 format('  Enter base (2 to 36): ')
+110 format('  Enter 1st number : ')
+120 format('  Enter next number: ')
+130 format('  Operator (+-*/^) : ')
+
+END
+
+!Convert a number from base b to base 10. The function returns
+!FALSE if b not in [2..36] or if string x contains invalid
+!characters in base b or if result y is too big}
+integer Function DecodeBase(x,b,y)
+implicit none
+character*(*) x
+integer b, long, i, j, k
+real*4  y, mult
+character*1 ch
+real*4, parameter :: XMAXREAL=1.E30
+
+  DecodeBase=0
+  if (b<2.or.b>36) then
+    print *,' Base must be between 2 and 36 !'
+    return
+  end if
+  y=0.; mult=1.
+  long=LEN_TRIM(x)
+  do i=1, long
+    k=long+1-i
+    ch=x(k:k)
+    if (ch<'0'.or.ch>'Z'.or.(ch>'9'.and.ch<'A')) return
+    if (ch<='9') then
+	  j=IACHAR(ch)-IACHAR('0')
+    else 
+	  j=IACHAR(ch)-IACHAR('A')+10
+    end if 
+    if (j>=b) return
+    y=y+mult*j
+    if (mult>XMAXREAL/b) return
+    mult=mult*b
+  end do
+  DecodeBase=1
+  return
+End
+
+!Convert a number from base 10 to base b. The function returns
+!FALSE if b not in [2..36] or if string x contains invalid
+!characters in base 10 or if number x is too big
+integer Function CodeBase(x,b,y)
+implicit none
+real*4 x
+integer b, n
+character*(*) y
+  CodeBase=0
+  if (b<2.or.b>36) then
+    print *,' Base must be between 2 and 36 !'
+    return
+  end if
+  y=''
+  do while (x>0.)
+    n=INT(x-b*INT(x/b))
+    if (n<10) then 
+	  y=ACHAR(IACHAR('0')+n)//y
+    else 
+	  y=ACHAR(IACHAR('A')+n-10)//y
+    end if
+    x=INT(x/b)           
+  end do
+  CodeBase=1
+  return
+End
+
+!end of file basisop.f90

@@ -1,0 +1,106 @@
+!*****************************************************
+!*  This program calculates R(x) = a*P(x) + b*Q(x),  *
+!*  P(x), Q(x) and R(x) being polynomials.           *
+!* ------------------------------------------------- *
+!* Ref.: "Mathématiques en Turbo-Pascal By M. Ducamp *
+!* and A. Reverchon (vol 2), Eyrolles, Paris, 1988"  *
+!* [BIBLI 05].                                       *      
+!* ------------------------------------------------- *
+!* SAMPLE RUN:                                       *
+!*                                                   *
+!* LINEAR COMBINATION OF TWO POLYNOMIALS:            *
+!*                                                   *
+!* P(X) = 'x3 +5/4x2 -8'                             *
+!* Q(x) = '2x2 -1/7'                                 *
+!*                                                   *
+!* a = '1/2'                                         *
+!* b = '-1/3'                                        *
+!*                                                   *
+!*+     1/     2 X3 -     1/    24 X2 -    83/    21 *
+!*                                                   *
+!* ------------------------------------------------- *
+!* Functions used (of module Polynoms):              *
+!*                                                   *
+!*  AddNumber(), EnterPolynom(), DisplayPolynom(),   *
+!*  MultNumber() and SetNumber().                    *
+!*                                                   *
+!*                      F90 version by J-P Moreau.   *
+!*                  (To be linked with polynoms.f90).*
+!*                          (www.jpmoreau.fr)        *
+!*****************************************************
+PROGRAM COMBIPOL
+Use Polynoms
+
+type(ar_polynom) P,Q,R
+type(ar_number)  a, b
+integer res, CombiPolynom
+
+  print *,''
+  print *,' LINEAR COMBINATION OF TWO POLYNOMIALS:'
+  print *,''
+  if (EnterPolynom('  P(X) = ', P).eq.0)  stop
+  if (EnterPolynom('  Q(X) = ', Q).eq.0)  stop
+  print *,''
+  call ReadNumber('  a = ', a)
+  call ReadNumber('  b = ', b)
+  res=CombiPolynom(P,Q,a,b,R)
+  if (res.ne.0) then
+    call DisplayPolynom(R)
+  else
+    print *,' Error in linear combination.'
+  end if
+  print *,''
+  print *,''
+  stop
+END
+
+  ! a P(X) + b Q(X) = R(X)
+  integer Function CombiPolynom(P,Q,a,b,R)
+    USE POLYNOMS
+    type(ar_polynom) P,Q,R
+	type(ar_number)  a, b, u, v
+	integer degree
+    if (Q%degree > P%degree) then 
+	  degree=Q%degree
+    else 
+	  degree=P%degree
+    end if 
+    if (degree > AR_MAXPOL) then       !degree of R too big
+	  CombiPolynom=0
+	  return
+    end if
+    do i=0, degree
+      if (SetNumber(u,'0').eq.0) then
+	    CombiPolynom=0
+	    return
+      end if
+      if (SetNumber(v,'0').eq.0) then
+	    CombiPolynom=0
+	    return
+      end if
+      if (i<=P%degree) then
+        if (MultNumber(a,P%coeff(i), u).eq.0) then
+	      CombiPolynom=0
+	      return
+        end if
+      end if
+      if (i<=Q%degree) then
+        if (MultNumber(b,Q%coeff(i), v).eq.0) then
+	      CombiPolynom=0
+	      return
+        end if
+      end if 
+      if (AddNumber(u,v,R%coeff(i)).eq.0) then
+	    CombiPolynom=0
+	    return
+      end if
+    end do
+    do while (degree>0.and.dabs(R%coeff(degree)%value)<AR_SMALL)
+      degree=degree-1
+    end do
+	R%degree=degree
+    CombiPolynom=1
+  End !CombiPolynom
+
+
+!end of file combipol.f90
